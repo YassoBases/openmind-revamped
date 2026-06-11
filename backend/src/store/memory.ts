@@ -1,0 +1,124 @@
+/** In-memory store — dev fallback when DATABASE_URL is unset. Data dies on restart. */
+import { randomUUID } from 'node:crypto';
+import type { GameRow, PlaySessionRow, Store, StudentRow, XpEventRow } from './types.js';
+
+export class MemoryStore implements Store {
+  kind = 'memory' as const;
+  private students = new Map<string, StudentRow>();
+  private games = new Map<string, GameRow>();
+  private sessions: PlaySessionRow[] = [];
+  private xpEvents: XpEventRow[] = [];
+  private streakDays = new Set<string>();
+  private cache = new Map<string, { content: Record<string, unknown>; expiresAt: number }>();
+
+  async ping() {
+    return true;
+  }
+
+  async createStudent(data: Omit<StudentRow, 'id' | 'createdAt' | 'xp' | 'streakCount' | 'streakLastPlayedAt'>) {
+    const row: StudentRow = {
+      ...data,
+      id: randomUUID(),
+      xp: 0,
+      streakCount: 0,
+      streakLastPlayedAt: null,
+      createdAt: new Date(),
+    };
+    this.students.set(row.id, row);
+    return row;
+  }
+
+  async getStudentByToken(tokenHash: string) {
+    for (const s of this.students.values()) if (s.tokenHash === tokenHash) return s;
+    return null;
+  }
+
+  async getStudent(id: string) {
+    return this.students.get(id) ?? null;
+  }
+
+  async updateStudent(id: string, patch: Partial<StudentRow>) {
+    const s = this.students.get(id);
+    if (!s) throw new Error('student not found');
+    Object.assign(s, patch);
+    return s;
+  }
+
+  async createGame(data: Omit<GameRow, 'createdAt' | 'deletedAt' | 'bestScore' | 'playCount' | 'lastPlayedAt'>) {
+    const row: GameRow = {
+      ...data,
+      bestScore: 0,
+      playCount: 0,
+      lastPlayedAt: null,
+      createdAt: new Date(),
+      deletedAt: null,
+    };
+    this.games.set(row.id, row);
+    return row;
+  }
+
+  async getGame(id: string) {
+    return this.games.get(id) ?? null;
+  }
+
+  async updateGame(id: string, patch: Partial<GameRow>) {
+    const g = this.games.get(id);
+    if (!g) throw new Error('game not found');
+    Object.assign(g, patch);
+    return g;
+  }
+
+  async listGames(studentId: string, opts: { limit: number; offset: number }) {
+    const all = [...this.games.values()]
+      .filter((g) => g.studentId === studentId && !g.deletedAt)
+      .sort((a, b) => (b.lastPlayedAt ?? b.createdAt).getTime() - (a.lastPlayedAt ?? a.createdAt).getTime());
+    return { items: all.slice(opts.offset, opts.offset + opts.limit), total: all.length };
+  }
+
+  async createPlaySession(data: Omit<PlaySessionRow, 'id' | 'createdAt'>) {
+    const row: PlaySessionRow = { ...data, id: randomUUID(), createdAt: new Date() };
+    this.sessions.push(row);
+    return row;
+  }
+
+  async recentPlaySessions(studentId: string, limit: number) {
+    return this.sessions
+      .filter((s) => s.studentId === studentId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
+  }
+
+  async playSessionsSince(studentId: string, since: Date) {
+    return this.sessions.filter((s) => s.studentId === studentId && s.createdAt >= since);
+  }
+
+  async addXpEvent(studentId: string, amount: number, reason: string) {
+    const row: XpEventRow = { id: randomUUID(), studentId, amount, reason, createdAt: new Date() };
+    this.xpEvents.push(row);
+    return row;
+  }
+
+  async listXpEvents(studentId: string, limit: number) {
+    return this.xpEvents
+      .filter((e) => e.studentId === studentId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
+  }
+
+  async addStreakDay(studentId: string, day: Date) {
+    const key = `${studentId}|${day.toISOString().slice(0, 10)}`;
+    if (this.streakDays.has(key)) return false;
+    this.streakDays.add(key);
+    return true;
+  }
+
+  async cacheGet(key: string) {
+    const hit = this.cache.get(key);
+    if (!hit || hit.expiresAt < Date.now()) return null;
+    return hit.content;
+  }
+
+  async cacheSet(key: string, content: Record<string, unknown>, ttlMs: number) {
+    this.cache.set(key, { content, expiresAt: Date.now() + ttlMs });
+  }
+}

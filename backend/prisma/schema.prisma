@@ -1,0 +1,99 @@
+// EduMind backend — Prisma 6 + Postgres 16.
+// Neon users: DATABASE_URL = pooled URL (?pgbouncer=true), DIRECT_URL = direct
+// connection for migrations (auto-suspend during long calls bit us in v3).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Student {
+  id                  String    @id @default(cuid())
+  name                String // nickname only — never a real-name field (minors)
+  gender              String? // 'm' | 'f' — Arabic grammar ONLY
+  grade               Int
+  language            String    @default("en")
+  color               String    @default("#58CC02")
+  interest            String?
+  dailyGoal           Int       @default(3)
+  xp                  Int       @default(0)
+  streakCount         Int       @default(0)
+  streakLastPlayedAt  DateTime?
+  tokenHash           String    @unique
+  createdAt           DateTime  @default(now())
+  games               Game[]
+  xpEvents            XpEvent[]
+  streakEvents        StreakEvent[]
+  playSessions        PlaySession[]
+}
+
+model Game {
+  id           String    @id @default(cuid())
+  studentId    String
+  student      Student   @relation(fields: [studentId], references: [id])
+  gameType     String
+  theme        String
+  subject      String
+  topic        String
+  language     String
+  status       String    @default("generating") // generating | ready | failed
+  error        String?
+  spec         Json? // the GameSpec — NEVER assembled HTML
+  shellVersion String    @default("")
+  thumbnailUrl String?
+  bestScore    Int       @default(0)
+  playCount    Int       @default(0)
+  lastPlayedAt DateTime?
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime? // soft delete
+  playSessions PlaySession[]
+
+  @@index([studentId, deletedAt, lastPlayedAt])
+}
+
+model PlaySession {
+  id        String   @id @default(cuid())
+  gameId    String? // null for Review-mode sessions (no backing game row)
+  game      Game?    @relation(fields: [gameId], references: [id])
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  summary   Json // reportSummary payload (per-item results — feeds Review mode)
+  xp        Int      @default(0)
+  accuracy  Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([studentId, createdAt])
+}
+
+model XpEvent {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  amount    Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([studentId, createdAt])
+}
+
+model StreakEvent {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  day       DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, day])
+}
+
+model SpecCache {
+  key       String   @id // sha256(subject|topic|language|gameType|theme|grade|difficulty|sessionLength)
+  content   Json // de-personalized GameSpec content
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}

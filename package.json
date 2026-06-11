@@ -1,0 +1,25 @@
+{
+  "name": "edumind-game-studio",
+  "version": "4.0.0",
+  "private": true,
+  "description": "EduMind Game Studio v4 — template-shell educational games driven by LLM-generated GameSpecs",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "shared",
+    "shells",
+    "backend"
+  ],
+  "scripts": {
+    "build": "npm run build:shared && npm run build:shells",
+    "build:shared": "npm -w shared run build",
+    "build:shells": "npm -w shells run build",
+    "preview": "npm -w shells run preview",
+    "test": "npm -w shared run test && npm -w shells run test && npm -w backend run test",
+    "test:e2e": "npm -w shells run test:e2e",
+    "dev:backend": "npm -w backend run dev",
+    "seed": "npm -w backend run seed"
+  }
+}

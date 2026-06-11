@@ -1,0 +1,17 @@
+# Local Postgres 16 for the EduMind backend (optional — the backend runs with
+# an in-memory store when DATABASE_URL is unset).
+#   docker compose up -d
+#   DATABASE_URL=postgresql://edumind:edumind@localhost:5432/edumind
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: edumind
+      POSTGRES_PASSWORD: edumind
+      POSTGRES_DB: edumind
+    ports:
+      - '5432:5432'
+    volumes:
+      - edumind-pg:/var/lib/postgresql/data
+volumes:
+  edumind-pg:

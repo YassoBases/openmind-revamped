@@ -1,0 +1,21 @@
+{
+  "builtAt": "2026-06-11T22:51:46.296Z",
+  "phaserVersion": "4.1.0",
+  "shells": {
+    "quest_path": {
+      "file": "quest_path.html",
+      "shellVersion": "80b3add082ca864c",
+      "bytes": 1552957
+    },
+    "goal_shootout": {
+      "file": "goal_shootout.html",
+      "shellVersion": "21c6b0a0c5aecaa0",
+      "bytes": 1547815
+    },
+    "draw_connect": {
+      "file": "draw_connect.html",
+      "shellVersion": "cfe75a2aa067e566",
+      "bytes": 1551317
+    }
+  }
+}

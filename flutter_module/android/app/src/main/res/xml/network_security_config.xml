@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dev convenience: allow cleartext HTTP so the app can reach the EduMind
+     backend on a laptop's LAN IP (http://192.168.x.x:8080). Restrict or
+     remove for production builds. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

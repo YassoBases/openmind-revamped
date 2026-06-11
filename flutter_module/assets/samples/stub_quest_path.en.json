@@ -1,0 +1,22 @@
+{
+  "specVersion": 1,
+  "stub": true,
+  "meta": {
+    "gameType": "quest_path",
+    "theme": "sci_fi",
+    "subject": "Science",
+    "topic": "Photosynthesis",
+    "language": "en",
+    "grade": 4,
+    "difficulty": "normal",
+    "sessionLength": 5,
+    "numerals": "western"
+  },
+  "student": {
+    "name": "Player",
+    "gender": null,
+    "color": "#1CB0F6",
+    "interest": "space"
+  },
+  "levels": []
+}

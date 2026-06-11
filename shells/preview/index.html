@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EduMind — Shell Preview Harness</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #131F24; color: #F7F7F7; display: flex; height: 100vh; overflow: hidden; }
+  #side { width: 360px; min-width: 360px; padding: 16px; overflow-y: auto; background: #1A2A33; border-right: 2px solid #243842; }
+  h1 { font-size: 18px; margin: 0 0 4px; color: #58CC02; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #AFAFAF; margin: 18px 0 8px; }
+  .spec-btn { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 10px 12px; border-radius: 12px; border: none; background: #243842; color: #F7F7F7; cursor: pointer; font-size: 13px; }
+  .spec-btn:hover { background: #2E4452; }
+  .spec-btn small { color: #8FB3C5; display: block; }
+  .spec-btn.active { outline: 2px solid #58CC02; }
+  label { font-size: 13px; display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+  input[type=number] { width: 56px; background: #243842; color: #fff; border: 1px solid #36505e; border-radius: 6px; padding: 4px; }
+  #controls button { margin: 4px 4px 0 0; padding: 8px 10px; border-radius: 10px; border: none; background: #1CB0F6; color: #06212e; font-weight: 700; cursor: pointer; font-size: 12px; }
+  #controls button.warn { background: #FF4B4B; color: #fff; }
+  #log { font-family: Consolas, monospace; font-size: 11px; background: #0c151b; border-radius: 10px; padding: 8px; height: 30vh; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  #log .evt { color: #7CE24A; }
+  #log .data { color: #8FB3C5; }
+  #stage { flex: 1; display: flex; align-items: center; justify-content: center; background: #0c151b; }
+  iframe { border: 4px solid #243842; border-radius: 18px; width: min(45vh, 92%); aspect-ratio: 720/1280; background: #131F24; }
+</style>
+</head>
+<body>
+<div id="side">
+  <h1>EduMind Shell Harness</h1>
+  <div style="font-size:12px;color:#AFAFAF">Pick a golden spec. Shells here are byte-identical to what the backend and the app serve.</div>
+  <h2>Demo specs</h2>
+  <div id="specs">loading…</div>
+  <h2>Progressive start</h2>
+  <label><input type="checkbox" id="stubMode"> boot with stub, deliver spec after
+    <input type="number" id="stubDelay" value="6" min="0"> s</label>
+  <div id="controls">
+    <button id="deliverNow">deliver spec now</button>
+    <button id="failGen" class="warn">simulate generation failure</button>
+    <button id="reload">reload shell</button>
+  </div>
+  <h2>Bridge events</h2>
+  <div id="log"></div>
+</div>
+<div id="stage"><iframe id="frame" title="shell"></iframe></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let current = null;   // { game, file }
+let fullSpec = null;
+let deliverTimer = null;
+
+function log(type, payload) {
+  const el = document.createElement('div');
+  el.innerHTML = `<span class="evt">${type}</span> <span class="data">${JSON.stringify(payload).slice(0, 300)}</span>`;
+  $('#log').prepend(el);
+  while ($('#log').children.length > 200) $('#log').lastChild.remove();
+}
+
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (d && d.source === 'EduMind') log(d.type, d.payload);
+});
+
+async function init() {
+  const { specs } = await (await fetch('/api/list')).json();
+  const box = $('#specs');
+  box.innerHTML = '';
+  specs.filter((s) => !s.stub).forEach((s) => {
+    const b = document.createElement('button');
+    b.className = 'spec-btn';
+    b.innerHTML = `<b>${s.topic}</b><small>${s.gameType} • ${s.language} • ${s.file}</small>`;
+    b.onclick = () => { document.querySelectorAll('.spec-btn').forEach((x) => x.classList.remove('active')); b.classList.add('active'); load(s); };
+    box.appendChild(b);
+  });
+}
+
+async function load(s) {
+  current = s;
+  fullSpec = await (await fetch('/samples/' + s.file)).json();
+  $('#log').innerHTML = '';
+  clearTimeout(deliverTimer);
+  const stub = $('#stubMode').checked;
+  $('#frame').src = `/play/${s.gameType}?spec=${encodeURIComponent(s.file)}${stub ? '&stub=1' : ''}`;
+  if (stub) {
+    const delay = (+$('#stubDelay').value || 0) * 1000;
+    deliverTimer = setTimeout(deliver, delay);
+    log('harness', { note: `stub boot — full spec in ${delay / 1000}s` });
+  }
+}
+
+function deliver() {
+  if (!fullSpec) return;
+  $('#frame').contentWindow.postMessage({ source: 'EduMindHost', type: 'spec', payload: fullSpec }, '*');
+  log('harness', { note: 'spec delivered' });
+}
+
+$('#deliverNow').onclick = deliver;
+$('#failGen').onclick = () => {
+  $('#frame').contentWindow.postMessage({ source: 'EduMindHost', type: 'generationFailed' }, '*');
+  log('harness', { note: 'generation failure sent' });
+};
+$('#reload').onclick = () => current && load(current);
+
+init();
+</script>
+</body>
+</html>

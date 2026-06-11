@@ -1,0 +1,22 @@
+{
+  "name": "@edumind/shells",
+  "version": "4.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "preview": "node preview/server.mjs",
+    "test": "node build.mjs && vitest run",
+    "test:e2e": "node build.mjs && playwright test"
+  },
+  "dependencies": {
+    "phaser": "4.1.0"
+  },
+  "devDependencies": {
+    "@fontsource/nunito": "^5.1.0",
+    "@fontsource/tajawal": "^5.1.0",
+    "@playwright/test": "^1.50.0",
+    "pngjs": "^7.0.0",
+    "vitest": "^3.0.0"
+  }
+}

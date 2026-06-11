@@ -1,0 +1,40 @@
+{
+  "$comment": "Kenney CC0 asset packs → EduMind destinations. Source paths follow Kenney's standard pack layouts; if a pack reorganizes, fix the source path here and re-run the fetch script (it prints every miss). The shells are COMPLETE without these — programmatic art is the primary, Kenney is enhancement.",
+  "packs": [
+    {
+      "name": "sports-pack",
+      "url": "https://kenney.nl/assets/sports-pack",
+      "zip": "kenney_sports-pack.zip",
+      "used_for": "goal_shootout themes (football / basketball / hockey / archery)",
+      "files": [
+        { "from": "PNG/Default size/ball_soccer1.png", "to": "shells/assets/kenney/goal_shootout/ball_football.png" },
+        { "from": "PNG/Default size/ball_basket1.png", "to": "shells/assets/kenney/goal_shootout/ball_basketball.png" },
+        { "from": "PNG/Default size/duck_target_yellow.png", "to": "shells/assets/kenney/goal_shootout/target_archery.png" },
+        { "from": "PNG/Default size/character_blueGreen_idle.png", "to": "shells/assets/kenney/goal_shootout/keeper_idle.png" }
+      ]
+    },
+    {
+      "name": "platformer-pack-redux",
+      "url": "https://kenney.nl/assets/platformer-pack-redux",
+      "zip": "kenney_platformer-pack-redux.zip",
+      "used_for": "quest_path themes (fantasy / sci_fi / detective / anime)",
+      "files": [
+        { "from": "PNG/Players/128x256/Green/alienGreen_walk1.png", "to": "shells/assets/kenney/quest_path/hero_walk1.png" },
+        { "from": "PNG/Players/128x256/Green/alienGreen_walk2.png", "to": "shells/assets/kenney/quest_path/hero_walk2.png" },
+        { "from": "PNG/Tiles/grass.png", "to": "shells/assets/kenney/quest_path/ground_grass.png" },
+        { "from": "PNG/Tiles/castleCenter.png", "to": "shells/assets/kenney/quest_path/castle_block.png" }
+      ]
+    },
+    {
+      "name": "puzzle-pack",
+      "url": "https://kenney.nl/assets/puzzle-pack",
+      "zip": "kenney_puzzle-pack.zip",
+      "used_for": "draw_connect themes (blueprint / notebook / whiteboard / chalkboard)",
+      "files": [
+        { "from": "PNG/ballBlue.png", "to": "shells/assets/kenney/draw_connect/node_point.png" },
+        { "from": "PNG/buttonDefault.png", "to": "shells/assets/kenney/draw_connect/node_chip.png" },
+        { "from": "PNG/particleStar.png", "to": "shells/assets/kenney/draw_connect/sparkle.png" }
+      ]
+    }
+  ]
+}
