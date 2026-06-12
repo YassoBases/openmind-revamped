@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 import '../../core/palette.dart';
@@ -89,8 +88,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 30),
           const Divider(color: Palette.cardBorder),
           const SizedBox(height: 10),
-          // Demo Games — the offline debug surface (debug builds only).
-          if (kDebugMode)
+          // Demo Games — the offline play surface (flag-controlled).
+          if (kShowDemos)
             ListTile(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Palette.radiusButton)),
               tileColor: Palette.card,

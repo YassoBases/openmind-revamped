@@ -28,6 +28,8 @@ test-results/
 shells/test/__screenshots__/tmp/
 shells/tools/out/
 flutter_module/tool/web_smoke.png
+flutter_module/tool/live_check.png
+flutter_module/tool/mascot_check.png
 
 # flutter
 flutter_module/.dart_tool/

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 import '../../core/palette.dart';
@@ -143,12 +142,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           Row(children: [
-            Mascot(size: 64, accent: accent),
-            const SizedBox(width: 12),
+            // Hudhud leads the home screen — curious idle (sways, blinks, head-cocks)
+            Mascot(size: 72, accent: accent, expression: MascotExpression.idle),
+            const SizedBox(width: 8),
             Expanded(
-              child: Text('${tr(context, 'appName')} • ${Session.instance.name}',
-                  style: const TextStyle(
-                      color: Palette.soft, fontSize: 19, fontWeight: FontWeight.w800)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${tr(context, 'appName')} • ${Session.instance.name}',
+                    style: const TextStyle(
+                        color: Palette.soft, fontSize: 19, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                SpeechBubble(text: tr(context, 'hudhudHome')),
+              ]),
             ),
             StreakFlame(count: (stats?['streakCount'] as num?)?.toInt() ?? 0),
             IconButton(
@@ -171,18 +175,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               XpBar(xp: (stats?['xp'] as num?)?.toInt() ?? 0),
               const SizedBox(height: 14),
-              Row(children: [
-                GoalRing(
-                  done: (stats?['todaySessions'] as num?)?.toInt() ?? 0,
-                  goal: (stats?['dailyGoal'] as num?)?.toInt() ?? 3,
-                  accent: accent,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(tr(context, 'todayGoal'),
-                      style: const TextStyle(color: Palette.grey, fontWeight: FontWeight.w700)),
-                ),
-              ]),
+              Builder(builder: (context) {
+                final done = (stats?['todaySessions'] as num?)?.toInt() ?? 0;
+                final goal = (stats?['dailyGoal'] as num?)?.toInt() ?? 3;
+                final reached = done >= goal;
+                return Row(children: [
+                  GoalRing(done: done, goal: goal, accent: accent),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(tr(context, reached ? 'nahlaGoalDone' : 'todayGoal'),
+                        style: TextStyle(
+                            color: reached ? Palette.yellow : Palette.grey,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                  // Nahla owns progress: she holds up the XP hex once the
+                  // daily goal is reached, and cheers quietly until then
+                  Mascot(
+                    size: 60,
+                    accent: accent,
+                    character: MascotCharacter.bee,
+                    expression:
+                        reached ? MascotExpression.celebrating : MascotExpression.idle,
+                    showXp: reached,
+                  ),
+                ]);
+              }),
             ]),
           ),
           const SizedBox(height: 14),
@@ -205,7 +222,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Icon(Icons.chevron_right_rounded, color: Palette.grey),
             ]),
           ),
-          if (kDebugMode) ...[
+          if (kShowDemos) ...[
             const SizedBox(height: 14),
             EduCard(
               onTap: () => Navigator.push(

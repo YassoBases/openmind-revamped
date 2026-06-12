@@ -18,8 +18,12 @@ class ApiException implements Exception {
 class Api {
   static String get _base => Session.instance.baseUrl;
 
-  static Map<String, String> _headers({bool auth = true}) => {
-        'content-type': 'application/json',
+  // Only send content-type when there's actually a body — Fastify rejects an
+  // empty body that carries `content-type: application/json`
+  // (FST_ERR_CTP_EMPTY_JSON_BODY), which bodyless POSTs like streak-check and
+  // retry would otherwise trip.
+  static Map<String, String> _headers({bool auth = true, bool withBody = false}) => {
+        if (withBody) 'content-type': 'application/json',
         if (auth && Session.instance.token != null)
           'authorization': 'Bearer ${Session.instance.token}',
       };
@@ -43,12 +47,14 @@ class Api {
   static Future<dynamic> post(String path, [Object? body, bool auth = true]) async =>
       _decode(await http
           .post(Uri.parse('$_base$path'),
-              headers: _headers(auth: auth), body: body == null ? null : jsonEncode(body))
+              headers: _headers(auth: auth, withBody: body != null),
+              body: body == null ? null : jsonEncode(body))
           .timeout(const Duration(seconds: 30)));
 
   static Future<dynamic> patch(String path, Object body) async =>
       _decode(await http
-          .patch(Uri.parse('$_base$path'), headers: _headers(), body: jsonEncode(body))
+          .patch(Uri.parse('$_base$path'),
+              headers: _headers(withBody: true), body: jsonEncode(body))
           .timeout(const Duration(seconds: 20)));
 
   static Future<dynamic> delete(String path) async =>

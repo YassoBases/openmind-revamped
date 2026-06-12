@@ -21,6 +21,10 @@ class Palette {
   static const radiusInput = 20.0;
 }
 
+/// Show the offline Demo Games section. On by default (handy for testing and
+/// demos); ship production with --dart-define=SHOW_DEMOS=false to hide it.
+const kShowDemos = bool.fromEnvironment('SHOW_DEMOS', defaultValue: true);
+
 const kGameTypes = ['quest_path', 'goal_shootout', 'draw_connect'];
 
 const kThemesByGame = {
@@ -134,6 +138,8 @@ const Map<String, Map<String, String>> _strings = {
   'harder': {'en': 'Harder', 'ar': 'أصعب'},
   'easier': {'en': 'Easier', 'ar': 'أسهل'},
   'clarifyTitle': {'en': 'One quick question!', 'ar': 'سؤال سريع!'},
+  'hudhudHome': {'en': 'What shall we explore today?', 'ar': 'ماذا سنستكشف اليوم؟'},
+  'nahlaGoalDone': {'en': 'You did it! Goal complete!', 'ar': 'أحسنت! أكملت هدف اليوم!'},
 };
 
 String tr(BuildContext context, String key) {
