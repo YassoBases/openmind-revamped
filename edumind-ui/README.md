@@ -1,16 +1,43 @@
-# edumind
+# EduMind UI
 
-A new Flutter project.
+This is the current learner-facing Flutter app for OpenMind Game Studio.
 
-## Getting Started
+It contains the polished bilingual UI layer: onboarding, profile/session setup,
+language sync, settings, mascots, home path, bundled demo games, AI game
+generation, player launch, and local save/replay.
 
-This project is a starting point for a Flutter application.
+## Run
 
-A few resources to get you started if this is your first Flutter project:
+Start the backend from the repo root first:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+npm install
+npm run build
+npm run dev:backend
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Then run the app:
+
+```bash
+cd edumind-ui
+flutter pub get
+flutter run -d chrome
+```
+
+For a static release web build:
+
+```bash
+flutter build web
+$env:PORT="53211"; node tool/serve.mjs   # Windows PowerShell
+# or: PORT=53211 node tool/serve.mjs     # macOS/Linux
+```
+
+## Notes
+
+- Demo Games works from bundled JSON specs and does not require API keys.
+- Generate uses the backend at `http://127.0.0.1:8080` by default.
+- Without `ANTHROPIC_API_KEY`, the backend uses mock LLM mode so the flow can
+  still be tested end to end.
+- Web saves use IndexedDB. Native saves use Drift/SQLite.
+- `flutter_module/` is still kept in the repo for engine/reference parity, but
+  this folder is the current product UI.

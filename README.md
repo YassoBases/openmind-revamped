@@ -34,6 +34,30 @@ questionnaire → Normalizer (Haiku) → moderation → Spec gen (Haiku, Sonnet 
 
 ---
 
+## Current product state
+
+The repo now includes the full learner-facing UI in **`edumind-ui/`**. This is
+the current product app: onboarding, profile setup, language switching,
+settings, mascots, the home path, bundled demo games, AI generation, web/native
+playback, and local save/replay.
+
+What is working in the M5b build:
+
+- Full English + Arabic pass across the primary screens, including RTL layout.
+- Onboarding registers a local session and syncs language/profile state into
+  the app.
+- The home screen is backed by `GameStore`, so generated games show up after
+  play and still appear after a reload.
+- Demo Games opens the original golden specs bundled with the app and plays
+  them through the same Phaser shells used by generated games.
+- The composer can generate a new game through the backend and launch it in the
+  player.
+- Web saves use IndexedDB; native saves use Drift/SQLite.
+- `flutter_module/` remains as the engine/reference Flutter app, while
+  `edumind-ui/` is the polished UI shell being carried forward.
+
+---
+
 ## Why this is a revamp (vs. the original EduMind)
 
 The original [EduMind Game Studio](https://github.com/YassoBases/edumind-game-studio)
@@ -79,11 +103,68 @@ model-written code ever runs inside a child's app.**
 | **Game shells** | Phaser **4.1.0 "Salusa"** (no `setTintFill`, Filter system, no v3 pipelines), inlined into single-file HTML; `EduCore` / `GameFeel` / `Mascot` runtime libs |
 | **Backend** | Node 22+, Fastify 5, TypeScript 5 strict, Zod 4, Prisma 6 + Postgres 16 (or in-memory fallback), OpenAPI 3.1 + Swagger UI, pino |
 | **Generation** | Claude **Haiku 4.5** default + **Sonnet 4.6** escalation, structured outputs + prompt caching; OpenAI omni-moderation; optional Flux Schnell thumbnails |
-| **App** | Flutter 3.x / Dart 3.x, `webview_flutter` (native) + iframe `srcdoc` (web), Drift 2.33 (native) / IndexedDB (web), google_fonts, flutter_animate |
+| **Primary UI** | `edumind-ui/`: Flutter 3.x / Dart 3.x, bilingual onboarding/home/settings/composer/player, `webview_flutter` (native) + iframe `srcdoc` (web), Drift 2.33 (native) / IndexedDB (web), google_fonts, flutter_animate |
+| **Reference app** | `flutter_module/`: the earlier engine-oriented Flutter port kept for parity and shell/player verification |
 
 ---
 
-## Zero-key smoke test (do this first)
+## Fresh clone runbook
+
+Yes: on another PC, the repo should reach this same stage from a clean clone as
+long as the machine has the normal toolchain installed. Clone does not bring
+`node_modules`, Flutter caches, browser storage, or secrets with it, so you still
+run the setup commands below.
+
+Prerequisites:
+
+- Git
+- Node.js 22+
+- Flutter SDK with a Dart version accepted by the app `pubspec.yaml`
+- Chrome or another Flutter-supported web/device target
+- Optional for live AI: `ANTHROPIC_API_KEY` in `.env`
+- Optional for persistent backend storage: Postgres plus `DATABASE_URL`
+
+From a fresh clone:
+
+```bash
+git clone https://github.com/YassoBases/openmind-revamped.git
+cd openmind-revamped
+
+npm install
+npm run build
+npm run dev:backend      # http://127.0.0.1:8080
+```
+
+In a second terminal:
+
+```bash
+cd edumind-ui
+flutter pub get
+flutter run -d chrome
+```
+
+For a release-style web build:
+
+```bash
+cd edumind-ui
+flutter pub get
+flutter build web
+$env:PORT="53211"; node tool/serve.mjs   # Windows PowerShell
+# or: set PORT=53211 && node tool/serve.mjs   # Windows cmd
+# or: PORT=53211 node tool/serve.mjs          # macOS/Linux
+```
+
+Without API keys the backend intentionally runs in mock LLM mode, so demo games
+and the generate-to-play flow still work using golden specs with simulated
+latency. With `ANTHROPIC_API_KEY`, the same app path uses live generation.
+
+Local saved games are per browser/device. A different PC will have the same
+bundled demos and code, but not your old browser's IndexedDB saves unless you
+export/migrate that storage separately.
+
+---
+
+## Zero-key shell smoke test
 
 No API keys, no database, no account — the games must stand on their own:
 
@@ -100,9 +181,9 @@ answers, summary screen. The harness also simulates progressive start (boot with
 a stub, deliver the spec N seconds later) and generation failure (mascot
 apology + retry).
 
-Same thing inside the app, fully offline: `cd flutter_module && flutter run -d
-chrome` → complete onboarding (choose "continue offline" if asked) → **Demo
-Games** (on the dashboard in debug builds, also under Settings).
+Same thing inside the primary app, fully offline: `cd edumind-ui && flutter run
+-d chrome` -> complete onboarding -> **Demo Games** from the home header or
+Settings.
 
 ---
 
@@ -136,22 +217,23 @@ live:
 
 ---
 
-## Flutter app
+## Primary Flutter UI
 
 ```bash
-cd flutter_module
+cd edumind-ui
 flutter pub get
 flutter run -d chrome        # web
 flutter run                  # connected Android/iOS device
 ```
 
-Onboarding (Hudhud-guided: nickname, grade 1–6, optional gender for Arabic
-grammar, language, favorite color, interest companion, daily goal) → dashboard
-(XP bar, streak flame, goal ring, daily Review tile) → composer (subject,
-free-text topic, game type, theme, length, difficulty) → **play the tutorial
-within ~3 seconds** while the real spec generates and hot-loads → the game lands
-in the library with a thumbnail and replays offline from Drift (native) /
-IndexedDB (web).
+Onboarding (Hudhud-guided: nickname, grade 1-6, language, profile preferences,
+theme) -> dashboard/home path (XP, streaks, saved games, Demo Games) -> composer
+(subject, free-text topic, game type, theme, length, difficulty) -> player. The
+app can launch bundled demos without the backend, or generate through the
+backend and then save the completed game locally for offline replay.
+
+`flutter_module/` is still useful for engine parity checks and lower-level
+player work, but `edumind-ui/` is the current learner-facing app.
 
 ---
 
@@ -162,9 +244,9 @@ IndexedDB (web).
    - macOS: `ipconfig getifaddr en0`
 2. **Start the backend** — it already binds `0.0.0.0:8080`. Allow Node through
    the Windows firewall if prompted (or: Settings → Firewall → Allow an app).
-3. **Run the app on the phone** (`flutter run` with the device plugged in), open
-   **Settings** in the app, enter `http://192.168.1.50:8080`, tap **TEST
-   CONNECTION** — it hits `/api/v1/health` and shows db + llm status.
+3. **Run the app on the phone** (`cd edumind-ui && flutter run` with the device
+   plugged in), open **Settings** in the app, enter `http://192.168.1.50:8080`,
+   tap **TEST CONNECTION** — it hits `/api/v1/health` and shows db + llm status.
 4. Plain HTTP works out of the box in dev builds:
    - **Android**: cleartext is enabled via
      `android/app/src/main/res/xml/network_security_config.xml`. Emulator note:
@@ -206,7 +288,8 @@ implemented twice) and both wear the student's favorite color.
 npm test               # shared schema tests + shell static validators + backend API tests
 npm run test:e2e       # Playwright behavioral suite (boots every shell, plays sessions,
                        # RTL checks, progressive start, static-frame "alive" test)
-cd flutter_module && flutter test && flutter analyze
+cd edumind-ui && flutter test && flutter analyze && flutter build web
+cd ../flutter_module && flutter test && flutter analyze && flutter build web
 ```
 
 ---
@@ -240,7 +323,8 @@ shared/           GameSpec contract: Zod schemas, validators, assembly, JSON sch
 samples/          golden demo specs (EN ×3 + AR) — demos, tests and mock mode all eat the same files
 shells/           the product: EduCore/GameFeel/Mascot libs, 3 games, build, preview harness, CI tests
 backend/          Fastify 5 API: pipeline, validators, fact-check, storage, OpenAPI docs
-flutter_module/   the app: onboarding, composer, player (progressive start), library, dashboard
+edumind-ui/       primary learner UI: onboarding, bilingual home/settings, demos, composer, player, local saves
+flutter_module/   reference engine app: composer, player, local library, shell parity checks
 scripts/          Kenney CC0 asset fetchers (optional enhancement — see scripts/KENNEY_README.md)
 docs/API.md       complete REST API reference for integrating OpenMind into another app
 DECISIONS.md      every creative/architectural decision, in build order (incl. the v4.1 pivot)
