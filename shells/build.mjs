@@ -108,19 +108,30 @@ for (const game of GAMES) {
 }
 copyFileSync(join(distDir, 'manifest.json'), join(backendShells, 'manifest.json'));
 
-const flutterShells = join(root, 'flutter_module', 'assets', 'shells');
-mkdirSync(flutterShells, { recursive: true });
-for (const game of GAMES) {
-  copyFileSync(join(distDir, `${game}.html`), join(flutterShells, `${game}.html`));
-}
-copyFileSync(join(distDir, 'manifest.json'), join(flutterShells, 'manifest.json'));
-
-const flutterSamples = join(root, 'flutter_module', 'assets', 'samples');
-mkdirSync(flutterSamples, { recursive: true });
+// Both Flutter apps consume the bundled shells + demo specs: the original
+// flutter_module and the merged edumind-ui (OpenMind AI engine inside the
+// EduMind skin). Keep them in lockstep from this single build.
 const samplesDir = join(root, 'samples');
-for (const f of readdirSync(samplesDir).filter((f) => f.endsWith('.json'))) {
-  copyFileSync(join(samplesDir, f), join(flutterSamples, f));
+const sampleFiles = readdirSync(samplesDir).filter((f) => f.endsWith('.json'));
+
+function copyToFlutterApp(appDir) {
+  const shellsOut = join(appDir, 'assets', 'shells');
+  mkdirSync(shellsOut, { recursive: true });
+  for (const game of GAMES) {
+    copyFileSync(join(distDir, `${game}.html`), join(shellsOut, `${game}.html`));
+  }
+  copyFileSync(join(distDir, 'manifest.json'), join(shellsOut, 'manifest.json'));
+
+  const samplesOut = join(appDir, 'assets', 'samples');
+  mkdirSync(samplesOut, { recursive: true });
+  for (const f of sampleFiles) {
+    copyFileSync(join(samplesDir, f), join(samplesOut, f));
+  }
 }
 
-console.log('[shells] copied to backend/src/data/shells, flutter_module/assets/{shells,samples}');
+const flutterApps = [join(root, 'flutter_module'), join(root, 'edumind-ui')]
+  .filter((d) => existsSync(d));
+for (const app of flutterApps) copyToFlutterApp(app);
+
+console.log(`[shells] copied to backend/src/data/shells + ${flutterApps.length} flutter app(s) assets/{shells,samples}`);
 console.log('[shells] done.');

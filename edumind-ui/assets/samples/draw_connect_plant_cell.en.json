@@ -1,0 +1,211 @@
+{
+  "specVersion": 1,
+  "meta": {
+    "gameType": "draw_connect",
+    "theme": "whiteboard",
+    "subject": "Biology",
+    "topic": "Parts of a Plant Cell",
+    "language": "en",
+    "grade": 5,
+    "difficulty": "normal",
+    "sessionLength": 3,
+    "numerals": "western"
+  },
+  "student": {
+    "name": "Player",
+    "gender": null,
+    "color": "#58CC02"
+  },
+  "levels": [
+    {
+      "index": 0,
+      "isIntro": true,
+      "title": "Getting the Feel",
+      "teaching": [],
+      "items": []
+    },
+    {
+      "index": 1,
+      "isIntro": false,
+      "title": "The Big Three",
+      "teaching": [
+        {
+          "id": "l1_t1",
+          "text": "Every plant cell has a nucleus — the control center holding the cell's instructions (DNA). It decides what the cell does, like a tiny brain office.",
+          "emphasis": ["nucleus", "control center"]
+        },
+        {
+          "id": "l1_t2",
+          "text": "Two power players: chloroplasts capture sunlight to MAKE food (photosynthesis), and mitochondria RELEASE the energy stored in that food. Maker and releaser — a perfect team.",
+          "emphasis": ["chloroplasts", "mitochondria"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "connect",
+          "id": "l1_i1",
+          "prompt": "The nucleus is the cell's boss. Draw a line from the nucleus to its job.",
+          "edgeIds": ["nucleus->f_control"],
+          "explanation": "The nucleus holds the DNA instructions and controls everything the cell does.",
+          "hints": [
+            "Think of the part that gives orders — which job sounds like giving orders?",
+            "It is not about food, energy or storage. Look for the bossy job."
+          ],
+          "concepts": ["nucleus"],
+          "difficulty": 1
+        },
+        {
+          "kind": "connect",
+          "id": "l1_i2",
+          "prompt": "Chloroplasts are the cell's green kitchens. Connect the chloroplast to its job.",
+          "edgeIds": ["chloroplast->f_photo"],
+          "explanation": "Chloroplasts use sunlight, water and CO₂ to make food — that's photosynthesis, and it's why plants are green.",
+          "hints": [
+            "Green kitchens cook with light. Which job mentions their main ingredient?",
+            "The answer involves sunlight going IN — not energy coming out."
+          ],
+          "concepts": ["chloroplast", "photosynthesis"],
+          "difficulty": 1
+        },
+        {
+          "kind": "connect",
+          "id": "l1_i3",
+          "prompt": "Mitochondria are the cell's power stations. Draw their connection.",
+          "edgeIds": ["mitochondria->f_energy"],
+          "explanation": "Mitochondria break food down to set its energy free — that is how the cell gets its power.",
+          "hints": [
+            "A power station doesn't make fuel — it BURNS fuel to get something out.",
+            "The chloroplast already took the sunlight job. What's left for the power station?"
+          ],
+          "concepts": ["mitochondria", "respiration"],
+          "difficulty": 2
+        },
+        {
+          "kind": "connect",
+          "id": "l1_i4",
+          "prompt": "Food is made, then its energy is released. Connect BOTH the maker and the releaser to their jobs.",
+          "edgeIds": ["chloroplast->f_photo", "mitochondria->f_energy"],
+          "explanation": "Chloroplasts make the food (photosynthesis); mitochondria release its energy (respiration). A two-step energy pipeline.",
+          "hints": [
+            "One organelle is the kitchen, the other is the power station — connect each to its own job.",
+            "Sunlight goes to the green one; the energy-release job goes to the other one."
+          ],
+          "concepts": ["chloroplast", "mitochondria", "energy flow"],
+          "difficulty": 3
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "isIntro": false,
+      "title": "Support and Storage",
+      "teaching": [
+        {
+          "id": "l2_t1",
+          "text": "The cell wall is a stiff outer layer around plant cells. It gives the cell its box-like shape and keeps the plant standing tall — animal cells don't have one.",
+          "emphasis": ["cell wall"]
+        },
+        {
+          "id": "l2_t2",
+          "text": "The large central vacuole is the cell's water tank: it stores water and sap, and when it is full, the cell stays plump and the plant stays firm — not wilted.",
+          "emphasis": ["vacuole", "water tank"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "connect",
+          "id": "l2_i1",
+          "prompt": "The cell wall keeps the plant standing. Connect it to its job.",
+          "edgeIds": ["cell_wall->f_protect"],
+          "explanation": "The stiff cell wall supports and protects the cell — it's why plant stems can stand up without bones.",
+          "hints": [
+            "Walls in a building do this same job.",
+            "It is not about storing or making anything — think strength."
+          ],
+          "concepts": ["cell wall"],
+          "difficulty": 1
+        },
+        {
+          "kind": "connect",
+          "id": "l2_i2",
+          "prompt": "The vacuole is the cell's storage tank. Draw its connection.",
+          "edgeIds": ["vacuole->f_store"],
+          "explanation": "The big central vacuole stores water and sap. A full vacuole keeps the plant firm; an empty one means wilting.",
+          "hints": [
+            "Think of a water tank — what would its job description say?",
+            "When this organelle is empty, the plant droops. Which job matches that?"
+          ],
+          "concepts": ["vacuole"],
+          "difficulty": 2
+        },
+        {
+          "kind": "connect",
+          "id": "l2_i3",
+          "prompt": "Quick review from last level: reconnect the cell's control center.",
+          "edgeIds": ["nucleus->f_control"],
+          "explanation": "The nucleus is still the boss — it holds the DNA and directs the whole cell.",
+          "hints": [
+            "We met this organelle in the previous level — the one with the instructions.",
+            "DNA lives inside it. Which job needs the instruction book?"
+          ],
+          "concepts": ["nucleus", "review"],
+          "difficulty": 2
+        },
+        {
+          "kind": "connect",
+          "id": "l2_i4",
+          "prompt": "Strong outside, stocked inside: connect BOTH the cell wall and the vacuole to their jobs.",
+          "edgeIds": ["cell_wall->f_protect", "vacuole->f_store"],
+          "explanation": "The wall is armor, the vacuole is the tank: support outside, storage inside — together they keep a plant upright and fresh.",
+          "hints": [
+            "One job is about strength, one is about keeping things for later — match each.",
+            "The OUTER part gets the support job; the INNER tank gets the other one."
+          ],
+          "concepts": ["cell wall", "vacuole"],
+          "difficulty": 3
+        },
+        {
+          "kind": "connect",
+          "id": "l2_i5",
+          "prompt": "Careful — two jobs on this board belong to NO cell part. Connect only the vacuole, correctly.",
+          "edgeIds": ["vacuole->f_store"],
+          "explanation": "Pumping blood and hearing are jobs for organs, not organelles. The vacuole's real job is storing water and sap.",
+          "hints": [
+            "Cells don't pump blood or hear — those are whole-organ jobs. Ignore them.",
+            "Stick to the storage tank's real job from the teach card."
+          ],
+          "concepts": ["vacuole", "organelles vs organs"],
+          "difficulty": 4
+        }
+      ]
+    }
+  ],
+  "diagram": {
+    "nodes": [
+      { "id": "nucleus", "x": 0.22, "y": 0.18, "label": "Nucleus", "kind": "point" },
+      { "id": "chloroplast", "x": 0.22, "y": 0.34, "label": "Chloroplast", "kind": "point" },
+      { "id": "mitochondria", "x": 0.22, "y": 0.5, "label": "Mitochondria", "kind": "point" },
+      { "id": "cell_wall", "x": 0.22, "y": 0.66, "label": "Cell wall", "kind": "point" },
+      { "id": "vacuole", "x": 0.22, "y": 0.82, "label": "Vacuole", "kind": "point" },
+      { "id": "f_control", "x": 0.78, "y": 0.18, "label": "Controls the cell", "kind": "label" },
+      { "id": "f_photo", "x": 0.78, "y": 0.34, "label": "Makes food from sunlight", "kind": "label" },
+      { "id": "f_energy", "x": 0.78, "y": 0.5, "label": "Releases energy from food", "kind": "label" },
+      { "id": "f_protect", "x": 0.78, "y": 0.66, "label": "Stiff outer support", "kind": "label" },
+      { "id": "f_store", "x": 0.78, "y": 0.82, "label": "Stores water and sap", "kind": "label" },
+      { "id": "d_blood", "x": 0.26, "y": 0.93, "label": "Pumps blood", "kind": "label" },
+      { "id": "d_hear", "x": 0.74, "y": 0.93, "label": "Hears sounds", "kind": "label" }
+    ],
+    "edges": [
+      { "from": "nucleus", "to": "f_control" },
+      { "from": "chloroplast", "to": "f_photo" },
+      { "from": "mitochondria", "to": "f_energy" },
+      { "from": "cell_wall", "to": "f_protect" },
+      { "from": "vacuole", "to": "f_store" }
+    ],
+    "distractorNodeIds": ["d_blood", "d_hear"]
+  },
+  "summaryHints": {
+    "concepts": ["nucleus", "chloroplast", "mitochondria", "cell wall", "vacuole"],
+    "nextTopics": ["Animal vs. plant cells", "Photosynthesis in depth", "Cell division basics"]
+  }
+}

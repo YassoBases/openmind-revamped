@@ -1,0 +1,358 @@
+import 'package:flutter/material.dart';
+
+class AppLocalizations {
+  final Locale locale;
+  AppLocalizations(this.locale);
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
+  // تابع مساعد للوصول إلى الترجمة من الـ Widgets
+  static AppLocalizations? of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations);
+  }
+
+  // خريطة النصوص المترجمة
+  static const Map<String, Map<String, String>> _localizedValues = {
+    'en': {
+      'welcome': 'Welcome to EduMind',
+      'magic_start': 'Magic Start',
+      'change_language': 'Change Language',
+      'student_profile': 'Student Profile',
+      'level 3': 'Level 3',
+      // home (AI-game learning path)
+      'level_label': 'Level',
+      'points_label': 'points',
+      'create_game': 'Create a game',
+      'create_first_game': 'Create your first game!',
+      'tap_to_play': 'Tap to play!',
+      'my_games': 'My games',
+      'demo_games': 'Demo games',
+      'demo_games_short': 'Demos',
+      'demo_games_sub': 'Bundled sample games you can play offline.',
+      'best_score': 'Best',
+      'plays': 'plays',
+      'play': 'Play',
+      'not_now': 'Not now',
+      'lets_play': "Let's play!",
+      'stage_intro_body':
+          'Hudhud and Nahla are ready to help you with "{title}" and collect the sweetest honey of knowledge! Ready for the challenge?',
+      'welcome_to': 'Welcome to {title}',
+      'offline_create_hint':
+          'Connect to a server to create new games. You can still replay saved ones offline.',
+      // settings
+      'settings': 'Settings',
+      'server_address': 'Server address',
+      'test_connection': 'Test connection',
+      'connection_ok': 'Connected! Server is healthy.',
+      'connection_fail': 'Could not reach the server.',
+      'change_theme': 'Change theme',
+      'language': 'Language',
+      'privacy_note':
+          'Data minimization: nickname only — no email, no analytics.',
+      'nav_home': 'Home',
+      'nav_profile': 'Profile',
+      'nav_about': 'About',
+      'nav_settings': 'Settings',
+      // onboarding
+      'onb_title': 'Your journey starts here',
+      'onb_subtitle': 'Learn. Play. Discover what fits you.',
+      'onb_cta': 'Start my journey',
+      // profile setup
+      'ps_appbar': 'Set up your experience',
+      'ps_name_q': "What's your name?",
+      'ps_name_hint': 'Your name',
+      'ps_gender_q': 'You are',
+      'ps_male': 'Boy',
+      'ps_female': 'Girl',
+      'ps_class_q': 'Which grade are you in?',
+      'ps_class_hint': 'Choose your grade',
+      'ps_interests_q': 'What do you love? (pick up to 2)',
+      'ps_style_q': 'How do you like to learn?',
+      'ps_continue': 'Continue',
+      'ps_max_interests':
+          'You can pick just two interests for smart personalization!',
+      'ps_sub': 'Simple choices that make EduMind closer to you',
+      'ps_basic': 'Basic info',
+      'ps_basic_sub': 'Name, gender and academic grade',
+      'ps_name_label': 'Your name',
+      'ps_name_hint2': 'Type your name here ...',
+      'ps_class_label': 'Your grade',
+      'ps_class_hint2': 'Choose your current grade',
+      'ps_interests_sec': 'Interests',
+      'ps_interests_sub': 'What matters to you? (pick 1 or 2)',
+      'ps_style_sec': 'Learning style',
+      'ps_style_sub': 'When an idea is hard, what helps you most?',
+      'grade_5': 'Grade 5',
+      'grade_6': 'Grade 6',
+      'grade_7': 'Grade 7',
+      'grade_8': 'Grade 8',
+      'int_games': 'Games & challenges',
+      'int_sports': 'Sports & motion',
+      'int_art': 'Drawing & design',
+      'int_science': 'Science & tech',
+      'int_building': 'Building & architecture',
+      'int_nature': 'Nature & energy',
+      'int_helping': 'Helping people',
+      'int_puzzles': 'Puzzles & thinking',
+      'int_reading': 'Reading & stories',
+      'style_step_title': 'Step by step',
+      'style_step_desc': 'I prefer someone to lay out the idea for me first',
+      'style_try_title': 'I try fast',
+      'style_try_desc': 'Give me a short example and I will apply it myself',
+      'style_story_title': 'A real-life story',
+      'style_story_desc':
+          'I want a real situation that shows the goal and the why',
+      // theme selection
+      'ts_appbar': 'Pick your passion color',
+      'ts_confirm': 'Confirm theme and go',
+      'theme_science_name': 'Science & technology',
+      'theme_science_desc': 'For lovers of space, robots and AI 🌌',
+      'theme_art_name': 'Art & creativity',
+      'theme_art_desc': 'For story-makers and imaginative artists 🎨',
+      'theme_sport_name': 'Sports & adventure',
+      'theme_sport_desc':
+          'For fans of physical challenges and constant action ⚽',
+      'theme_games_name': 'Games & challenge',
+      'theme_games_desc': 'For puzzle-solvers leveling up their knowledge 🎮',
+      'ts_heading': 'Color your learning journey! 🎨',
+      'ts_sub':
+          'Pick the theme that reflects your energy and passion, and we will color the whole app to match your unique taste.',
+      'ts_preview_label': 'A live preview of your new app:',
+      'ts_choose': 'Pick your favorite passion to apply the colors:',
+      'ts_pv_journey': 'My daily journey',
+      'ts_pv_badge': 'Smart Explorer rank 🏆',
+      'ts_pv_progress': 'Study progress level',
+      'ts_quick_test': 'Start the quick test 🚀',
+      // profile screen
+      'profile_title': 'My profile',
+      'profile_games_made': 'Games created',
+      'profile_total_points': 'Total points',
+      'profile_grade': 'Grade',
+      'profile_language': 'Language',
+      // about screen
+      'about_appbar': 'About the adventure',
+      'about_version': 'Enhanced beta v1.0.0 🚀',
+      'about_why_title': 'Why openMind? 🤔',
+      'about_why_body':
+          'Because no student needs to be compared to others — they need to be understood as they are.\n\n'
+          'Behind every student is a unique way of understanding, an interest that pulls them, and a talent waiting to find its place.\n\n'
+          'In a world full of screens, games, fast content and endless options, students need a learning experience that engages them mindfully, helps them focus, and shows them where their path could be.\n\n'
+          'We built openMind to turn learning from rigid memorization into an interactive experience close to the student: they learn, try, make mistakes, understand, then start to see their path more clearly.',
+      'about_vision_title': 'Our vision ✨',
+      'about_vision_body':
+          'To make learning a safe, personal space that helps every student understand in their own way, discover what draws them, and connect what they learn to their life, reality and future.\n\n'
+          'We believe knowledge is not just for memorizing but for understanding life and serving people — and that the strongest society is built not from identical people, but from people who each know their value and place.',
+      'about_what_title': 'What does openMind do? 🚀',
+      'about_feat1_title': 'Interactive challenges',
+      'about_feat1_desc':
+          'Turns lessons into engaging interactive challenges and experiences.',
+      'about_feat2_title': 'Framing ideas smartly',
+      'about_feat2_desc':
+          'Brings each idea closer in the way that best fits the student\'s mind.',
+      'about_feat3_title': 'Exploring interests',
+      'about_feat3_desc':
+          'Learns from the student\'s choices to reveal their interests and future leanings.',
+      'about_feat4_title': 'Connecting to reality',
+      'about_feat4_desc':
+          'Shows how what they learn connects to real, practical life around them.',
+      'about_feat5_title': 'Building self-worth',
+      'about_feat5_desc':
+          'Helps them feel they have a unique value, a clear path, and a place in society.',
+      'about_footer':
+          'Made with love for Syria\'s promising future generation ❤️',
+      // login (cosmetic)
+      'login_welcome': 'Welcome to the play & challenge journey! 👋',
+      'login_sub': 'Ready to take on this exciting adventure?',
+      'login_email': 'Email',
+      'login_password': 'Password',
+      'login_forgot': 'Forgot your password?',
+      'login_go': 'Go now',
+      'login_guest': 'Try as an explorer guest',
+      'login_no_account': "Don't have an account? ",
+      'login_create': 'Create one now',
+      'login_note': 'Fully supports both Arabic and English interfaces.',
+    },
+    'ar': {
+      'welcome': 'مرحباً بك في إيدوميند',
+      'magic_start': 'البداية السحرية',
+      'change_language': 'تغيير اللغة',
+      'student_profile': 'ملف الطالب',
+      'level 3': 'المستوى 3',
+      // home (AI-game learning path)
+      'level_label': 'المستوى',
+      'points_label': 'نقطة',
+      'create_game': 'أنشئ لعبة',
+      'create_first_game': 'أنشئ لعبتك الأولى!',
+      'tap_to_play': 'اضغط هنا!',
+      'my_games': 'ألعابي',
+      'demo_games': 'ألعاب تجريبية',
+      'demo_games_short': 'تجريبي',
+      'demo_games_sub': 'ألعاب عينة مدمجة يمكنك لعبها دون اتصال.',
+      'best_score': 'الأفضل',
+      'plays': 'مرات اللعب',
+      'play': 'العب',
+      'not_now': 'ليس الآن',
+      'lets_play': 'انطلق لنلعب!',
+      'stage_intro_body':
+          'الهدهد والنحلة مستعدان لمساعدتك في "{title}" وجمع أحلى عسل معرفي! هل أنت جاهز للتحدي؟',
+      'welcome_to': 'مرحباً بك في {title}',
+      'offline_create_hint':
+          'اتصل بخادم لإنشاء ألعاب جديدة. لا يزال بإمكانك إعادة لعب الألعاب المحفوظة دون اتصال.',
+      // settings
+      'settings': 'الإعدادات',
+      'server_address': 'عنوان الخادم',
+      'test_connection': 'اختبار الاتصال',
+      'connection_ok': 'تم الاتصال! الخادم يعمل.',
+      'connection_fail': 'تعذّر الوصول إلى الخادم.',
+      'change_theme': 'تغيير السمة',
+      'language': 'اللغة',
+      'privacy_note':
+          'تقليل البيانات: الاسم المستعار فقط — بدون بريد إلكتروني أو تتبّع.',
+      'nav_home': 'الرئيسية',
+      'nav_profile': 'ملفي',
+      'nav_about': 'حول',
+      'nav_settings': 'الإعدادات',
+      // onboarding
+      'onb_title': 'طريقك يبدأ من هنا',
+      'onb_subtitle': 'تعلّم . العب . واكتشف ما يشبهك .',
+      'onb_cta': 'ابدأ رحلتي',
+      // profile setup
+      'ps_appbar': 'جهّز تجربتك',
+      'ps_name_q': 'ما اسمك؟',
+      'ps_name_hint': 'اسمك',
+      'ps_gender_q': 'أنت',
+      'ps_male': 'ذكر',
+      'ps_female': 'أنثى',
+      'ps_class_q': 'في أي صف أنت؟',
+      'ps_class_hint': 'اختر صفك',
+      'ps_interests_q': 'ما الذي تحبه؟ (اختر اثنين كحد أقصى)',
+      'ps_style_q': 'كيف تحب أن تتعلم؟',
+      'ps_continue': 'تابع',
+      'ps_max_interests': 'يمكنك اختيار اهتمامين فقط للحفاظ على تخصيص ذكي!',
+      'ps_sub': 'اختيارات بسيطة تجعل EduMind أقرب لك',
+      'ps_basic': 'المعلومات الأساسية',
+      'ps_basic_sub': 'الاسم، الجنس والصف الدراسي العلمي',
+      'ps_name_label': 'اسمك',
+      'ps_name_hint2': 'اكتب اسمك هنا   ...',
+      'ps_class_label': 'صفّك الدراسي',
+      'ps_class_hint2': 'اختر المرحلة الدراسية الحالية',
+      'ps_interests_sec': 'قسم الاهتمامات',
+      'ps_interests_sub': 'ما الأشياء التي تهمك؟ (اختر 1 أو 2 فقط)',
+      'ps_style_sec': 'قسم طريقة التعلم',
+      'ps_style_sub': 'عندما تكون الفكرة صعبة، ما الذي يساعدك أكثر؟',
+      'grade_5': 'الصف الخامس',
+      'grade_6': 'الصف السادس',
+      'grade_7': 'الصف السابع',
+      'grade_8': 'الصف الثامن',
+      'int_games': 'ألعاب وتحديات',
+      'int_sports': 'رياضة وحركة',
+      'int_art': 'رسم وتصميم',
+      'int_science': 'علوم وتكنولوجيا',
+      'int_building': 'بناء وعمارة',
+      'int_nature': 'طبيعة وطاقة',
+      'int_helping': 'مساعدة الناس',
+      'int_puzzles': 'ألغاز وتفكير',
+      'int_reading': 'قراءة وقصص',
+      'style_step_title': 'خطوة بخطوة',
+      'style_step_desc': 'أفضل أن يرتّب لي شخص ما الفكرة الموجهة مسبقاً',
+      'style_try_title': 'أجرّب بسرعة',
+      'style_try_desc': 'أعطني مثالاً قصيراً وسأقوم بالتطبيق فوراً بنفسي',
+      'style_story_title': 'قصة من الحياة',
+      'style_story_desc': 'أريد موقفاً واقعياً يجعلني أفهم الهدف والسبب',
+      // theme selection
+      'ts_appbar': 'اختر لون شغفك',
+      'ts_confirm': 'تأكيد السمة والانطلاق',
+      'theme_science_name': 'شغف العلوم والتكنولوجيا',
+      'theme_science_desc': 'لعشاق الفضاء، الروبوتات والذكاء الاصطناعي 🌌',
+      'theme_art_name': 'شغف الفن والإبداع',
+      'theme_art_desc': 'لصناع القصص ورسامي الخيال اللامتناهي 🎨',
+      'theme_sport_name': 'شغف الرياضة والمغامرة',
+      'theme_sport_desc': 'لمحبي التحديات البدنية والنشاط الدائم ⚽',
+      'theme_games_name': 'شغف الألعاب والتحدي',
+      'theme_games_desc': 'لعشاق حل الألغاز وتجاوز مستويات المعرفة 🎮',
+      'ts_heading': 'لوّن رحلتك التعليمية! 🎨',
+      'ts_sub':
+          'اختر السمة التي تعكس حماسك وشغفك، وسنقوم بتلوين كافة أقسام التطبيق لتناسب ذوقك الفريد.',
+      'ts_preview_label': 'معاينة حية لتطبيقك الجديد:',
+      'ts_choose': 'اختر شغفك المفضل لتطبيق الألوان:',
+      'ts_pv_journey': 'رحلتي اليومية',
+      'ts_pv_badge': 'لقب المكتشف الذكي 🏆',
+      'ts_pv_progress': 'مستوى التقدم الدراسي',
+      'ts_quick_test': 'ابدأ الاختبار السريع 🚀',
+      // profile screen
+      'profile_title': 'ملفي الشخصي',
+      'profile_games_made': 'الألعاب المُنشأة',
+      'profile_total_points': 'مجموع النقاط',
+      'profile_grade': 'الصف',
+      'profile_language': 'اللغة',
+      // about screen
+      'about_appbar': 'حول المغامرة',
+      'about_version': 'النسخة التجريبية المطورّة v1.0.0 🚀',
+      'about_why_title': 'لماذا openMind؟ 🤔',
+      'about_why_body':
+          'لأن كل طالب لا يحتاج أن يُقارن بغيره، بل أن يُفهم كما هو.\n\n'
+          'وراء كل طالب طريقة خاصة في الفهم، واهتمام يشدّه، وموهبة تنتظر أن تجد مكانها.\n\n'
+          'في عالم مليء بالشاشات، الألعاب، المحتوى السريع، وكثرة الخيارات، صار الطالب يحتاج تجربة تعلّم تشدّه بوعي، وتساعده يركّز، ويفهم أين يمكن أن يكون طريقه.\n\n'
+          'صممنا openMind ليحوّل التعلّم من حفظ جامد إلى تجربة تفاعلية قريبة من الطالب؛ يتعلّم، يجرّب، يخطئ، يفهم، ثم يبدأ يرى طريقه بشكل أوضح.',
+      'about_vision_title': 'رؤيتنا ✨',
+      'about_vision_body':
+          'أن نجعل التعلّم مساحة آمنة وشخصية، تساعد كل طالب على أن يفهم بطريقته، يكتشف ما يشدّه، ويربط ما يتعلّمه بحياته وواقعه ومستقبله.\n\n'
+          'نؤمن أن العلم ليس للحفظ فقط، بل لفهم الحياة وخدمة الناس، وأن المجتمع الأقوى لا يُبنى من أشخاص متشابهين، بل من أشخاص يعرف كل واحد منهم قيمته ومكانه.',
+      'about_what_title': 'ماذا يفعل openMind؟ 🚀',
+      'about_feat1_title': 'التحديات التفاعلية',
+      'about_feat1_desc': 'يحوّل الدروس إلى تحديات وتجارب تفاعلية مشوقة.',
+      'about_feat2_title': 'تقريب الأفكار ذكياً',
+      'about_feat2_desc': 'يقرّب الفكرة بالطريقة الأنسب والأقرب لذهن الطالب.',
+      'about_feat3_title': 'استكشاف الاهتمامات',
+      'about_feat3_desc':
+          'يتعلّم من اختيارات الطالب ليكشف اهتماماته وميوله المستقبليّة.',
+      'about_feat4_title': 'الربط بالواقع الحقيقي',
+      'about_feat4_desc':
+          'يريه كيف يرتبط ما يتعلّمه بالحياة الواقعية والعملية من حوله.',
+      'about_feat5_title': 'بناء القيمة الذاتية',
+      'about_feat5_desc':
+          'يساعده أن يشعر أن له قيمة فريدة، وطريقاً واضحاً، ومكاناً في المجتمع.',
+      'about_footer': 'صُنع بكل حب لجيل المستقبل السوري الواعد ❤️',
+      // login (cosmetic)
+      'login_welcome': 'أهلاً بك في رحلة اللعب والتحدي ! 👋',
+      'login_sub': 'هل أنت مستعد لخوض هذه المغامرة الشيّقة ؟',
+      'login_email': 'البريد الإلكتروني',
+      'login_password': 'كلمة المرور',
+      'login_forgot': 'هل نسيت كلمة السر؟',
+      'login_go': 'انطلق الآن',
+      'login_guest': 'جرب كـ ضيف استكشافي',
+      'login_no_account': 'ليس لديك حساب؟ ',
+      'login_create': 'أنشئ حساباً الآن',
+      'login_note': 'يدعم واجهتي اللغة العربية والإنجليزية بالكامل.',
+    },
+  };
+
+  // دالة لجلب النص بناءً على مفتاح الكلمة واللغة الحالية
+  String translate(String key) {
+    return _localizedValues[locale.languageCode]?[key] ?? key;
+  }
+
+  /// translate + simple {placeholder} substitution, e.g.
+  /// translateWith('welcome_to', {'title': 'Math'}).
+  String translateWith(String key, Map<String, String> params) {
+    var s = translate(key);
+    params.forEach((k, v) => s = s.replaceAll('{$k}', v));
+    return s;
+  }
+}
+
+// الـ Delegate الخاص بالترجمة
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => ['en', 'ar'].contains(locale.languageCode);
+
+  @override
+  Future<AppLocalizations> load(Locale locale) async {
+    return AppLocalizations(locale);
+  }
+
+  @override
+  bool shouldReload(LocalizationsDelegate<AppLocalizations> old) => false;
+}
