@@ -6,10 +6,12 @@ import '../../core/palette.dart';
 import '../../core/session.dart';
 import '../../core/stage.dart';
 import '../../widgets/mascot.dart';
+import 'blocks/tutor_block_registry.dart';
 import 'tutor_models.dart';
 
 /// One rendered chat turn. Tutor turns keep the structured reply so the UI
-/// can render type chips, follow-up questions and suggested actions.
+/// can render type chips, follow-up questions, suggested actions and — when
+/// present — the interactive block.
 class _Turn {
   _Turn.student(this.text)
       : isStudent = true,
@@ -24,6 +26,10 @@ class _Turn {
   final String text;
   final TutorReply? reply;
   bool isError = false;
+
+  /// True once this turn's interactive block reported its result (blocks
+  /// freeze after one attempt — the tutor takes it from there).
+  bool resultSent = false;
 }
 
 /// The Ask-OpenMind conversation — a real client of POST /api/v1/tutor/
@@ -35,6 +41,7 @@ class TutorChat extends StatefulWidget {
     this.context_,
     this.seedQuestions = const [],
     this.quickActions = const [],
+    this.persistThread = false,
   });
 
   /// Learning context attached to every question (null on the Ask page).
@@ -48,6 +55,11 @@ class TutorChat extends StatefulWidget {
   /// text as a real question — same backend call, same conversation.
   final List<String> quickActions;
 
+  /// Ask tab only: remember the active conversation id in Session and restore
+  /// the real backend thread (GET /tutor/conversations/:id) on next launch.
+  /// In-lesson help sheets stay per-lesson-fresh (false).
+  final bool persistThread;
+
   @override
   State<TutorChat> createState() => TutorChatState();
 }
@@ -58,12 +70,76 @@ class TutorChatState extends State<TutorChat> {
   final _scroll = ScrollController();
   String? _conversationId;
   bool _sending = false;
+  bool _restoring = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.persistThread) _restoreThread();
+  }
 
   @override
   void dispose() {
     _input.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// Restores the saved conversation from the backend — the server history is
+  /// the source of truth, never a local chat cache. Any failure (offline,
+  /// server change) silently starts fresh; an empty thread clears the marker.
+  Future<void> _restoreThread() async {
+    final id = Session.instance.tutorConversationId;
+    if (id == null || !Session.instance.registered) return;
+    setState(() => _restoring = true);
+    try {
+      final res = await Api.tutorConversation(id);
+      final messages = (res['messages'] as List? ?? const []).cast<Map<String, dynamic>>();
+      if (!mounted) return;
+      if (messages.isEmpty) {
+        await Session.instance.setTutorConversationId(null);
+        return;
+      }
+      _conversationId = id;
+      final restored = <_Turn>[];
+      for (var i = 0; i < messages.length; i++) {
+        final m = messages[i];
+        if (m['role'] == 'student') {
+          restored.add(_Turn.student(m['content'] as String));
+        } else {
+          final turn = _Turn.tutor(TutorReply.fromMap({
+            'message': m['content'],
+            'responseType': m['responseType'],
+            'followUpQuestion': null,
+            'suggestedAction': 'none',
+            'relatedConcept': null,
+            'needsClarification': false,
+            'interactivePayload': m['interactivePayload'],
+          }));
+          // A block whose result already came back stays frozen on restore.
+          turn.resultSent = messages
+              .skip(i + 1)
+              .any((later) => later['interactiveResult'] != null);
+          restored.add(turn);
+        }
+      }
+      setState(() => _turns.addAll(restored));
+      _scrollDown();
+    } catch (_) {/* offline or gone — start fresh, keep the marker for next time */
+    } finally {
+      if (mounted) setState(() => _restoring = false);
+    }
+  }
+
+  /// Starts a new conversation (the old thread stays on the server).
+  Future<void> clearConversation() async {
+    setState(() {
+      _turns.clear();
+      _conversationId = null;
+    });
+    if (widget.persistThread) {
+      await Session.instance.setTutorConversationId(null);
+    }
   }
 
   void _scrollDown() {
@@ -78,7 +154,7 @@ class TutorChatState extends State<TutorChat> {
     });
   }
 
-  Future<void> send([String? text]) async {
+  Future<void> send([String? text, InteractiveResult? interactiveResult]) async {
     final l = AppLocalizations.of(context)!;
     final q = (text ?? _input.text).trim();
     if (q.isEmpty || _sending) return;
@@ -103,9 +179,13 @@ class TutorChatState extends State<TutorChat> {
         'question': q,
         if (_conversationId != null) 'conversationId': _conversationId,
         if (widget.context_ != null) 'context': widget.context_!.toMap(),
+        if (interactiveResult != null) 'interactiveResult': interactiveResult.toMap(),
       });
       final result = TutorAskResult.fromMap(res);
       _conversationId = result.conversationId;
+      if (widget.persistThread) {
+        await Session.instance.setTutorConversationId(result.conversationId);
+      }
       setState(() => _turns.add(_Turn.tutor(result.reply)));
     } on ApiException catch (e) {
       setState(() => _turns.add(_Turn.error(
@@ -125,7 +205,11 @@ class TutorChatState extends State<TutorChat> {
     return Column(
       children: [
         Expanded(
-          child: _turns.isEmpty ? _emptyState(l, cs) : _conversation(cs),
+          child: _restoring
+              ? const Center(child: CircularProgressIndicator())
+              : _turns.isEmpty
+                  ? _emptyState(l, cs)
+                  : _conversation(cs),
         ),
         if (_turns.isNotEmpty && widget.quickActions.isNotEmpty)
           SizedBox(
@@ -309,6 +393,21 @@ class TutorChatState extends State<TutorChat> {
                 color: isStudent ? cs.onPrimary : cs.onSurface,
               ),
             ),
+            // Ask → See → Try: an approved block renders from the controlled
+            // registry only; the learner's action returns through send() as a
+            // real conversation turn with the structured result attached.
+            if (reply?.interactivePayload != null)
+              buildTutorBlock(
+                    payload: reply!.interactivePayload!,
+                    enabled: !turn.resultSent && !_sending,
+                    answered: turn.resultSent,
+                    onResult: (result, summary) {
+                      if (turn.resultSent || _sending) return;
+                      turn.resultSent = true;
+                      send(summary, result);
+                    },
+                  ) ??
+                  const SizedBox.shrink(),
             if (reply?.followUpQuestion != null) ...[
               const SizedBox(height: 8),
               ActionChip(

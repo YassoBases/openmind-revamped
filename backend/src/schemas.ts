@@ -13,6 +13,8 @@ import {
 import {
   TUTOR_RESPONSE_TYPES,
   TUTOR_SUGGESTED_ACTIONS,
+  InteractivePayloadSchema,
+  InteractiveResultSchema,
   TutorContextSchema,
 } from './tutor/contract.js';
 import { LEARNING_CONTEXTS, LEARNING_STAGES, MAX_GRADE, MIN_GRADE } from './learning/stage.js';
@@ -149,6 +151,8 @@ export const AskTutorBody = z.object({
   /** Omit to start a new conversation; pass back to continue one. */
   conversationId: z.string().max(64).optional(),
   context: TutorContextSchema.optional(),
+  /** What the learner did on the last interactive block (Ask → See → Try). */
+  interactiveResult: InteractiveResultSchema.optional(),
 });
 
 export const TutorReplyView = z.object({
@@ -158,6 +162,7 @@ export const TutorReplyView = z.object({
   suggestedAction: z.enum(TUTOR_SUGGESTED_ACTIONS),
   relatedConcept: z.string().nullable(),
   needsClarification: z.boolean(),
+  interactivePayload: InteractivePayloadSchema.nullable(),
 });
 
 export const AskTutorResponse = z.object({
@@ -171,6 +176,10 @@ export const TutorMessageView = z.object({
   role: z.enum(['student', 'tutor']),
   content: z.string(),
   responseType: z.string().nullable(),
+  /** Tutor turns: the interactive block offered with this reply, if any. */
+  interactivePayload: InteractivePayloadSchema.nullable(),
+  /** Student turns: the interaction result this message reported, if any. */
+  interactiveResult: InteractiveResultSchema.nullable(),
   createdAt: z.string(),
 });
 

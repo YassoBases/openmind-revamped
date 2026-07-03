@@ -13,6 +13,7 @@ import { moderate } from '../llm/moderation.js';
 import { metrics } from '../pipeline/metrics.js';
 import type { ContentProvider } from '../pipeline/provider.js';
 import { AskTutorBody } from '../schemas.js';
+import { validateInteractivePayload } from '../tutor/contract.js';
 import type { Store } from '../store/types.js';
 
 /** How many prior turns ride along as conversation memory. */
@@ -75,6 +76,7 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
         },
         question: body.question,
         context: body.context ?? null,
+        interactiveResult: body.interactiveResult ?? null,
         history,
       });
     } catch (err) {
@@ -84,10 +86,28 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
       });
     }
 
+    // Semantic gate on any offered interactive block: a payload that passed
+    // the structural schema but is not genuinely renderable (bad ranges,
+    // non-permutation order, dangling bucket ids…) is dropped, never shipped.
+    if (result.data.interactivePayload) {
+      const valid = validateInteractivePayload(result.data.interactivePayload);
+      if (valid) {
+        metrics.bump('tutor_interactive_offered');
+      } else {
+        req.log.warn({ type: result.data.interactivePayload.type }, '[tutor] invalid interactive payload dropped');
+        metrics.bump('tutor_interactive_invalid');
+      }
+      result.data.interactivePayload = valid;
+    }
+    if (body.interactiveResult) metrics.bump('tutor_interactive_result');
+
     stamps.push(now);
     messageTimestamps.set(student.id, stamps);
 
     // Persist both turns; history failures must not eat a successful reply.
+    // The student turn carries the interaction result, the tutor turn the
+    // offered block — the same context column both stores already have — so
+    // a restored thread can re-render its interactive moments.
     try {
       await store.createTutorMessage({
         studentId: student.id,
@@ -95,7 +115,12 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
         role: 'student',
         content: body.question,
         responseType: null,
-        context: (body.context as Record<string, unknown> | undefined) ?? null,
+        context: body.context || body.interactiveResult
+          ? {
+              ...((body.context as Record<string, unknown> | undefined) ?? {}),
+              ...(body.interactiveResult ? { interactiveResult: body.interactiveResult } : {}),
+            }
+          : null,
       });
       await store.createTutorMessage({
         studentId: student.id,
@@ -103,7 +128,9 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
         role: 'tutor',
         content: result.data.message,
         responseType: result.data.responseType,
-        context: null,
+        context: result.data.interactivePayload
+          ? { interactivePayload: result.data.interactivePayload }
+          : null,
       });
     } catch (err) {
       req.log.error(err, '[tutor] failed to persist conversation turn');
@@ -123,6 +150,10 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
         role: m.role,
         content: m.content,
         responseType: m.responseType,
+        // Interactive moments ride the context column: the block a tutor turn
+        // offered, the result a student turn reported.
+        interactivePayload: (m.context?.interactivePayload as Record<string, unknown> | undefined) ?? null,
+        interactiveResult: (m.context?.interactiveResult as Record<string, unknown> | undefined) ?? null,
         createdAt: m.createdAt.toISOString(),
       })),
     };

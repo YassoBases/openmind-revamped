@@ -221,7 +221,7 @@ export function buildOpenApiDoc(version: string) {
         }),
       },
       '/api/v1/tutor/messages': {
-        post: op('Ask OpenMind: student question + optional learning context → structured tutor reply (message, responseType, followUpQuestion, suggestedAction, …)', {
+        post: op('Ask OpenMind: student question + optional learning context and/or interactiveResult → structured tutor reply, optionally carrying an approved interactivePayload block (Ask → See → Try)', {
           tag: 'tutor', security: bearer, body: AskTutorBody,
           responses: {
             '201': ok(AskTutorResponse, 'tutor reply'),

@@ -94,9 +94,22 @@ class Session {
     await setProfile(p);
   }
 
+  /// Active "Ask" tutor conversation — persisted so مساعدي restores its real
+  /// backend thread across launches (never a local-only history).
+  String? get tutorConversationId => _prefs.getString('tutorConversationId');
+
+  Future<void> setTutorConversationId(String? id) async {
+    if (id == null) {
+      await _prefs.remove('tutorConversationId');
+    } else {
+      await _prefs.setString('tutorConversationId', id);
+    }
+  }
+
   Future<void> reset() async {
     await _prefs.remove('token');
     await _prefs.remove('studentId');
     await _prefs.remove('profile');
+    await _prefs.remove('tutorConversationId');
   }
 }

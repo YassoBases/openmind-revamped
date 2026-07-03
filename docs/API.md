@@ -396,7 +396,8 @@ chat). Pedagogy is enforced server-side: guide first, reveal later.
     "followUpQuestion": "…" ,        // or null
     "suggestedAction": "none|try_again|show_hint|real_life_example|open_related_experience|ask_followup",
     "relatedConcept": "…",           // or null
-    "needsClarification": false
+    "needsClarification": false,
+    "interactivePayload": { … }      // approved block or null — see below
   },
   "model": "claude-haiku-4-5"        // "mock" in MOCK_LLM mode
 }
@@ -407,10 +408,50 @@ row — the context is learning state only. Questions are moderated
 (`422 QUESTION_REJECTED`) and rate-limited per student
 (`MAX_TUTOR_MESSAGES_PER_HOUR`, default 60 → `429 RATE_LIMITED`).
 
+##### Interactive blocks (Ask → See → Try)
+
+When acting would teach better than reading, the tutor may attach ONE
+`interactivePayload` from a closed, versioned registry — the model selects a
+type and fills data; it can never emit code, markup, or free-form UI:
+
+| type | learner action | key data |
+|---|---|---|
+| `number_line` | place a value on a bounded line | `min, max, step, target, tolerance, unit` |
+| `order_sequence` | arrange 3–8 items in order | `items[{id,label}], correctOrder` |
+| `sort_buckets` | classify 3–8 items into 2–4 groups | `buckets[{id,label}], items[{id,label,bucketId}]` |
+
+Every payload carries `version` (registry version, currently 1), `title`,
+`instructions`, `expectedLearningAction`, `followUpPrompt`. Payloads are
+Zod-validated structurally at generation and semantically in the route
+(`validateInteractivePayload`); anything unrenderable is dropped to `null`
+while the text reply still ships. Clients render only registered types.
+
+After the learner acts, the client sends the next message with an
+`interactiveResult`:
+
+```jsonc
+{
+  "question": "رتبت المراحل …",       // human-readable action summary
+  "conversationId": "…",
+  "interactiveResult": {
+    "blockType": "order_sequence",
+    "attempted": true,
+    "answerOrState": "رتبت: تبخر → تكاثف → هطول → جريان",
+    "correctnessOrOutcome": "correct|partially_correct|incorrect|explored",
+    "learningSignal": "…"             // optional
+  }
+}
+```
+
+The tutor's follow-up reacts to the actual result. Both the offered payload
+(tutor turn) and the learner result (student turn) persist on the
+conversation, so restored threads can re-render their interactive moments.
+
 #### `GET /api/v1/tutor/conversations/:id`
 Messages of one conversation (oldest first): `{ conversationId, messages:
-[{ id, role: "student"|"tutor", content, responseType, createdAt }] }`.
-Conversations are private to their student.
+[{ id, role: "student"|"tutor", content, responseType, interactivePayload,
+interactiveResult, createdAt }] }`. Conversations are private to their
+student.
 
 The tutor also receives the trusted `stage` and `learningContext` from the
 authenticated student row (never from the client), so replies match the

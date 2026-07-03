@@ -40,6 +40,7 @@ import {
 import {
   TutorReplySchema,
   tutorReplyJsonSchema,
+  type InteractiveResult,
   type TutorContext,
   type TutorReply,
 } from '../tutor/contract.js';
@@ -58,6 +59,8 @@ export interface TutorReplyParams {
   };
   question: string;
   context: TutorContext | null;
+  /** What the learner just did on the last interactive block, if anything. */
+  interactiveResult: InteractiveResult | null;
   /** Most recent turns of this conversation, oldest first. */
   history: Array<{ role: 'student' | 'tutor'; content: string }>;
 }
@@ -223,12 +226,15 @@ export class LiveProvider implements ContentProvider {
       user: JSON.stringify({
         student: params.student,
         context: params.context,
+        interactiveResult: params.interactiveResult,
         history: params.history,
         question: params.question,
       }),
       jsonSchema: tutorReplyJsonSchema(),
       zodSchema: TutorReplySchema,
-      maxTokens: 1000,
+      // Interactive payloads (items, order, buckets) need more room than a
+      // text-only reply.
+      maxTokens: 2500,
       stage: 'tutor',
     });
     return { data: res.data, model: res.model };

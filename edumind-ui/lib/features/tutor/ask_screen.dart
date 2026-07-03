@@ -8,9 +8,17 @@ import 'tutor_models.dart';
 
 /// The "Ask OpenMind" tab: a question about any school subject goes to the
 /// backend tutor endpoint and comes back as a structured, pedagogy-first
-/// reply. Content language follows the student's profile.
-class AskScreen extends StatelessWidget {
+/// reply — sometimes carrying an interactive Ask → See → Try block. The
+/// active thread is the real backend conversation, restored across launches.
+class AskScreen extends StatefulWidget {
   const AskScreen({super.key});
+
+  @override
+  State<AskScreen> createState() => _AskScreenState();
+}
+
+class _AskScreenState extends State<AskScreen> {
+  final _chatKey = GlobalKey<TutorChatState>();
 
   @override
   Widget build(BuildContext context) {
@@ -44,24 +52,38 @@ class AskScreen extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    l.translate('tutor_title'),
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.translate('tutor_title'),
+                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l.translate('tutor_subtitle'),
+                          style: TextStyle(fontSize: 14, height: 1.6, color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l.translate('tutor_subtitle'),
-                    style: TextStyle(fontSize: 14, height: 1.6, color: cs.onSurfaceVariant),
+                  IconButton(
+                    tooltip: l.translate('tutor_new_chat'),
+                    icon: Icon(Icons.add_comment_outlined, color: cs.primary),
+                    onPressed: () => _chatKey.currentState?.clearConversation(),
                   ),
                 ],
               ),
             ),
             Expanded(
               child: TutorChat(
+                key: _chatKey,
                 context_: TutorContext(source: 'ask'),
+                persistThread: true,
                 quickActions: middle
                     ? [
                         l.translate('qa_simpler'),
@@ -72,15 +94,16 @@ class AskScreen extends StatelessWidget {
                     : const [],
                 seedQuestions: ar
                     ? const [
-                        'كيف أحسب مساحة المثلث؟',
-                        'ما الفرق بين الفعل اللازم والمتعدي؟',
+                        'كيف أضع الكسر ٣/٤ على خط الأعداد؟',
+                        'رتب لي مراحل دورة الماء',
+                        'كيف أميز الاسم من الفعل من الحرف؟',
                         'لماذا نرى البرق قبل أن نسمع الرعد؟',
-                        'كيف أحسب الحسم في السوق؟',
                       ]
                     : const [
-                        'How do I find the area of a triangle?',
+                        'How do I place 3/4 on a number line?',
+                        'Order the stages of the water cycle',
+                        'How do I tell a noun from a verb?',
                         'Why do we see lightning before thunder?',
-                        'How do I calculate a market discount?',
                       ],
               ),
             ),

@@ -18,7 +18,7 @@ import type {
   RepairItems,
 } from '@edumind/shared';
 import type { ContentProvider, FactCheckPiece, TutorReplyParams } from '../pipeline/provider.js';
-import type { TutorReply } from '../tutor/contract.js';
+import type { InteractivePayload, TutorReply } from '../tutor/contract.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const samplesDir = join(here, '..', '..', '..', 'samples');
@@ -27,6 +27,97 @@ const MOCK_LATENCY_MS = Number(process.env.MOCK_LATENCY_MS ?? 4000);
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Golden interactive payloads, keyword-routed the way the live model routes
+ * by concept. One per approved registry type; every payload passes
+ * validateInteractivePayload, so the mock exercises the exact production
+ * validation + rendering path.
+ */
+function matchMockInteractive(question: string, ar: boolean): InteractivePayload | null {
+  if (/كسر|كسور|خط الأعداد|المستقيم|عدد سالب|fraction|number line|decimal/i.test(question)) {
+    return {
+      type: 'number_line',
+      version: 1,
+      title: ar ? 'ضع الكسر في مكانه' : 'Place the fraction',
+      instructions: ar
+        ? 'حرّك المؤشر حتى يقف على قيمة ثلاثة أرباع، ثم تحقق.'
+        : 'Move the marker until it stands on three quarters, then check.',
+      data: {
+        min: 0, max: 1, step: 0.05, target: 0.75, tolerance: 0.05,
+        unit: ar ? 'من 0 إلى 1' : 'from 0 to 1',
+        items: null, correctOrder: null, buckets: null,
+      },
+      expectedLearningAction: ar
+        ? 'يحدد موضع كسر بين عددين صحيحين بنفسه'
+        : 'Locates a fraction between two whole numbers by hand',
+      followUpPrompt: ar
+        ? 'اسأله أين يقع ٣/٤ بالنسبة إلى النصف'
+        : 'Ask where 3/4 sits relative to one half',
+    };
+  }
+  if (/رتب|رتّب|دورة الماء|مراحل|خطوات|ترتيب|order|sequence|water cycle|steps/i.test(question)) {
+    return {
+      type: 'order_sequence',
+      version: 1,
+      title: ar ? 'رتّب دورة الماء' : 'Order the water cycle',
+      instructions: ar
+        ? 'المس المراحل بالترتيب الصحيح من البداية إلى النهاية.'
+        : 'Tap the stages in the correct order from start to finish.',
+      data: {
+        min: null, max: null, step: null, target: null, tolerance: null, unit: null,
+        items: [
+          { id: 'evap', label: ar ? 'تبخر الماء من البحر' : 'Water evaporates from the sea', bucketId: null },
+          { id: 'cond', label: ar ? 'تكاثف البخار غيومًا' : 'Vapor condenses into clouds', bucketId: null },
+          { id: 'rain', label: ar ? 'هطول المطر' : 'Rain falls', bucketId: null },
+          { id: 'flow', label: ar ? 'جريان الماء إلى الأنهار' : 'Water flows back to rivers', bucketId: null },
+        ],
+        correctOrder: ['evap', 'cond', 'rain', 'flow'],
+        buckets: null,
+      },
+      expectedLearningAction: ar
+        ? 'يبني تسلسل دورة الماء بنفسه'
+        : 'Builds the water-cycle sequence by hand',
+      followUpPrompt: ar
+        ? 'اسأله ماذا يحدث لو ارتفعت حرارة البحر'
+        : 'Ask what happens if the sea gets warmer',
+    };
+  }
+  if (/صنف|صنّف|اسم|فعل|حرف|أقسام الكلام|قواعد|grammar|noun|verb|sort|classify/i.test(question)) {
+    return {
+      type: 'sort_buckets',
+      version: 1,
+      title: ar ? 'اسم أم فعل أم حرف؟' : 'Noun, verb, or particle?',
+      instructions: ar
+        ? 'ضع كل كلمة في مجموعتها الصحيحة.'
+        : 'Put each word into its correct group.',
+      data: {
+        min: null, max: null, step: null, target: null, tolerance: null, unit: null,
+        items: [
+          { id: 'w1', label: ar ? 'سوقٌ' : 'market', bucketId: 'noun' },
+          { id: 'w2', label: ar ? 'يبني' : 'builds', bucketId: 'verb' },
+          { id: 'w3', label: ar ? 'إلى' : 'to', bucketId: 'part' },
+          { id: 'w4', label: ar ? 'ماءٌ' : 'water', bucketId: 'noun' },
+          { id: 'w5', label: ar ? 'سافرَ' : 'traveled', bucketId: 'verb' },
+          { id: 'w6', label: ar ? 'مِن' : 'from', bucketId: 'part' },
+        ],
+        correctOrder: null,
+        buckets: [
+          { id: 'noun', label: ar ? 'اسم' : 'Noun' },
+          { id: 'verb', label: ar ? 'فعل' : 'Verb' },
+          { id: 'part', label: ar ? 'حرف' : 'Particle' },
+        ],
+      },
+      expectedLearningAction: ar
+        ? 'يميز أقسام الكلام بالتصنيف العملي'
+        : 'Distinguishes parts of speech by hands-on sorting',
+      followUpPrompt: ar
+        ? 'اطلب منه جملة من عنده فيها الأقسام الثلاثة'
+        : 'Ask for their own sentence using all three',
+    };
+  }
+  return null;
 }
 
 let samples: GameSpec[] | null = null;
@@ -149,6 +240,59 @@ export class MockProvider implements ContentProvider {
     const primary = params.student.stage === 'primary_games';
     const lens = params.student.learningContext;
     const lensSuffix = lens ? (ar ? ` (بعدسة ${lens})` : ` (through the ${lens} lens)`) : '';
+
+    // The student just acted on a block — mirror the live prompt's
+    // result-handling rules so the full Ask → See → Try loop is testable.
+    if (params.interactiveResult) {
+      const r = params.interactiveResult;
+      const correct = r.correctnessOrOutcome === 'correct';
+      const explored = r.correctnessOrOutcome === 'explored';
+      const data: TutorReply = {
+        message: correct
+          ? (ar
+              ? `أحسنت يا ${params.student.name}! ${r.answerOrState} — هذا يبيّن أنك فهمت الفكرة بيديك لا بالحفظ. ما رأيك أن نجرّبها في موقف جديد؟`
+              : `Well done, ${params.student.name}! ${r.answerOrState} — that shows you built the idea with your hands, not by memorizing. Shall we try it in a new situation?`)
+          : explored
+            ? (ar
+                ? `جرّبت ولاحظت: ${r.answerOrState}. ما النمط الذي لفت انتباهك أثناء التحريك؟`
+                : `You explored and observed: ${r.answerOrState}. What pattern caught your eye while moving things?`)
+            : (ar
+                ? `محاولة مفيدة! ${r.answerOrState}. هذا يخبرنا أين تختلط الفكرة — انظر إلى العنصر الذي لم يستقر في مكانه وفكّر: ما الذي يميّزه؟ جرّب مرة أخرى.`
+                : `A useful attempt! ${r.answerOrState}. That tells us where the idea gets mixed up — look at the piece that did not settle and ask: what makes it different? Try again.`),
+        responseType: correct ? 'encouragement' : explored ? 'question' : 'correction',
+        followUpQuestion: correct
+          ? (ar ? 'أين قد تقابل الفكرة نفسها في يومك؟' : 'Where might you meet the same idea in your day?')
+          : (ar ? 'ما الذي ستغيّره في محاولتك القادمة؟' : 'What will you change on your next try?'),
+        suggestedAction: correct ? 'ask_followup' : 'try_again',
+        relatedConcept: null,
+        needsClarification: false,
+        interactivePayload: null,
+      };
+      return { model: 'mock', data };
+    }
+
+    // Keyword-routed interactive blocks for middle-school "ask" questions —
+    // one deterministic golden payload per approved type, so tests and the
+    // whole Flutter rendering path exercise real registry data.
+    if (!inExperience && !primary) {
+      const q = params.question;
+      const payload = matchMockInteractive(q, ar);
+      if (payload) {
+        const data: TutorReply = {
+          message: ar
+            ? `فكرة تستحق التجريب لا القراءة فقط! جهّزت لك نشاطًا قصيرًا — جرّبه وسنكمل من نتيجتك.${lensSuffix}`
+            : `This idea deserves trying, not just reading! I prepared a short activity — do it and we will continue from your result.${lensSuffix}`,
+          responseType: 'next_step',
+          followUpQuestion: null,
+          suggestedAction: 'try_again',
+          relatedConcept: payload.title,
+          needsClarification: false,
+          interactivePayload: payload,
+        };
+        return { model: 'mock', data };
+      }
+    }
+
     const data: TutorReply = inExperience
       ? {
           message: ar
@@ -159,6 +303,7 @@ export class MockProvider implements ContentProvider {
           suggestedAction: 'try_again',
           relatedConcept: params.context?.concept ?? (ar ? 'مساحة المثلث' : 'triangle area'),
           needsClarification: false,
+          interactivePayload: null,
         }
       : primary
         ? {
@@ -170,6 +315,7 @@ export class MockProvider implements ContentProvider {
             suggestedAction: 'ask_followup',
             relatedConcept: null,
             needsClarification: false,
+            interactivePayload: null,
           }
         : {
             message: ar
@@ -180,6 +326,7 @@ export class MockProvider implements ContentProvider {
             suggestedAction: 'ask_followup',
             relatedConcept: null,
             needsClarification: false,
+            interactivePayload: null,
           };
     return { model: 'mock', data };
   }
