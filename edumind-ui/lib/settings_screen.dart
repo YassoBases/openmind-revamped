@@ -75,7 +75,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ThemeSelectionScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const ThemeSelectionScreen(duringOnboarding: false),
+                ),
               ),
             ),
           ),

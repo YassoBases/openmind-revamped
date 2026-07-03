@@ -34,8 +34,33 @@ import {
   NORMALIZER_SYSTEM_PROMPT,
   REFINE_SYSTEM_PROMPT,
   SPEC_SYSTEM_PROMPT,
+  TUTOR_SYSTEM_PROMPT,
   buildRepairUserMessage,
 } from '../llm/prompts.js';
+import {
+  TutorReplySchema,
+  tutorReplyJsonSchema,
+  type TutorContext,
+  type TutorReply,
+} from '../tutor/contract.js';
+import type { LearningStage } from '../learning/stage.js';
+
+export interface TutorReplyParams {
+  student: {
+    name: string;
+    grade: number;
+    /** Resolved server-side from the authenticated grade — never client-sent. */
+    stage: LearningStage;
+    language: string;
+    interest: string | null;
+    /** Middle-school context lens chosen by the student (server-stored). */
+    learningContext: string | null;
+  };
+  question: string;
+  context: TutorContext | null;
+  /** Most recent turns of this conversation, oldest first. */
+  history: Array<{ role: 'student' | 'tutor'; content: string }>;
+}
 
 export interface FactCheckPiece {
   id: string;
@@ -72,6 +97,7 @@ export interface ContentProvider {
     name: string;
     summary: Record<string, unknown>;
   }): Promise<{ data: EnrichedFeedback; model: string }>;
+  tutorReply(params: TutorReplyParams): Promise<{ data: TutorReply; model: string }>;
 }
 
 export class LiveProvider implements ContentProvider {
@@ -183,6 +209,27 @@ export class LiveProvider implements ContentProvider {
       zodSchema: EnrichedFeedbackSchema,
       maxTokens: 800,
       stage: 'feedback',
+    });
+    return { data: res.data, model: res.model };
+  }
+
+  async tutorReply(params: TutorReplyParams) {
+    // The system prompt stays static (prompt-cached); everything volatile —
+    // student profile, learning context, conversation history — rides the
+    // user message, mirroring every other stage in this pipeline.
+    const res = await structuredCall({
+      model: config.modelDefault,
+      system: TUTOR_SYSTEM_PROMPT,
+      user: JSON.stringify({
+        student: params.student,
+        context: params.context,
+        history: params.history,
+        question: params.question,
+      }),
+      jsonSchema: tutorReplyJsonSchema(),
+      zodSchema: TutorReplySchema,
+      maxTokens: 1000,
+      stage: 'tutor',
     });
     return { data: res.data, model: res.model };
   }

@@ -14,6 +14,7 @@ import {
   type Meta,
 } from '@edumind/shared';
 import { makeAuthHook } from '../auth.js';
+import { gameGenGrade } from '../learning/stage.js';
 import type { ContentProvider } from '../pipeline/provider.js';
 import { PostSessionBody } from '../schemas.js';
 import type { Store } from '../store/types.js';
@@ -97,7 +98,7 @@ export async function reviewRoutes(app: FastifyInstance, opts: { store: Store; p
       subject: ar ? 'مراجعة' : 'Review',
       topic: ar ? 'مراجعة اليوم' : 'Daily Review',
       language: ar ? 'ar' : 'en',
-      grade: student.grade,
+      grade: gameGenGrade(student.grade),
       difficulty: 'normal',
       sessionLength: 3,
       numerals: ar ? 'arabic_indic' : 'western',

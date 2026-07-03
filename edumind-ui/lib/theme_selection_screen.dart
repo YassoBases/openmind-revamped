@@ -1,11 +1,13 @@
-import 'package:edumind/login_screen.dart';
 import 'package:edumind/provider/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app_localizations.dart';
+import 'core/api_client.dart';
 import 'core/palette.dart';
 import 'core/profile_bridge.dart';
+import 'core/session.dart';
+import 'edumind_root.dart';
 import 'language_provider.dart';
 
 // نموذج يمثل سمة الشغف المتاحة للطالب لسهولة إدارتها وتوسيعها لاحقاً
@@ -28,7 +30,12 @@ class PassionTheme {
 }
 
 class ThemeSelectionScreen extends StatefulWidget {
-  const ThemeSelectionScreen({super.key});
+  const ThemeSelectionScreen({super.key, this.duringOnboarding = true});
+
+  /// True on first-run setup (registers the student and enters the app);
+  /// false when opened from Settings/Me (just updates the theme and pops —
+  /// it must NEVER re-register an existing student).
+  final bool duringOnboarding;
 
   @override
   State<ThemeSelectionScreen> createState() => _ThemeSelectionScreenState();
@@ -420,26 +427,42 @@ class _ThemeSelectionScreenState extends State<ThemeSelectionScreen> {
                         currentTheme.primaryColor,
                         currentTheme.accentColor,
                       );
+                      final colorHex = colorToHex(currentTheme.accentColor);
 
-                      // 2. Register + persist the OpenMind profile (so AI game
-                      // generation is authorized) using the chosen accent color
-                      // and the current app language.
-                      final lang = Provider.of<LanguageProvider>(context, listen: false)
-                          .currentLocale
-                          .languageCode;
-                      await ProfileBridge.finishSetup(
-                        colorHex: colorToHex(currentTheme.accentColor),
-                        language: lang,
-                      );
+                      if (widget.duringOnboarding) {
+                        // 2. Register + persist the OpenMind profile once,
+                        // with the chosen accent color and current language.
+                        final lang = Provider.of<LanguageProvider>(context, listen: false)
+                            .currentLocale
+                            .languageCode;
+                        await ProfileBridge.finishSetup(
+                          colorHex: colorHex,
+                          language: lang,
+                        );
 
-                      // 3. الانتقال إلى الواجهة التالية (الرئيسية أو الـ Login)
+                        // 3. الانتقال مباشرة إلى الواجهة الرئيسية — the root
+                        // shell resolves the stage-appropriate experience.
+                        if (!context.mounted) return;
+                        Navigator.pushReplacement<void, void>(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (context) => const EduMindRoot(),
+                          ),
+                        );
+                        return;
+                      }
+
+                      // Settings/Me flow: persist the color, never re-register.
+                      final p = Map<String, dynamic>.from(Session.instance.profile ?? {});
+                      p['color'] = colorHex;
+                      await Session.instance.setProfile(p);
+                      if (Session.instance.registered) {
+                        try {
+                          await Api.patchMe({'color': colorHex});
+                        } catch (_) {/* offline — local theme still applied */}
+                      }
                       if (!context.mounted) return;
-                      Navigator.pushReplacement<void, void>(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (context) => const LoginScreen(),
-                        ),
-                      );
+                      Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: currentTheme.primaryColor,

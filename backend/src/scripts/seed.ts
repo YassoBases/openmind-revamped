@@ -17,6 +17,7 @@ const student = await store.createStudent({
   language: 'en',
   color: '#1CB0F6',
   interest: 'space',
+  learningContext: null,
   dailyGoal: 3,
   tokenHash: hash,
 });

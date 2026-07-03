@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { makeAuthHook, newToken } from '../auth.js';
+import { stageForGrade } from '../learning/stage.js';
 import { CreateStudentBody, PatchStudentBody } from '../schemas.js';
 import type { Store, StudentRow } from '../store/types.js';
 
@@ -9,9 +10,13 @@ export function studentView(s: StudentRow) {
     name: s.name,
     gender: s.gender,
     grade: s.grade,
+    // The backend is the trusted resolver of the product mode; clients render
+    // this instead of re-deriving it from a possibly-stale local grade.
+    stage: stageForGrade(s.grade),
     language: s.language,
     color: s.color,
     interest: s.interest,
+    learningContext: s.learningContext,
     dailyGoal: s.dailyGoal,
     xp: s.xp,
     streakCount: s.streakCount,
@@ -38,6 +43,7 @@ export async function studentRoutes(app: FastifyInstance, opts: { store: Store }
       language: parsed.data.language,
       color: parsed.data.color,
       interest: parsed.data.interest ?? null,
+      learningContext: parsed.data.learningContext ?? null,
       dailyGoal: parsed.data.dailyGoal,
       tokenHash: hash,
     });

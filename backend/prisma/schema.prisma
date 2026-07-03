@@ -19,7 +19,8 @@ model Student {
   grade               Int
   language            String    @default("en")
   color               String    @default("#58CC02")
-  interest            String?
+  interest            String? // elementary game archetype (primary stage)
+  learningContext     String? // middle-school context lens (grades 7-9)
   dailyGoal           Int       @default(3)
   xp                  Int       @default(0)
   streakCount         Int       @default(0)
@@ -30,6 +31,22 @@ model Student {
   xpEvents            XpEvent[]
   streakEvents        StreakEvent[]
   playSessions        PlaySession[]
+  tutorMessages       TutorMessage[]
+  learnProgress       LearnProgress[]
+}
+
+// Middle-school learning progress (grades 7-9) — a separate domain from
+// Game/PlaySession so game history and learning journeys never mix.
+model LearnProgress {
+  id           String   @id @default(cuid())
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
+  pathId       String
+  experienceId String
+  completedAt  DateTime @default(now())
+
+  @@unique([studentId, pathId, experienceId])
+  @@index([studentId, completedAt])
 }
 
 model Game {
@@ -68,6 +85,20 @@ model PlaySession {
   createdAt DateTime @default(now())
 
   @@index([studentId, createdAt])
+}
+
+model TutorMessage {
+  id             String   @id @default(cuid())
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id])
+  conversationId String
+  role           String // 'student' | 'tutor'
+  content        String
+  responseType   String? // tutor turns: structured responseType
+  context        Json? // learning context attached to the turn
+  createdAt      DateTime @default(now())
+
+  @@index([studentId, conversationId, createdAt])
 }
 
 model XpEvent {

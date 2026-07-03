@@ -8,6 +8,7 @@ import 'onboarding_screen.dart';
 // (تأكد من تعديل المسارات بناءً على أسماء ملفاتك)
 import 'language_provider.dart';
 import 'app_localizations.dart';
+import 'core/mobile_shell.dart';
 import 'core/session.dart';
 import 'edumind_root.dart';
 
@@ -62,6 +63,10 @@ class EduMindApp extends StatelessWidget {
         Locale('ar'), // العربية
         Locale('en'), // الإنجليزية
       ],
+
+      // The middle-school product stays a narrow phone-shaped app on wide
+      // desktop-web viewports (tabs and pushed routes alike).
+      builder: (context, child) => MobileShell(child: child!),
 
       // Route by profile state: returning students land on the app shell;
       // first-run goes through onboarding (which writes Session.profile).

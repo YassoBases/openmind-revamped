@@ -17,7 +17,8 @@ import type {
   NormalizedRequest,
   RepairItems,
 } from '@edumind/shared';
-import type { ContentProvider, FactCheckPiece } from '../pipeline/provider.js';
+import type { ContentProvider, FactCheckPiece, TutorReplyParams } from '../pipeline/provider.js';
+import type { TutorReply } from '../tutor/contract.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const samplesDir = join(here, '..', '..', '..', 'samples');
@@ -136,5 +137,50 @@ export class MockProvider implements ContentProvider {
             reviewSuggestions: [],
           },
     };
+  }
+
+  async tutorReply(params: TutorReplyParams): Promise<{ data: TutorReply; model: string }> {
+    await sleep(Math.min(400, MOCK_LATENCY_MS / 8));
+    const ar = params.student.language === 'ar';
+    const inExperience = params.context?.source === 'experience';
+    // Mirror the live prompt's stage rule so the plumbing is testable:
+    // primary gets playful game framing; middle keeps the calm hint-first
+    // voice, flavored by the student's chosen learning context when present.
+    const primary = params.student.stage === 'primary_games';
+    const lens = params.student.learningContext;
+    const lensSuffix = lens ? (ar ? ` (بعدسة ${lens})` : ` (through the ${lens} lens)`) : '';
+    const data: TutorReply = inExperience
+      ? {
+          message: ar
+            ? `سؤال جيد يا ${params.student.name}! انظر إلى الشكل أمامك: ماذا يحدث للمساحة عندما تغيّر أحد البعدين فقط؟ جرّب تغييرًا واحدًا وراقب الناتج.${lensSuffix}`
+            : `Good question, ${params.student.name}! Look at the shape on your screen: what happens to the area when you change just one dimension? Try one change and watch the result.${lensSuffix}`,
+          responseType: 'hint',
+          followUpQuestion: ar ? 'أي بُعد ستغيّر أولًا، ولماذا؟' : 'Which dimension will you change first, and why?',
+          suggestedAction: 'try_again',
+          relatedConcept: params.context?.concept ?? (ar ? 'مساحة المثلث' : 'triangle area'),
+          needsClarification: false,
+        }
+      : primary
+        ? {
+            message: ar
+              ? `يا ${params.student.name}، سؤال رائع! لنلعب معه خطوة صغيرة: ما الذي تعرفه عنه حتى الآن؟ كل إجابة صغيرة تقرّبك من الحل مثل مرحلة في لعبة.`
+              : `${params.student.name}, great question! Let's play with it one small step at a time: what do you already know? Each little answer is a level cleared on the way to the solution.`,
+            responseType: 'question',
+            followUpQuestion: ar ? 'ما أول شيء يخطر ببالك؟' : 'What first thing comes to mind?',
+            suggestedAction: 'ask_followup',
+            relatedConcept: null,
+            needsClarification: false,
+          }
+        : {
+            message: ar
+              ? `فكرة ممتازة أن تسأل! قبل أن أجيب مباشرة: ما الذي تعرفه عن هذا الموضوع حتى الآن؟ ابدأ بخطوة صغيرة وسأكمل معك.${lensSuffix}`
+              : `Great that you asked! Before I answer directly: what do you already know about this topic? Start with one small step and I will continue with you.${lensSuffix}`,
+            responseType: 'question',
+            followUpQuestion: ar ? 'ما أول خطوة تخطر ببالك؟' : 'What first step comes to mind?',
+            suggestedAction: 'ask_followup',
+            relatedConcept: null,
+            needsClarification: false,
+          };
+    return { model: 'mock', data };
   }
 }

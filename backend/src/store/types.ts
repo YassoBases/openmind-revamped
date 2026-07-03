@@ -12,7 +12,10 @@ export interface StudentRow {
   grade: number;
   language: string;
   color: string;
+  /** Elementary game-engine archetype (primary stage). */
   interest: string | null;
+  /** Middle-school context lens (middle stage) — separate domain from interest. */
+  learningContext: string | null;
   dailyGoal: number;
   xp: number;
   streakCount: number;
@@ -61,6 +64,33 @@ export interface XpEventRow {
   createdAt: Date;
 }
 
+/**
+ * One completed middle-school learning experience. A separate progress domain
+ * from games/PlaySession on purpose: primary game history and middle-school
+ * learning journeys never overwrite each other.
+ */
+export interface LearnProgressRow {
+  id: string;
+  studentId: string;
+  pathId: string;
+  experienceId: string;
+  completedAt: Date;
+}
+
+/** One turn of a tutor conversation (Ask OpenMind / in-experience help). */
+export interface TutorMessageRow {
+  id: string;
+  studentId: string;
+  conversationId: string;
+  role: 'student' | 'tutor';
+  content: string;
+  /** Tutor turns: responseType of the structured reply. */
+  responseType: string | null;
+  /** Learning context attached to the turn (subject, experience, step…). */
+  context: Record<string, unknown> | null;
+  createdAt: Date;
+}
+
 export interface Store {
   kind: 'memory' | 'prisma';
   ping(): Promise<boolean>;
@@ -68,7 +98,7 @@ export interface Store {
   createStudent(data: Omit<StudentRow, 'id' | 'createdAt' | 'xp' | 'streakCount' | 'streakLastPlayedAt'>): Promise<StudentRow>;
   getStudentByToken(tokenHash: string): Promise<StudentRow | null>;
   getStudent(id: string): Promise<StudentRow | null>;
-  updateStudent(id: string, patch: Partial<Pick<StudentRow, 'name' | 'color' | 'interest' | 'language' | 'dailyGoal' | 'grade' | 'gender' | 'xp' | 'streakCount' | 'streakLastPlayedAt'>>): Promise<StudentRow>;
+  updateStudent(id: string, patch: Partial<Pick<StudentRow, 'name' | 'color' | 'interest' | 'learningContext' | 'language' | 'dailyGoal' | 'grade' | 'gender' | 'xp' | 'streakCount' | 'streakLastPlayedAt'>>): Promise<StudentRow>;
 
   createGame(data: Omit<GameRow, 'createdAt' | 'deletedAt' | 'bestScore' | 'playCount' | 'lastPlayedAt'>): Promise<GameRow>;
   getGame(id: string): Promise<GameRow | null>;
@@ -78,6 +108,14 @@ export interface Store {
   createPlaySession(data: Omit<PlaySessionRow, 'id' | 'createdAt'>): Promise<PlaySessionRow>;
   recentPlaySessions(studentId: string, limit: number): Promise<PlaySessionRow[]>;
   playSessionsSince(studentId: string, since: Date): Promise<PlaySessionRow[]>;
+
+  /** Idempotent completion upsert; `created` is false when it was already recorded. */
+  upsertLearnProgress(studentId: string, pathId: string, experienceId: string): Promise<{ row: LearnProgressRow; created: boolean }>;
+  listLearnProgress(studentId: string): Promise<LearnProgressRow[]>;
+
+  createTutorMessage(data: Omit<TutorMessageRow, 'id' | 'createdAt'>): Promise<TutorMessageRow>;
+  /** Messages of one conversation, oldest first (capped at limit, newest kept). */
+  listTutorMessages(studentId: string, conversationId: string, limit: number): Promise<TutorMessageRow[]>;
 
   addXpEvent(studentId: string, amount: number, reason: string): Promise<XpEventRow>;
   listXpEvents(studentId: string, limit: number): Promise<XpEventRow[]>;

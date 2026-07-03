@@ -1,6 +1,6 @@
 /** In-memory store — dev fallback when DATABASE_URL is unset. Data dies on restart. */
 import { randomUUID } from 'node:crypto';
-import type { GameRow, PlaySessionRow, Store, StudentRow, XpEventRow } from './types.js';
+import type { GameRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, XpEventRow } from './types.js';
 
 export class MemoryStore implements Store {
   kind = 'memory' as const;
@@ -8,6 +8,8 @@ export class MemoryStore implements Store {
   private games = new Map<string, GameRow>();
   private sessions: PlaySessionRow[] = [];
   private xpEvents: XpEventRow[] = [];
+  private tutorMessages: TutorMessageRow[] = [];
+  private learnProgress: LearnProgressRow[] = [];
   private streakDays = new Set<string>();
   private cache = new Map<string, { content: Record<string, unknown>; expiresAt: number }>();
 
@@ -90,6 +92,35 @@ export class MemoryStore implements Store {
 
   async playSessionsSince(studentId: string, since: Date) {
     return this.sessions.filter((s) => s.studentId === studentId && s.createdAt >= since);
+  }
+
+  async upsertLearnProgress(studentId: string, pathId: string, experienceId: string) {
+    const existing = this.learnProgress.find(
+      (p) => p.studentId === studentId && p.pathId === pathId && p.experienceId === experienceId,
+    );
+    if (existing) return { row: existing, created: false };
+    const row: LearnProgressRow = { id: randomUUID(), studentId, pathId, experienceId, completedAt: new Date() };
+    this.learnProgress.push(row);
+    return { row, created: true };
+  }
+
+  async listLearnProgress(studentId: string) {
+    return this.learnProgress
+      .filter((p) => p.studentId === studentId)
+      .sort((a, b) => a.completedAt.getTime() - b.completedAt.getTime());
+  }
+
+  async createTutorMessage(data: Omit<TutorMessageRow, 'id' | 'createdAt'>) {
+    const row: TutorMessageRow = { ...data, id: randomUUID(), createdAt: new Date() };
+    this.tutorMessages.push(row);
+    return row;
+  }
+
+  async listTutorMessages(studentId: string, conversationId: string, limit: number) {
+    const all = this.tutorMessages.filter(
+      (m) => m.studentId === studentId && m.conversationId === conversationId,
+    );
+    return all.slice(-limit);
   }
 
   async addXpEvent(studentId: string, amount: number, reason: string) {

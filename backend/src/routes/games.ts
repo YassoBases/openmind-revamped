@@ -13,6 +13,7 @@ import {
 } from '@edumind/shared';
 import { recordSession } from './session_helper.js';
 import { makeAuthHook } from '../auth.js';
+import { gameGenGrade } from '../learning/stage.js';
 import { config } from '../config.js';
 import { moderate } from '../llm/moderation.js';
 import { assembleHtml, shellVersionFor } from '../pipeline/assembler.js';
@@ -124,7 +125,7 @@ export async function gameRoutes(
       subject: body.subject,
       topic: body.topic,
       language,
-      grade: student.grade,
+      grade: gameGenGrade(student.grade),
     });
     if (normalized.data.clarifyingQuestion && normalized.data.confidence < 0.5) {
       return reply.code(200).send({
@@ -141,7 +142,7 @@ export async function gameRoutes(
       subject: normalized.data.subject,
       topic: normalized.data.topic,
       language,
-      grade: student.grade,
+      grade: gameGenGrade(student.grade),
       difficulty: body.difficulty,
       sessionLength: body.sessionLength,
       numerals: language === 'ar' ? 'arabic_indic' : 'western',

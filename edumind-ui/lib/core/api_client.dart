@@ -80,8 +80,34 @@ class Api {
   static Future<Map<String, dynamic>> createStudent(Map<String, dynamic> body) async =>
       (await post('/api/v1/students', body, false)) as Map<String, dynamic>;
 
+  /// Trusted student view (grade, stage, learningContext, …).
+  static Future<Map<String, dynamic>> me() async =>
+      (await get('/api/v1/students/me')) as Map<String, dynamic>;
+
+  static Future<Map<String, dynamic>> patchMe(Map<String, dynamic> body) async =>
+      (await patch('/api/v1/students/me', body)) as Map<String, dynamic>;
+
+  /// Middle-school learning progress — completed experiences on the server.
+  static Future<Map<String, dynamic>> learnProgress() async =>
+      (await get('/api/v1/learn/progress')) as Map<String, dynamic>;
+
+  /// Idempotent completion upsert for one experience.
+  static Future<Map<String, dynamic>> putLearnProgress(String pathId, String experienceId) async =>
+      (await _decode(await http
+          .put(Uri.parse('$_base/api/v1/learn/progress'),
+              headers: _headers(withBody: true),
+              body: jsonEncode({'pathId': pathId, 'experienceId': experienceId}))
+          .timeout(const Duration(seconds: 20)))) as Map<String, dynamic>;
+
   static Future<Map<String, dynamic>> createGame(Map<String, dynamic> body) async =>
       (await post('/api/v1/games', body)) as Map<String, dynamic>;
+
+  /// Ask OpenMind: question + optional learning context → structured reply.
+  static Future<Map<String, dynamic>> askTutor(Map<String, dynamic> body) async =>
+      (await post('/api/v1/tutor/messages', body)) as Map<String, dynamic>;
+
+  static Future<Map<String, dynamic>> tutorConversation(String id) async =>
+      (await get('/api/v1/tutor/conversations/$id')) as Map<String, dynamic>;
 
   static Future<Map<String, dynamic>> gameStatus(String id) async =>
       (await get('/api/v1/games/$id')) as Map<String, dynamic>;

@@ -1,7 +1,7 @@
 /** Prisma-backed store (Postgres 16 / Neon). */
 import { randomUUID } from 'node:crypto';
 import type { GameSpec } from '@edumind/shared';
-import type { GameRow, GameStatus, PlaySessionRow, Store, StudentRow, XpEventRow } from './types.js';
+import type { GameRow, GameStatus, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, XpEventRow } from './types.js';
 
 // PrismaClient is loaded lazily so the backend can boot (memory mode) even if
 // `prisma generate` has never run.
@@ -99,6 +99,36 @@ export async function createPrismaStore(): Promise<Store> {
       return (await prisma.playSession.findMany({
         where: { studentId, createdAt: { gte: since } },
       })) as PlaySessionRow[];
+    },
+
+    async upsertLearnProgress(studentId, pathId, experienceId) {
+      const where = { studentId_pathId_experienceId: { studentId, pathId, experienceId } };
+      const existing = await prisma.learnProgress.findUnique({ where });
+      if (existing) return { row: existing as LearnProgressRow, created: false };
+      const row = (await prisma.learnProgress.create({
+        data: { studentId, pathId, experienceId },
+      })) as LearnProgressRow;
+      return { row, created: true };
+    },
+    async listLearnProgress(studentId) {
+      return (await prisma.learnProgress.findMany({
+        where: { studentId },
+        orderBy: { completedAt: 'asc' },
+      })) as LearnProgressRow[];
+    },
+
+    async createTutorMessage(data) {
+      return (await prisma.tutorMessage.create({
+        data: { ...data, context: data.context ?? undefined },
+      })) as TutorMessageRow;
+    },
+    async listTutorMessages(studentId, conversationId, limit) {
+      const rows = (await prisma.tutorMessage.findMany({
+        where: { studentId, conversationId },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      })) as TutorMessageRow[];
+      return rows.reverse(); // oldest first, newest kept
     },
 
     async addXpEvent(studentId, amount, reason) {

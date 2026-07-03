@@ -21,6 +21,7 @@ export interface Config {
   escalateArabic: boolean;
   corsOrigins: string | boolean;
   maxGenerationsPerHour: number;
+  maxTutorMessagesPerHour: number;
 }
 
 function bool(v: string | undefined, dflt = false): boolean {
@@ -54,6 +55,7 @@ export function loadConfig(env = process.env): Config {
     escalateArabic: bool(env.ESCALATE_ARABIC, false),
     corsOrigins: env.CORS_ORIGINS ? env.CORS_ORIGINS : true, // permissive in dev
     maxGenerationsPerHour: Number(env.MAX_GENERATIONS_PER_HOUR) || 20,
+    maxTutorMessagesPerHour: Number(env.MAX_TUTOR_MESSAGES_PER_HOUR) || 60,
   };
 }
 

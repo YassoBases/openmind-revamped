@@ -5,19 +5,25 @@
  */
 import { z } from 'zod';
 import {
+  AskTutorBody,
+  AskTutorResponse,
   CreateGameBody,
   CreateGameResponse,
   CreateStudentBody,
   CreateStudentResponse,
   ErrorEnvelope,
   GameView,
+  LearnProgressResponse,
   PatchGameBody,
   PatchStudentBody,
   PostSessionBody,
   PostSessionResponse,
+  PutLearnProgressBody,
+  PutLearnProgressResponse,
   RefineGameBody,
   StatsResponse,
   StudentView,
+  TutorConversationResponse,
 } from './schemas.js';
 
 function schema(s: z.ZodType): Record<string, unknown> {
@@ -212,6 +218,36 @@ export function buildOpenApiDoc(version: string) {
         post: op('Record a review play session (counts toward streak/daily goal; no game row)', {
           tag: 'review', security: bearer, body: PostSessionBody,
           responses: { '201': ok(PostSessionResponse, 'recorded') },
+        }),
+      },
+      '/api/v1/tutor/messages': {
+        post: op('Ask OpenMind: student question + optional learning context → structured tutor reply (message, responseType, followUpQuestion, suggestedAction, …)', {
+          tag: 'tutor', security: bearer, body: AskTutorBody,
+          responses: {
+            '201': ok(AskTutorResponse, 'tutor reply'),
+            '400': fail('invalid body'), '422': fail('question rejected by moderation'),
+            '429': fail('rate limited'), '502': fail('tutor temporarily unavailable'),
+          },
+        }),
+      },
+      '/api/v1/tutor/conversations/{id}': {
+        get: op('Messages of one tutor conversation, oldest first', {
+          tag: 'tutor', security: bearer, params: ['id'],
+          responses: { '200': ok(TutorConversationResponse), '401': fail('unauthorized') },
+        }),
+      },
+      '/api/v1/learn/progress': {
+        get: op('Completed middle-school learning experiences of the authenticated student', {
+          tag: 'learn', security: bearer,
+          responses: { '200': ok(LearnProgressResponse), '401': fail('unauthorized') },
+        }),
+        put: op('Mark one learning experience completed (idempotent upsert)', {
+          tag: 'learn', security: bearer, body: PutLearnProgressBody,
+          responses: {
+            '201': ok(PutLearnProgressResponse, 'newly completed'),
+            '200': ok(PutLearnProgressResponse, 'already completed — original timestamp kept'),
+            '400': fail('invalid body'), '401': fail('unauthorized'),
+          },
         }),
       },
     },
