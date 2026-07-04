@@ -1,0 +1,677 @@
+{
+  "_generated": "by backend/src/scripts/export-goldens.ts — do not edit by hand",
+  "goldens": [
+    {
+      "tool": "number_line",
+      "subject": "math",
+      "concept": "fractions",
+      "language": "ar",
+      "payload": {
+        "type": "number_line",
+        "version": 1,
+        "title": "ضع الكسر في مكانه",
+        "instructions": "حرّك المؤشر حتى يقف على قيمة ثلاثة أرباع، ثم تحقق.",
+        "data": {
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "target": 0.75,
+          "tolerance": 0.05,
+          "unit": "من 0 إلى 1",
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": null
+        },
+        "expectedLearningAction": "يحدد موضع كسر بين عددين صحيحين بنفسه",
+        "followUpPrompt": "اسأله أين يقع ٣/٤ بالنسبة إلى النصف"
+      }
+    },
+    {
+      "tool": "number_line",
+      "subject": "math",
+      "concept": "fractions",
+      "language": "en",
+      "payload": {
+        "type": "number_line",
+        "version": 1,
+        "title": "Place the fraction",
+        "instructions": "Move the marker until it stands on three quarters, then check.",
+        "data": {
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "target": 0.75,
+          "tolerance": 0.05,
+          "unit": "from 0 to 1",
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": null
+        },
+        "expectedLearningAction": "Locates a fraction between two whole numbers by hand",
+        "followUpPrompt": "Ask where 3/4 sits relative to one half"
+      }
+    },
+    {
+      "tool": "order_sequence",
+      "subject": "science",
+      "concept": "processes",
+      "language": "ar",
+      "payload": {
+        "type": "order_sequence",
+        "version": 1,
+        "title": "رتّب دورة الماء",
+        "instructions": "المس المراحل بالترتيب الصحيح من البداية إلى النهاية.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": [
+            {
+              "id": "evap",
+              "label": "تبخر الماء من البحر",
+              "bucketId": null
+            },
+            {
+              "id": "cond",
+              "label": "تكاثف البخار غيومًا",
+              "bucketId": null
+            },
+            {
+              "id": "rain",
+              "label": "هطول المطر",
+              "bucketId": null
+            },
+            {
+              "id": "flow",
+              "label": "جريان الماء إلى الأنهار",
+              "bucketId": null
+            }
+          ],
+          "correctOrder": [
+            "evap",
+            "cond",
+            "rain",
+            "flow"
+          ],
+          "buckets": null,
+          "pairs": null
+        },
+        "expectedLearningAction": "يبني تسلسل دورة الماء بنفسه",
+        "followUpPrompt": "اسأله ماذا يحدث لو ارتفعت حرارة البحر"
+      }
+    },
+    {
+      "tool": "order_sequence",
+      "subject": "science",
+      "concept": "processes",
+      "language": "en",
+      "payload": {
+        "type": "order_sequence",
+        "version": 1,
+        "title": "Order the water cycle",
+        "instructions": "Tap the stages in the correct order from start to finish.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": [
+            {
+              "id": "evap",
+              "label": "Water evaporates from the sea",
+              "bucketId": null
+            },
+            {
+              "id": "cond",
+              "label": "Vapor condenses into clouds",
+              "bucketId": null
+            },
+            {
+              "id": "rain",
+              "label": "Rain falls",
+              "bucketId": null
+            },
+            {
+              "id": "flow",
+              "label": "Water flows back to rivers",
+              "bucketId": null
+            }
+          ],
+          "correctOrder": [
+            "evap",
+            "cond",
+            "rain",
+            "flow"
+          ],
+          "buckets": null,
+          "pairs": null
+        },
+        "expectedLearningAction": "Builds the water-cycle sequence by hand",
+        "followUpPrompt": "Ask what happens if the sea gets warmer"
+      }
+    },
+    {
+      "tool": "sort_buckets",
+      "subject": "arabic",
+      "concept": "grammar_categories",
+      "language": "ar",
+      "payload": {
+        "type": "sort_buckets",
+        "version": 1,
+        "title": "اسم أم فعل أم حرف؟",
+        "instructions": "ضع كل كلمة في مجموعتها الصحيحة.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": [
+            {
+              "id": "w1",
+              "label": "سوقٌ",
+              "bucketId": "noun"
+            },
+            {
+              "id": "w2",
+              "label": "يبني",
+              "bucketId": "verb"
+            },
+            {
+              "id": "w3",
+              "label": "إلى",
+              "bucketId": "part"
+            },
+            {
+              "id": "w4",
+              "label": "ماءٌ",
+              "bucketId": "noun"
+            },
+            {
+              "id": "w5",
+              "label": "سافرَ",
+              "bucketId": "verb"
+            },
+            {
+              "id": "w6",
+              "label": "مِن",
+              "bucketId": "part"
+            }
+          ],
+          "correctOrder": null,
+          "buckets": [
+            {
+              "id": "noun",
+              "label": "اسم"
+            },
+            {
+              "id": "verb",
+              "label": "فعل"
+            },
+            {
+              "id": "part",
+              "label": "حرف"
+            }
+          ],
+          "pairs": null
+        },
+        "expectedLearningAction": "يميز أقسام الكلام بالتصنيف العملي",
+        "followUpPrompt": "اطلب منه جملة من عنده فيها الأقسام الثلاثة"
+      }
+    },
+    {
+      "tool": "sort_buckets",
+      "subject": "arabic",
+      "concept": "grammar_categories",
+      "language": "en",
+      "payload": {
+        "type": "sort_buckets",
+        "version": 1,
+        "title": "Noun, verb, or particle?",
+        "instructions": "Put each word into its correct group.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": [
+            {
+              "id": "w1",
+              "label": "market",
+              "bucketId": "noun"
+            },
+            {
+              "id": "w2",
+              "label": "builds",
+              "bucketId": "verb"
+            },
+            {
+              "id": "w3",
+              "label": "to",
+              "bucketId": "part"
+            },
+            {
+              "id": "w4",
+              "label": "water",
+              "bucketId": "noun"
+            },
+            {
+              "id": "w5",
+              "label": "traveled",
+              "bucketId": "verb"
+            },
+            {
+              "id": "w6",
+              "label": "from",
+              "bucketId": "part"
+            }
+          ],
+          "correctOrder": null,
+          "buckets": [
+            {
+              "id": "noun",
+              "label": "Noun"
+            },
+            {
+              "id": "verb",
+              "label": "Verb"
+            },
+            {
+              "id": "part",
+              "label": "Particle"
+            }
+          ],
+          "pairs": null
+        },
+        "expectedLearningAction": "Distinguishes parts of speech by hands-on sorting",
+        "followUpPrompt": "Ask for their own sentence using all three"
+      }
+    },
+    {
+      "tool": "match_pairs",
+      "subject": "english",
+      "concept": "vocabulary",
+      "language": "ar",
+      "payload": {
+        "type": "match_pairs",
+        "version": 1,
+        "title": "صِل الكلمة بمعناها",
+        "instructions": "المس الكلمة الإنجليزية ثم المس معناها الصحيح.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": [
+            {
+              "id": "p1",
+              "left": "rapid",
+              "right": "سريع جدًا"
+            },
+            {
+              "id": "p2",
+              "left": "ancient",
+              "right": "قديم جدًا"
+            },
+            {
+              "id": "p3",
+              "left": "assist",
+              "right": "يساعد"
+            },
+            {
+              "id": "p4",
+              "left": "brief",
+              "right": "قصير ومختصر"
+            }
+          ]
+        },
+        "expectedLearningAction": "يربط المفردة الإنجليزية بمعناها بنفسه",
+        "followUpPrompt": "اطلب منه جملة قصيرة يستعمل فيها إحدى الكلمات"
+      }
+    },
+    {
+      "tool": "match_pairs",
+      "subject": "english",
+      "concept": "vocabulary",
+      "language": "en",
+      "payload": {
+        "type": "match_pairs",
+        "version": 1,
+        "title": "Match the word to its meaning",
+        "instructions": "Tap an English word, then tap its correct meaning.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": [
+            {
+              "id": "p1",
+              "left": "rapid",
+              "right": "very fast"
+            },
+            {
+              "id": "p2",
+              "left": "ancient",
+              "right": "very old"
+            },
+            {
+              "id": "p3",
+              "left": "assist",
+              "right": "to help"
+            },
+            {
+              "id": "p4",
+              "left": "brief",
+              "right": "short"
+            }
+          ]
+        },
+        "expectedLearningAction": "Connects each English word to its meaning by hand",
+        "followUpPrompt": "Ask for a short sentence using one of the words"
+      }
+    },
+    {
+      "tool": "match_pairs",
+      "subject": "arabic",
+      "concept": "roots_and_patterns",
+      "language": "ar",
+      "payload": {
+        "type": "match_pairs",
+        "version": 1,
+        "title": "صِل الجذر بالكلمة المشتقة منه",
+        "instructions": "المس الجذر ثم المس الكلمة المشتقة منه.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": [
+            {
+              "id": "r1",
+              "left": "كتب",
+              "right": "مكتبة"
+            },
+            {
+              "id": "r2",
+              "left": "علم",
+              "right": "معلّم"
+            },
+            {
+              "id": "r3",
+              "left": "درس",
+              "right": "مدرسة"
+            },
+            {
+              "id": "r4",
+              "left": "خرج",
+              "right": "مخرج"
+            }
+          ]
+        },
+        "expectedLearningAction": "يكتشف كيف تتولد الكلمات من جذر واحد",
+        "followUpPrompt": "اسأله عن كلمة أخرى من جذر كتب"
+      }
+    },
+    {
+      "tool": "match_pairs",
+      "subject": "arabic",
+      "concept": "roots_and_patterns",
+      "language": "en",
+      "payload": {
+        "type": "match_pairs",
+        "version": 1,
+        "title": "Match the root to its derived word",
+        "instructions": "Tap a root, then tap the word derived from it.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": [
+            {
+              "id": "r1",
+              "left": "كتب",
+              "right": "مكتبة"
+            },
+            {
+              "id": "r2",
+              "left": "علم",
+              "right": "معلّم"
+            },
+            {
+              "id": "r3",
+              "left": "درس",
+              "right": "مدرسة"
+            },
+            {
+              "id": "r4",
+              "left": "خرج",
+              "right": "مخرج"
+            }
+          ]
+        },
+        "expectedLearningAction": "Discovers how words grow from a single root",
+        "followUpPrompt": "Ask for another word from the root كتب"
+      }
+    },
+    {
+      "tool": "match_pairs",
+      "subject": "science",
+      "concept": "term_definitions",
+      "language": "ar",
+      "payload": {
+        "type": "match_pairs",
+        "version": 1,
+        "title": "صِل المصطلح بتعريفه",
+        "instructions": "المس المصطلح العلمي ثم المس تعريفه الصحيح.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": [
+            {
+              "id": "s1",
+              "left": "التبخر",
+              "right": "تحول السائل إلى غاز"
+            },
+            {
+              "id": "s2",
+              "left": "التكاثف",
+              "right": "تحول الغاز إلى سائل"
+            },
+            {
+              "id": "s3",
+              "left": "الانصهار",
+              "right": "تحول الصلب إلى سائل"
+            },
+            {
+              "id": "s4",
+              "left": "التجمد",
+              "right": "تحول السائل إلى صلب"
+            }
+          ]
+        },
+        "expectedLearningAction": "يميز تحولات المادة بربط كل مصطلح بتعريفه",
+        "followUpPrompt": "اسأله أين يرى التكاثف في بيته"
+      }
+    },
+    {
+      "tool": "match_pairs",
+      "subject": "science",
+      "concept": "term_definitions",
+      "language": "en",
+      "payload": {
+        "type": "match_pairs",
+        "version": 1,
+        "title": "Match the term to its definition",
+        "instructions": "Tap a science term, then tap its correct definition.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": [
+            {
+              "id": "s1",
+              "left": "Evaporation",
+              "right": "Liquid turns into gas"
+            },
+            {
+              "id": "s2",
+              "left": "Condensation",
+              "right": "Gas turns into liquid"
+            },
+            {
+              "id": "s3",
+              "left": "Melting",
+              "right": "Solid turns into liquid"
+            },
+            {
+              "id": "s4",
+              "left": "Freezing",
+              "right": "Liquid turns into solid"
+            }
+          ]
+        },
+        "expectedLearningAction": "Distinguishes state changes by pairing each term with its definition",
+        "followUpPrompt": "Ask where they see condensation at home"
+      }
+    },
+    {
+      "tool": "match_pairs",
+      "subject": "social_studies",
+      "concept": "event_associations",
+      "language": "ar",
+      "payload": {
+        "type": "match_pairs",
+        "version": 1,
+        "title": "صِل المَعْلم بمدينته",
+        "instructions": "المس المعلم التاريخي ثم المس المدينة التي يقع فيها.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": [
+            {
+              "id": "h1",
+              "left": "القلعة الأثرية",
+              "right": "حلب"
+            },
+            {
+              "id": "h2",
+              "left": "الجامع الأموي",
+              "right": "دمشق"
+            },
+            {
+              "id": "h3",
+              "left": "النواعير",
+              "right": "حماة"
+            },
+            {
+              "id": "h4",
+              "left": "المدرج الروماني",
+              "right": "بصرى"
+            }
+          ]
+        },
+        "expectedLearningAction": "يربط المعالم التراثية بأماكنها على خريطة بلده الذهنية",
+        "followUpPrompt": "اسأله أي معلم يود زيارته ولماذا"
+      }
+    },
+    {
+      "tool": "match_pairs",
+      "subject": "social_studies",
+      "concept": "event_associations",
+      "language": "en",
+      "payload": {
+        "type": "match_pairs",
+        "version": 1,
+        "title": "Match the landmark to its city",
+        "instructions": "Tap a landmark, then tap the city it belongs to.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": [
+            {
+              "id": "h1",
+              "left": "The Citadel",
+              "right": "Aleppo"
+            },
+            {
+              "id": "h2",
+              "left": "The Umayyad Mosque",
+              "right": "Damascus"
+            },
+            {
+              "id": "h3",
+              "left": "The Norias (waterwheels)",
+              "right": "Hama"
+            },
+            {
+              "id": "h4",
+              "left": "The Roman Theatre",
+              "right": "Bosra"
+            }
+          ]
+        },
+        "expectedLearningAction": "Anchors heritage landmarks to their places on a mental map",
+        "followUpPrompt": "Ask which landmark they would visit and why"
+      }
+    }
+  ]
+}

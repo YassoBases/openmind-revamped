@@ -10,7 +10,8 @@
     "test": "vitest run",
     "seed": "tsx src/scripts/seed.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "export:goldens": "tsx src/scripts/export-goldens.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.0",

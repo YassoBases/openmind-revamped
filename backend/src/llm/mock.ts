@@ -19,6 +19,7 @@ import type {
 } from '@edumind/shared';
 import type { ContentProvider, FactCheckPiece, TutorReplyParams } from '../pipeline/provider.js';
 import type { InteractivePayload, TutorReply } from '../tutor/contract.js';
+import { matchGolden } from '../tutor/tools/registry.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const samplesDir = join(here, '..', '..', '..', 'samples');
@@ -30,94 +31,19 @@ function sleep(ms: number) {
 }
 
 /**
- * Golden interactive payloads, keyword-routed the way the live model routes
- * by concept. One per approved registry type; every payload passes
- * validateInteractivePayload, so the mock exercises the exact production
- * validation + rendering path.
+ * Golden interactive payloads live on the tool descriptors themselves
+ * (tutor/tools/*.ts), keyword-routed by matchGolden the way the live model
+ * routes by concept. Every golden passes validateInteractivePayload (enforced
+ * by test/tools.test.ts), so the mock exercises the exact production
+ * validation + rendering path — including the availableTools eligibility the
+ * route computed for this learner.
  */
-function matchMockInteractive(question: string, ar: boolean): InteractivePayload | null {
-  if (/كسر|كسور|خط الأعداد|المستقيم|عدد سالب|fraction|number line|decimal/i.test(question)) {
-    return {
-      type: 'number_line',
-      version: 1,
-      title: ar ? 'ضع الكسر في مكانه' : 'Place the fraction',
-      instructions: ar
-        ? 'حرّك المؤشر حتى يقف على قيمة ثلاثة أرباع، ثم تحقق.'
-        : 'Move the marker until it stands on three quarters, then check.',
-      data: {
-        min: 0, max: 1, step: 0.05, target: 0.75, tolerance: 0.05,
-        unit: ar ? 'من 0 إلى 1' : 'from 0 to 1',
-        items: null, correctOrder: null, buckets: null,
-      },
-      expectedLearningAction: ar
-        ? 'يحدد موضع كسر بين عددين صحيحين بنفسه'
-        : 'Locates a fraction between two whole numbers by hand',
-      followUpPrompt: ar
-        ? 'اسأله أين يقع ٣/٤ بالنسبة إلى النصف'
-        : 'Ask where 3/4 sits relative to one half',
-    };
-  }
-  if (/رتب|رتّب|دورة الماء|مراحل|خطوات|ترتيب|order|sequence|water cycle|steps/i.test(question)) {
-    return {
-      type: 'order_sequence',
-      version: 1,
-      title: ar ? 'رتّب دورة الماء' : 'Order the water cycle',
-      instructions: ar
-        ? 'المس المراحل بالترتيب الصحيح من البداية إلى النهاية.'
-        : 'Tap the stages in the correct order from start to finish.',
-      data: {
-        min: null, max: null, step: null, target: null, tolerance: null, unit: null,
-        items: [
-          { id: 'evap', label: ar ? 'تبخر الماء من البحر' : 'Water evaporates from the sea', bucketId: null },
-          { id: 'cond', label: ar ? 'تكاثف البخار غيومًا' : 'Vapor condenses into clouds', bucketId: null },
-          { id: 'rain', label: ar ? 'هطول المطر' : 'Rain falls', bucketId: null },
-          { id: 'flow', label: ar ? 'جريان الماء إلى الأنهار' : 'Water flows back to rivers', bucketId: null },
-        ],
-        correctOrder: ['evap', 'cond', 'rain', 'flow'],
-        buckets: null,
-      },
-      expectedLearningAction: ar
-        ? 'يبني تسلسل دورة الماء بنفسه'
-        : 'Builds the water-cycle sequence by hand',
-      followUpPrompt: ar
-        ? 'اسأله ماذا يحدث لو ارتفعت حرارة البحر'
-        : 'Ask what happens if the sea gets warmer',
-    };
-  }
-  if (/صنف|صنّف|اسم|فعل|حرف|أقسام الكلام|قواعد|grammar|noun|verb|sort|classify/i.test(question)) {
-    return {
-      type: 'sort_buckets',
-      version: 1,
-      title: ar ? 'اسم أم فعل أم حرف؟' : 'Noun, verb, or particle?',
-      instructions: ar
-        ? 'ضع كل كلمة في مجموعتها الصحيحة.'
-        : 'Put each word into its correct group.',
-      data: {
-        min: null, max: null, step: null, target: null, tolerance: null, unit: null,
-        items: [
-          { id: 'w1', label: ar ? 'سوقٌ' : 'market', bucketId: 'noun' },
-          { id: 'w2', label: ar ? 'يبني' : 'builds', bucketId: 'verb' },
-          { id: 'w3', label: ar ? 'إلى' : 'to', bucketId: 'part' },
-          { id: 'w4', label: ar ? 'ماءٌ' : 'water', bucketId: 'noun' },
-          { id: 'w5', label: ar ? 'سافرَ' : 'traveled', bucketId: 'verb' },
-          { id: 'w6', label: ar ? 'مِن' : 'from', bucketId: 'part' },
-        ],
-        correctOrder: null,
-        buckets: [
-          { id: 'noun', label: ar ? 'اسم' : 'Noun' },
-          { id: 'verb', label: ar ? 'فعل' : 'Verb' },
-          { id: 'part', label: ar ? 'حرف' : 'Particle' },
-        ],
-      },
-      expectedLearningAction: ar
-        ? 'يميز أقسام الكلام بالتصنيف العملي'
-        : 'Distinguishes parts of speech by hands-on sorting',
-      followUpPrompt: ar
-        ? 'اطلب منه جملة من عنده فيها الأقسام الثلاثة'
-        : 'Ask for their own sentence using all three',
-    };
-  }
-  return null;
+function matchMockInteractive(
+  question: string,
+  availableTools: readonly string[],
+  ar: boolean,
+): InteractivePayload | null {
+  return matchGolden(question, availableTools, ar) as InteractivePayload | null;
 }
 
 let samples: GameSpec[] | null = null;
@@ -271,12 +197,13 @@ export class MockProvider implements ContentProvider {
       return { model: 'mock', data };
     }
 
-    // Keyword-routed interactive blocks for middle-school "ask" questions —
-    // one deterministic golden payload per approved type, so tests and the
-    // whole Flutter rendering path exercise real registry data.
-    if (!inExperience && !primary) {
+    // Keyword-routed interactive blocks for "ask" questions — deterministic
+    // descriptor goldens, offered ONLY from the availableTools the route's
+    // eligibility filter computed (primary students get an empty list), so
+    // tests and the whole Flutter rendering path exercise real registry data.
+    if (!inExperience && params.availableTools.length > 0) {
       const q = params.question;
-      const payload = matchMockInteractive(q, ar);
+      const payload = matchMockInteractive(q, params.availableTools, ar);
       if (payload) {
         const data: TutorReply = {
           message: ar

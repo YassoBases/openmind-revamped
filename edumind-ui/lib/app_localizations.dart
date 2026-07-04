@@ -149,9 +149,11 @@ class AppLocalizations {
       'blk_sent': 'Your result went to your tutor',
       'blk_answered': 'You completed this activity — its result is with your tutor',
       'blk_item_of': 'Item {n} of {m}',
+      'blk_pair_of': 'Matched {n} of {m} pairs',
       'ir_numberline': 'I placed the marker at {v} (target {t})',
       'ir_order': 'My order: {list}',
       'ir_sort': 'I sorted {c} of {m} correctly',
+      'ir_match': 'I matched all {m} pairs with {c} wrong tries',
       // onboarding
       'onb_title': 'Your journey starts here',
       'onb_subtitle': 'Learn. Play. Discover what fits you.',
@@ -407,9 +409,11 @@ class AppLocalizations {
       'blk_sent': 'أُرسلت نتيجتك إلى مساعدك',
       'blk_answered': 'أنجزت هذا النشاط — نتيجته عند مساعدك',
       'blk_item_of': 'العنصر {n} من {m}',
+      'blk_pair_of': 'وصلت {n} من {m} أزواج',
       'ir_numberline': 'وضعت المؤشر عند {v} (الهدف {t})',
       'ir_order': 'ترتيبي: {list}',
       'ir_sort': 'صنفت {c} من {m} تصنيفًا صحيحًا',
+      'ir_match': 'وصلت الأزواج الـ{m} كلها مع {c} محاولات خاطئة',
       // onboarding
       'onb_title': 'طريقك يبدأ من هنا',
       'onb_subtitle': 'تعلّم . العب . واكتشف ما يشبهك .',

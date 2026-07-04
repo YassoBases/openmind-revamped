@@ -59,6 +59,12 @@ export interface TutorReplyParams {
   };
   question: string;
   context: TutorContext | null;
+  /**
+   * Interactive tool ids this learner may be offered — filtered SERVER-SIDE
+   * by grade, stage, subject and availability (tutor/tools/registry.ts)
+   * before the model ever selects; the route re-checks the reply against it.
+   */
+  availableTools: string[];
   /** What the learner just did on the last interactive block, if anything. */
   interactiveResult: InteractiveResult | null;
   /** Most recent turns of this conversation, oldest first. */
@@ -226,6 +232,7 @@ export class LiveProvider implements ContentProvider {
       user: JSON.stringify({
         student: params.student,
         context: params.context,
+        availableTools: params.availableTools,
         interactiveResult: params.interactiveResult,
         history: params.history,
         question: params.question,

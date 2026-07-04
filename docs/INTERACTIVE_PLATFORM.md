@@ -4,6 +4,19 @@
 milestone (registry v1: `number_line`, `order_sequence`, `sort_buckets`) is
 the first proof of this architecture, not its final scope.**
 
+> **Progress note.** The §3 descriptor foundation is now implemented in
+> `backend/src/tutor/tools/` (one `ToolDescriptor` per family; contract enum,
+> flat data schema, prompt section, semantic gate, and mock goldens are all
+> derived from it), server-side grade/stage/subject eligibility gates the
+> route (`availableTools` in the user message, re-checked on the way out),
+> per-tool metrics (`tutor_interactive_offered:<type>`) are live, the three
+> v1 tools are migrated with no wire change, and `match_pairs` shipped as the
+> first descriptor-native Wave 2 tool. Dart mirrors only render-safety
+> (`blocks/block_descriptors.dart`); descriptor goldens are exported to
+> `edumind-ui/test/fixtures/tool_goldens.json` (staleness-tested on both
+> sides) so the two languages cannot drift. Next per §5: `balance_scale`,
+> `timeline`.
+
 The long-term product: a tutor that helps learners understand any school
 subject through a growing library of safe, reusable, subject-appropriate
 interactive tools. The AI never generates UI, code, or one-off widgets — it

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tutor_models.dart';
+import 'match_pairs_block.dart';
 import 'number_line_block.dart';
 import 'order_sequence_block.dart';
 import 'sort_buckets_block.dart';
@@ -34,6 +35,8 @@ Widget? buildTutorBlock({
     'order_sequence' => OrderSequenceBlock(
         payload: payload, enabled: enabled, answered: answered, onResult: onResult),
     'sort_buckets' => SortBucketsBlock(
+        payload: payload, enabled: enabled, answered: answered, onResult: onResult),
+    'match_pairs' => MatchPairsBlock(
         payload: payload, enabled: enabled, answered: answered, onResult: onResult),
     _ => null,
   };

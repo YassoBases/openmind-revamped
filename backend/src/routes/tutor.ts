@@ -14,6 +14,7 @@ import { metrics } from '../pipeline/metrics.js';
 import type { ContentProvider } from '../pipeline/provider.js';
 import { AskTutorBody } from '../schemas.js';
 import { validateInteractivePayload } from '../tutor/contract.js';
+import { eligibleTools, subjectFromLabel } from '../tutor/tools/registry.js';
 import type { Store } from '../store/types.js';
 
 /** How many prior turns ride along as conversation memory. */
@@ -60,6 +61,17 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
         }))
       : [];
 
+    // Server-side tool eligibility (hard gate, INTERACTIVE_PLATFORM.md §4):
+    // the model may only select interactive tools from this list, filtered by
+    // the AUTHENTICATED grade + stage, the context's subject when we recognize
+    // one, and per-tool availability. Re-checked on the way out below.
+    const stage = stageForGrade(student.grade);
+    const availableTools = eligibleTools({
+      grade: student.grade,
+      stage,
+      subject: subjectFromLabel(body.context?.subject),
+    }).map((t) => t.id);
+
     let result;
     try {
       result = await provider.tutorReply({
@@ -69,13 +81,14 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
         student: {
           name: student.name,
           grade: student.grade,
-          stage: stageForGrade(student.grade),
+          stage,
           language: student.language,
           interest: student.interest,
           learningContext: student.learningContext,
         },
         question: body.question,
         context: body.context ?? null,
+        availableTools,
         interactiveResult: body.interactiveResult ?? null,
         history,
       });
@@ -89,15 +102,24 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
     // Semantic gate on any offered interactive block: a payload that passed
     // the structural schema but is not genuinely renderable (bad ranges,
     // non-permutation order, dangling bucket ids…) is dropped, never shipped.
+    // Eligibility is re-checked here too — a tool the server never offered
+    // this learner can not come back through the model.
     if (result.data.interactivePayload) {
-      const valid = validateInteractivePayload(result.data.interactivePayload);
-      if (valid) {
+      const offered = result.data.interactivePayload;
+      const valid = validateInteractivePayload(offered);
+      if (valid && !availableTools.includes(valid.type)) {
+        req.log.warn({ type: valid.type }, '[tutor] ineligible interactive payload dropped');
+        metrics.bump('tutor_interactive_ineligible');
+        result.data.interactivePayload = null;
+      } else if (valid) {
         metrics.bump('tutor_interactive_offered');
+        metrics.bump(`tutor_interactive_offered:${valid.type}`);
+        result.data.interactivePayload = valid;
       } else {
-        req.log.warn({ type: result.data.interactivePayload.type }, '[tutor] invalid interactive payload dropped');
+        req.log.warn({ type: offered.type }, '[tutor] invalid interactive payload dropped');
         metrics.bump('tutor_interactive_invalid');
+        result.data.interactivePayload = null;
       }
-      result.data.interactivePayload = valid;
     }
     if (body.interactiveResult) metrics.bump('tutor_interactive_result');
 

@@ -163,6 +163,42 @@ describe('tutor', () => {
       for (const item of sort.data.items) expect(bucketIds.has(item.bucketId)).toBe(true);
     });
 
+    it('vocabulary question → validated match_pairs payload (descriptor-native tool)', async () => {
+      const res = await g7('POST', '/api/v1/tutor/messages', { question: 'ساعدني في مفردات الإنجليزية ومعانيها' });
+      expect(res.statusCode).toBe(201);
+      const p = res.json().reply.interactivePayload;
+      expect(p?.type).toBe('match_pairs');
+      expect(p?.version).toBe(1);
+      expect(p.data.pairs.length).toBeGreaterThanOrEqual(3);
+      const lefts = p.data.pairs.map((x: { left: string }) => x.left);
+      expect(new Set(lefts).size).toBe(lefts.length);
+    });
+
+    it('match_pairs result returns to the same conversation, persists, and gets a result-aware follow-up', async () => {
+      const first = await g7('POST', '/api/v1/tutor/messages', { question: 'ما جذر كلمة مدرسة؟' });
+      expect(first.json().reply.interactivePayload?.type).toBe('match_pairs');
+      const conversationId = first.json().conversationId;
+      const res = await g7('POST', '/api/v1/tutor/messages', {
+        question: 'وصلت الأزواج كلها من أول محاولة',
+        conversationId,
+        interactiveResult: {
+          blockType: 'match_pairs',
+          attempted: true,
+          answerOrState: 'طابقت 4 أزواج دون أخطاء',
+          correctnessOrOutcome: 'correct',
+        },
+      });
+      expect(res.statusCode).toBe(201);
+      expect(res.json().reply.responseType).toBe('encouragement');
+      expect(res.json().reply.interactivePayload).toBeNull();
+
+      const hist = await g7('GET', `/api/v1/tutor/conversations/${conversationId}`);
+      const { messages } = hist.json();
+      expect(messages).toHaveLength(4);
+      expect(messages[1].interactivePayload?.type).toBe('match_pairs');
+      expect(messages[2].interactiveResult?.blockType).toBe('match_pairs');
+    });
+
     it('unsupported concept degrades to guided chat with a null payload', async () => {
       const res = await g7('POST', '/api/v1/tutor/messages', { question: 'لماذا نرى البرق قبل الرعد؟' });
       expect(res.statusCode).toBe(201);

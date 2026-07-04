@@ -5,6 +5,8 @@
 /// can grow server-side without breaking older clients.
 library;
 
+import 'blocks/block_descriptors.dart';
+
 /// What the tutor's message mainly is.
 enum TutorResponseType { explanation, hint, question, encouragement, correction, nextStep, unknown }
 
@@ -31,16 +33,11 @@ TutorSuggestedAction _suggestedAction(String? v) => switch (v) {
       _ => TutorSuggestedAction.unknown,
     };
 
-/// Approved interactive block registry, version 1 — the Dart twin of
-/// INTERACTIVE_BLOCK_TYPES in backend/src/tutor/contract.ts. The client
-/// renders ONLY types it knows (see blocks/tutor_block_registry.dart);
-/// anything else is silently ignored, so the closed world holds on both ends.
-const int kInteractiveRegistryVersion = 1;
-const List<String> kInteractiveBlockTypes = [
-  'number_line',
-  'order_sequence',
-  'sort_buckets',
-];
+// The approved block catalog is the Dart twin of the backend tool registry
+// (backend/src/tutor/tools/): per-tool versions and render-safety checks live
+// in blocks/block_descriptors.dart, widgets in blocks/tutor_block_registry.dart.
+// The client renders ONLY types it knows and silently ignores anything else,
+// so the closed world holds on both ends.
 
 /// One manipulable item of an order/sort block.
 class InteractiveItem {
@@ -61,6 +58,16 @@ class InteractiveBucket {
   final String label;
 }
 
+/// One connection of a match_pairs block: [left] is the prompt side (word,
+/// root, concept, event…), [right] its one true match.
+class InteractivePair {
+  InteractivePair({required this.id, required this.left, required this.right});
+
+  final String id;
+  final String left;
+  final String right;
+}
+
 /// A validated Ask → See → Try block offered by the tutor. Parsing is
 /// deliberately defensive: any structural surprise (unknown type, wrong
 /// version, missing fields) yields null and the reply degrades to text —
@@ -79,6 +86,7 @@ class InteractivePayload {
     this.items = const [],
     this.correctOrder = const [],
     this.buckets = const [],
+    this.pairs = const [],
   });
 
   final String type;
@@ -98,12 +106,18 @@ class InteractivePayload {
   final List<String> correctOrder;
   final List<InteractiveBucket> buckets;
 
+  // match_pairs
+  final List<InteractivePair> pairs;
+
   static InteractivePayload? fromMap(dynamic raw) {
     if (raw is! Map) return null;
     final m = raw.cast<String, dynamic>();
     final type = m['type'];
-    if (type is! String || !kInteractiveBlockTypes.contains(type)) return null;
-    if ((m['version'] as num?)?.toInt() != kInteractiveRegistryVersion) return null;
+    if (type is! String) return null;
+    final descriptor = kTutorBlockDescriptors[type];
+    if (descriptor == null) return null;
+    // Per-tool version: a mismatch invalidates this tool only, never the catalog.
+    if ((m['version'] as num?)?.toInt() != descriptor.version) return null;
     final title = m['title'];
     final instructions = m['instructions'];
     if (title is! String || title.isEmpty) return null;
@@ -136,32 +150,22 @@ class InteractivePayload {
           for (final b in (d['buckets'] as List? ?? const []))
             InteractiveBucket(id: (b as Map)['id'] as String, label: b['label'] as String),
         ],
+        pairs: [
+          for (final x in (d['pairs'] as List? ?? const []))
+            InteractivePair(
+              id: (x as Map)['id'] as String,
+              left: x['left'] as String,
+              right: x['right'] as String,
+            ),
+        ],
       );
-      return payload._renderable ? payload : null;
+      // The tool's own render-safety check (blocks/block_descriptors.dart) —
+      // the client-side twin of the server's semantic gate.
+      return descriptor.renderable(payload) ? payload : null;
     } catch (_) {
       return null; // malformed data — degrade to text-only
     }
   }
-
-  /// Client-side twin of the server's semantic gate (belt and braces).
-  bool get _renderable => switch (type) {
-        'number_line' => min != null &&
-            max != null &&
-            step != null &&
-            target != null &&
-            min! < max! &&
-            step! > 0 &&
-            target! >= min! &&
-            target! <= max!,
-        'order_sequence' => items.length >= 3 &&
-            correctOrder.length == items.length &&
-            items.map((i) => i.id).toSet().containsAll(correctOrder) &&
-            correctOrder.toSet().length == correctOrder.length,
-        'sort_buckets' => buckets.length >= 2 &&
-            items.length >= 3 &&
-            items.every((i) => buckets.any((b) => b.id == i.bucketId)),
-        _ => false,
-      };
 }
 
 /// What the learner's action amounted to.
