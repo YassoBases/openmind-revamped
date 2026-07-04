@@ -92,6 +92,7 @@ export interface PathNodeRow {
   topic: string;
   orderIndex: number;
   xpReward: number;
+  depth: number; // spiral depth: 0=basic, 1=deepen, 2=mastery
   learningPathId: string;
   createdAt: Date;
 }
@@ -109,8 +110,8 @@ export interface LearningPathWithNodes extends LearningPathRow {
 
 // ─── Placement-test rows ─────────────────────────────────────────────────────
 
-export type QuestionType = 'choice' | 'drag_drop' | 'spin' | 'connect';
-export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
+export type QuestionType = 'choice' | 'drag_drop' | 'spin' | 'connect' | 'numeric_input' | 'tap_image' | 'open_response';
+export type QuestionDifficulty = 'intro' | 'basic' | 'intermediate' | 'advanced' | 'mastery';
 export type PlacementTheme = 'bridge' | 'road' | 'map';
 export type PlacementTestStatus = 'in_progress' | 'completed' | 'abandoned';
 
