@@ -70,6 +70,7 @@ void main() {
     expect(result, isNotNull);
     expect(result!.blockType, 'match_pairs');
     expect(result!.outcome, InteractiveOutcome.partiallyCorrect);
+    expect(result!.answer, {'wrongTries': 1}); // server recomputes from this
     expect(result!.learningSignal, contains('rapid'));
     expect(summary, contains('3'));
 
@@ -98,6 +99,7 @@ void main() {
       await tester.pump();
     }
     expect(result!.outcome, InteractiveOutcome.correct);
+    expect(result!.answer, {'wrongTries': 0});
     expect(result!.learningSignal, isNull);
   });
 

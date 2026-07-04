@@ -192,12 +192,13 @@ void main() {
       expect(sortOutcome(0, 6), InteractiveOutcome.incorrect);
     });
 
-    test('InteractiveResult serializes the wire contract', () {
+    test('InteractiveResult serializes the wire contract incl. the verifiable answer', () {
       final r = InteractiveResult(
         blockType: 'order_sequence',
         attempted: true,
         answerOrState: 'ترتيبي: أ ← ب',
         outcome: InteractiveOutcome.partiallyCorrect,
+        answer: {'order': ['a', 'b']},
         learningSignal: '2/4',
       );
       expect(r.toMap(), {
@@ -205,6 +206,7 @@ void main() {
         'attempted': true,
         'answerOrState': 'ترتيبي: أ ← ب',
         'correctnessOrOutcome': 'partially_correct',
+        'answer': {'order': ['a', 'b']},
         'learningSignal': '2/4',
       });
     });

@@ -55,6 +55,7 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
         attempted: true,
         answerOrState: summary,
         outcome: outcome,
+        answer: {'order': List<String>.of(_picked)},
         learningSignal: '$n/${p.correctOrder.length} positions correct',
       ),
       summary,

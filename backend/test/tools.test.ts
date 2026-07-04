@@ -43,6 +43,7 @@ describe('tool registry (descriptor invariants)', () => {
       expect(t.a11y.length).toBeGreaterThan(0);
       expect(t.goldens.length).toBeGreaterThan(0);
       expect(Object.keys(t.dataFields).length).toBeGreaterThan(0);
+      expect(typeof t.verifyResult).toBe('function');
     }
   });
 
@@ -130,5 +131,90 @@ describe('matchGolden (deterministic mock routing)', () => {
   it('normalizes golden data onto the full flat shape', () => {
     const p = matchGolden('وصل الكلمة بمعناها match', middle, false)!;
     expect(Object.keys(p.data).sort()).toEqual(Object.keys(emptyToolData()).sort());
+  });
+});
+
+describe('verifyResult (deterministic server-side outcome recomputation)', () => {
+  const tool = (id: string) => TOOL_REGISTRY.find((t) => t.id === id)!;
+  const data = (partial: Record<string, unknown>) =>
+    ({ ...emptyToolData(), ...partial }) as Parameters<(typeof TOOL_REGISTRY)[number]['verifyResult']>[0];
+
+  it('number_line: value vs target within tolerance (default half step)', () => {
+    const d = data({ min: 0, max: 1, step: 0.05, target: 0.75, tolerance: 0.05 });
+    const v = tool('number_line').verifyResult;
+    expect(v(d, { value: 0.75 })).toBe('correct');
+    expect(v(d, { value: 0.7 })).toBe('correct'); // inside tolerance
+    expect(v(d, { value: 0.5 })).toBe('incorrect');
+    expect(v(d, {})).toBe('unverifiable'); // old client, no answer
+    expect(v(d, { value: Number.NaN })).toBe('invalid');
+    expect(v(d, { value: 7 })).toBe('invalid'); // outside the rendered line
+  });
+
+  it('order_sequence: permutation compare, exact / partial / none', () => {
+    const d = data({
+      items: [
+        { id: 'a', label: 'أ', bucketId: null },
+        { id: 'b', label: 'ب', bucketId: null },
+        { id: 'c', label: 'ج', bucketId: null },
+        { id: 'd', label: 'د', bucketId: null },
+      ],
+      correctOrder: ['a', 'b', 'c', 'd'],
+    });
+    const v = tool('order_sequence').verifyResult;
+    expect(v(d, { order: ['a', 'b', 'c', 'd'] })).toBe('correct');
+    expect(v(d, { order: ['a', 'c', 'b', 'd'] })).toBe('partially_correct');
+    expect(v(d, { order: ['d', 'a', 'b', 'c'] })).toBe('incorrect');
+    expect(v(d, { order: ['a', 'b'] })).toBe('invalid'); // not a full submission
+    expect(v(d, { order: ['a', 'b', 'c', 'zzz'] })).toBe('invalid'); // foreign id
+    expect(v(d, { order: ['a', 'a', 'b', 'c'] })).toBe('invalid'); // duplicate
+    expect(v(d, {})).toBe('unverifiable');
+  });
+
+  it('sort_buckets: placements recomputed against the true bucket ids', () => {
+    const d = data({
+      buckets: [{ id: 'x', label: 'س' }, { id: 'y', label: 'ص' }],
+      items: [
+        { id: '1', label: 'أ', bucketId: 'x' },
+        { id: '2', label: 'ب', bucketId: 'y' },
+        { id: '3', label: 'ج', bucketId: 'x' },
+      ],
+    });
+    const v = tool('sort_buckets').verifyResult;
+    const all = [
+      { itemId: '1', bucketId: 'x' },
+      { itemId: '2', bucketId: 'y' },
+      { itemId: '3', bucketId: 'x' },
+    ];
+    expect(v(d, { placements: all })).toBe('correct');
+    expect(v(d, { placements: [all[0]!, { itemId: '2', bucketId: 'x' }, all[2]!] })).toBe('partially_correct');
+    expect(
+      v(d, {
+        placements: [
+          { itemId: '1', bucketId: 'y' },
+          { itemId: '2', bucketId: 'x' },
+          { itemId: '3', bucketId: 'y' },
+        ],
+      }),
+    ).toBe('incorrect');
+    expect(v(d, { placements: all.slice(0, 2) })).toBe('invalid'); // item unaccounted
+    expect(v(d, { placements: [...all.slice(0, 2), { itemId: 'nope', bucketId: 'x' }] })).toBe('invalid');
+    expect(v(d, { placements: [...all.slice(0, 2), { itemId: '3', bucketId: 'ghost' }] })).toBe('invalid');
+    expect(v(d, {})).toBe('unverifiable');
+  });
+
+  it('match_pairs: outcome from the reported mistake count', () => {
+    const d = data({
+      pairs: [
+        { id: 'p1', left: 'a', right: 'م1' },
+        { id: 'p2', left: 'b', right: 'م2' },
+        { id: 'p3', left: 'c', right: 'م3' },
+        { id: 'p4', left: 'd', right: 'م4' },
+      ],
+    });
+    const v = tool('match_pairs').verifyResult;
+    expect(v(d, { wrongTries: 0 })).toBe('correct');
+    expect(v(d, { wrongTries: 2 })).toBe('partially_correct');
+    expect(v(d, { wrongTries: 4 })).toBe('incorrect');
+    expect(v(d, {})).toBe('unverifiable');
   });
 });

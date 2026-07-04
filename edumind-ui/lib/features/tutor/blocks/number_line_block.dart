@@ -78,6 +78,7 @@ class _NumberLineBlockState extends State<NumberLineBlock> {
         attempted: true,
         answerOrState: summary,
         outcome: outcome,
+        answer: {'value': _value},
       ),
       summary,
     );

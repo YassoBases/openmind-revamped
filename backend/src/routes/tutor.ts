@@ -14,11 +14,19 @@ import { metrics } from '../pipeline/metrics.js';
 import type { ContentProvider } from '../pipeline/provider.js';
 import { AskTutorBody } from '../schemas.js';
 import { validateInteractivePayload } from '../tutor/contract.js';
+import { assessInteractiveResult } from '../tutor/result.js';
 import { eligibleTools, subjectFromLabel } from '../tutor/tools/registry.js';
 import type { Store } from '../store/types.js';
 
 /** How many prior turns ride along as conversation memory. */
 const HISTORY_TURNS = 12;
+
+/**
+ * How far back the result-integrity gate looks for the offered block
+ * instance it must verify against (wider than the LLM window so a slow
+ * learner's block is still matchable).
+ */
+const RESULT_WINDOW = 40;
 
 export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; provider: ContentProvider }) {
   const { store, provider } = opts;
@@ -54,12 +62,54 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
     }
 
     const conversationId = body.conversationId ?? randomUUID();
-    const history = body.conversationId
-      ? (await store.listTutorMessages(student.id, conversationId, HISTORY_TURNS)).map((m) => ({
-          role: m.role,
-          content: m.content,
-        }))
+    // One fetch serves both consumers: the LLM's conversation memory and the
+    // result-integrity gate's source-of-truth thread.
+    const recentMessages = body.conversationId
+      ? await store.listTutorMessages(student.id, conversationId, RESULT_WINDOW)
       : [];
+    const history = recentMessages.slice(-HISTORY_TURNS).map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    // Interaction Result Integrity (tutor/result.ts): a submitted result must
+    // match a real, still-open block instance in THIS thread; when the
+    // structured answer is present its outcome is recomputed server-side and
+    // a wrong claim is overridden. Rejected results are stripped — the
+    // message still becomes a normal turn, the tutor still answers the text —
+    // and every submission leaves one structured learning signal.
+    let interactiveResult = body.interactiveResult ?? null;
+    let learningSignal = null;
+    if (body.interactiveResult) {
+      const assessed = assessInteractiveResult(body.interactiveResult, recentMessages, {
+        subjectLabel: body.context?.subject,
+        concept: body.context?.concept,
+      });
+      interactiveResult = assessed.result;
+      learningSignal = assessed.signal;
+      if (!assessed.result) {
+        req.log.warn(
+          { type: body.interactiveResult.blockType, reason: assessed.signal.rejectReason },
+          '[tutor] interactive result rejected',
+        );
+        metrics.bump(`tutor_result_rejected:${assessed.signal.rejectReason}`);
+      } else if (assessed.signal.verification === 'server_verified') {
+        metrics.bump('tutor_result_verified');
+        if (assessed.signal.claimedOutcome) {
+          req.log.warn(
+            {
+              type: body.interactiveResult.blockType,
+              claimed: assessed.signal.claimedOutcome,
+              verified: assessed.signal.outcome,
+            },
+            '[tutor] client-claimed outcome overridden by server verification',
+          );
+          metrics.bump('tutor_result_corrected');
+        }
+      } else {
+        metrics.bump('tutor_result_client_reported');
+      }
+    }
 
     // Server-side tool eligibility (hard gate, INTERACTIVE_PLATFORM.md §4):
     // the model may only select interactive tools from this list, filtered by
@@ -89,7 +139,9 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
         question: body.question,
         context: body.context ?? null,
         availableTools,
-        interactiveResult: body.interactiveResult ?? null,
+        // Post-gate result: verified/corrected, or null when rejected — the
+        // model never sees an unmatched or tampered submission as a success.
+        interactiveResult,
         history,
       });
     } catch (err) {
@@ -137,10 +189,15 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
         role: 'student',
         content: body.question,
         responseType: null,
+        // Only a gate-approved result is persisted as this instance's answer
+        // (a rejected one must not close the block or restore as a second
+        // attempt); the learning signal is stored for EVERY submission,
+        // including rejections — that is the audit trail.
         context: body.context || body.interactiveResult
           ? {
               ...((body.context as Record<string, unknown> | undefined) ?? {}),
-              ...(body.interactiveResult ? { interactiveResult: body.interactiveResult } : {}),
+              ...(interactiveResult ? { interactiveResult } : {}),
+              ...(learningSignal ? { learningSignal } : {}),
             }
           : null,
       });

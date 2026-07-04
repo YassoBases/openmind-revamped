@@ -40,6 +40,18 @@ export const numberLineTool = {
     if (d.tolerance != null && (!Number.isFinite(d.tolerance) || d.tolerance < 0)) return false;
     return true;
   },
+  verifyResult: (d, answer) => {
+    const v = answer.value;
+    if (v == null) return 'unverifiable';
+    if (!Number.isFinite(v)) return 'invalid';
+    const { min, max, step, target, tolerance } = d;
+    if (min == null || max == null || step == null || target == null) return 'invalid';
+    if (v < min || v > max) return 'invalid'; // outside the line the widget renders
+    // Mirrors numberLineOutcome in block_logic.dart: tolerance defaults to
+    // half a step ("the nearest snap wins").
+    const tol = tolerance ?? step / 2;
+    return Math.abs(v - target) <= tol + 1e-9 ? 'correct' : 'incorrect';
+  },
   promptSpec:
     '* "number_line" (version 1) — the student places a value on a number line and checks. data: min, max, step (>0, at most 200 steps across), target (within [min,max]), tolerance (accepted distance, usually one step or less), unit (short axis label or null). Use for fractions, decimals, negatives, estimation, comparing magnitudes.',
   goldens: [

@@ -17,6 +17,7 @@ const { MemoryStore } = await import('../src/store/memory.js');
 const { validateInteractivePayload } = await import('../src/tutor/contract.js');
 
 let app: FastifyInstance;
+let store: InstanceType<typeof MemoryStore>;
 let token = '';
 
 async function api(method: 'GET' | 'POST', url: string, body?: unknown) {
@@ -29,7 +30,8 @@ async function api(method: 'GET' | 'POST', url: string, body?: unknown) {
 }
 
 beforeAll(async () => {
-  app = await buildApp({ store: new MemoryStore(), provider: new MockProvider() });
+  store = new MemoryStore();
+  app = await buildApp({ store, provider: new MockProvider() });
   const res = await app.inject({
     method: 'POST',
     url: '/api/v1/students',
@@ -244,6 +246,232 @@ describe('tutor', () => {
       const res = await api('POST', '/api/v1/tutor/messages', { question: 'رتب لي مراحل دورة الماء' });
       expect(res.statusCode).toBe(201);
       expect(res.json().reply.interactivePayload).toBeNull();
+    });
+  });
+
+  describe('result integrity (server-side verification + learning signal)', () => {
+    // Fresh grade 7 student; the store reference lets tests inspect the
+    // persisted learning signal directly (it is deliberately not exposed on
+    // the conversation API).
+    let riToken = '';
+    let riStudentId = '';
+    const ri = async (body: unknown) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/tutor/messages',
+        payload: body as Record<string, unknown>,
+        headers: { authorization: `Bearer ${riToken}` },
+      });
+    /** Opens a fresh conversation holding one order_sequence instance. */
+    const openOrderBlock = async () => {
+      const res = await ri({ question: 'رتب لي مراحل دورة الماء' });
+      expect(res.json().reply.interactivePayload?.type).toBe('order_sequence');
+      return res.json().conversationId as string;
+    };
+    const signalOf = async (conversationId: string) => {
+      const messages = await store.listTutorMessages(riStudentId, conversationId, 50);
+      const turn = [...messages].reverse().find((m) => m.context?.learningSignal);
+      return turn?.context?.learningSignal as Record<string, unknown> | undefined;
+    };
+    const CORRECT = ['evap', 'cond', 'rain', 'flow'];
+
+    beforeAll(async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/students',
+        payload: { name: 'ليث', grade: 8, language: 'ar', color: '#1CB0F6', dailyGoal: 3 },
+      });
+      riToken = res.json().token;
+      riStudentId = res.json().studentId;
+    });
+
+    it('verifies a correct completion server-side and stores the learning signal', async () => {
+      const conversationId = await openOrderBlock();
+      const res = await ri({
+        question: 'رتبت المراحل',
+        conversationId,
+        interactiveResult: {
+          blockType: 'order_sequence',
+          attempted: true,
+          answerOrState: 'رتبت: تبخر → تكاثف → هطول → جريان',
+          correctnessOrOutcome: 'correct',
+          answer: { order: CORRECT },
+        },
+      });
+      expect(res.statusCode).toBe(201);
+      expect(res.json().reply.responseType).toBe('encouragement');
+      const signal = await signalOf(conversationId);
+      expect(signal).toMatchObject({
+        tool: 'order_sequence',
+        toolVersion: 1,
+        primitive: 'order',
+        completed: true,
+        outcome: 'correct',
+        verification: 'server_verified',
+        attempt: 1,
+      });
+      expect(signal!.claimedOutcome).toBeUndefined();
+    });
+
+    it('verifies an honest incorrect completion (deterministic tools)', async () => {
+      const conversationId = await openOrderBlock();
+      const res = await ri({
+        question: 'رتبت المراحل',
+        conversationId,
+        interactiveResult: {
+          blockType: 'order_sequence',
+          attempted: true,
+          answerOrState: 'رتبت ترتيبًا معكوسًا',
+          correctnessOrOutcome: 'incorrect',
+          answer: { order: ['flow', 'evap', 'cond', 'rain'] }, // 0 positions right
+        },
+      });
+      expect(res.statusCode).toBe(201);
+      expect(res.json().reply.responseType).toBe('correction');
+      expect(res.json().reply.suggestedAction).toBe('try_again');
+      expect(await signalOf(conversationId)).toMatchObject({
+        outcome: 'incorrect',
+        verification: 'server_verified',
+      });
+    });
+
+    it('overrides a tampered correctness claim with the server-computed outcome', async () => {
+      const conversationId = await openOrderBlock();
+      const res = await ri({
+        question: 'رتبت كل شيء صحيحًا!',
+        conversationId,
+        interactiveResult: {
+          blockType: 'order_sequence',
+          attempted: true,
+          answerOrState: 'رتبت المراحل كلها',
+          correctnessOrOutcome: 'correct', // the claim
+          answer: { order: ['cond', 'evap', 'rain', 'flow'] }, // actually 2/4
+        },
+      });
+      expect(res.statusCode).toBe(201);
+      // No false celebration: the tutor reacts to the VERIFIED outcome.
+      expect(res.json().reply.responseType).not.toBe('encouragement');
+      const messages = await store.listTutorMessages(riStudentId, conversationId, 50);
+      const resultTurn = messages.find((m) => m.context?.interactiveResult);
+      expect(
+        (resultTurn!.context!.interactiveResult as Record<string, unknown>).correctnessOrOutcome,
+      ).toBe('partially_correct');
+      expect(await signalOf(conversationId)).toMatchObject({
+        outcome: 'partially_correct',
+        claimedOutcome: 'correct',
+        verification: 'server_verified',
+      });
+    });
+
+    it('rejects an answer that does not fit the instance — safely', async () => {
+      const conversationId = await openOrderBlock();
+      const res = await ri({
+        question: 'انتهيت من النشاط',
+        conversationId,
+        interactiveResult: {
+          blockType: 'order_sequence',
+          attempted: true,
+          answerOrState: 'رتبت',
+          correctnessOrOutcome: 'correct',
+          answer: { order: ['hack1', 'hack2', 'hack3', 'hack4'] }, // foreign ids
+        },
+      });
+      // The conversation is not broken and there is no false success.
+      expect(res.statusCode).toBe(201);
+      expect(res.json().reply.responseType).not.toBe('encouragement');
+      expect(res.json().reply.message.length).toBeGreaterThan(0);
+      const hist = await app.inject({
+        method: 'GET',
+        url: `/api/v1/tutor/conversations/${conversationId}`,
+        headers: { authorization: `Bearer ${riToken}` },
+      });
+      const last = hist.json().messages.at(-2); // the student turn
+      expect(last.role).toBe('student');
+      expect(last.interactiveResult).toBeNull(); // never stored as an answer
+      expect(await signalOf(conversationId)).toMatchObject({
+        verification: 'rejected',
+        rejectReason: 'invalid_answer',
+        outcome: null,
+      });
+    });
+
+    it('rejects a result no block was ever offered for', async () => {
+      const res = await ri({
+        question: 'انتهيت!',
+        interactiveResult: {
+          blockType: 'match_pairs',
+          attempted: true,
+          answerOrState: 'طابقت كل شيء',
+          correctnessOrOutcome: 'correct',
+          answer: { wrongTries: 0 },
+        },
+      });
+      expect(res.statusCode).toBe(201);
+      expect(res.json().reply.responseType).not.toBe('encouragement');
+      expect(await signalOf(res.json().conversationId)).toMatchObject({
+        verification: 'rejected',
+        rejectReason: 'no_open_block',
+      });
+    });
+
+    it('blocks a duplicate submission for an already-answered instance', async () => {
+      const conversationId = await openOrderBlock();
+      const submit = () =>
+        ri({
+          question: 'رتبت المراحل',
+          conversationId,
+          interactiveResult: {
+            blockType: 'order_sequence',
+            attempted: true,
+            answerOrState: 'رتبت الترتيب الصحيح',
+            correctnessOrOutcome: 'correct',
+            answer: { order: CORRECT },
+          },
+        });
+      const first = await submit();
+      expect(first.json().reply.responseType).toBe('encouragement');
+      const second = await submit();
+      expect(second.statusCode).toBe(201);
+      expect(second.json().reply.responseType).not.toBe('encouragement');
+
+      // Exactly ONE result turn exists; restoration sees one answered block.
+      const hist = await app.inject({
+        method: 'GET',
+        url: `/api/v1/tutor/conversations/${conversationId}`,
+        headers: { authorization: `Bearer ${riToken}` },
+      });
+      const resultTurns = hist.json().messages.filter(
+        (m: { interactiveResult: unknown }) => m.interactiveResult != null,
+      );
+      expect(resultTurns).toHaveLength(1);
+      expect(await signalOf(conversationId)).toMatchObject({
+        verification: 'rejected',
+        rejectReason: 'duplicate',
+      });
+    });
+
+    it('keeps restoration intact: payload and verified result ride the thread', async () => {
+      const conversationId = await openOrderBlock();
+      await ri({
+        question: 'رتبت المراحل',
+        conversationId,
+        interactiveResult: {
+          blockType: 'order_sequence',
+          attempted: true,
+          answerOrState: 'رتبت الترتيب الصحيح',
+          correctnessOrOutcome: 'correct',
+          answer: { order: CORRECT },
+        },
+      });
+      const hist = await app.inject({
+        method: 'GET',
+        url: `/api/v1/tutor/conversations/${conversationId}`,
+        headers: { authorization: `Bearer ${riToken}` },
+      });
+      const { messages } = hist.json();
+      expect(messages).toHaveLength(4);
+      expect(messages[1].interactivePayload?.type).toBe('order_sequence');
+      expect(messages[2].interactiveResult?.correctnessOrOutcome).toBe('correct');
     });
   });
 

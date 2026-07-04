@@ -35,6 +35,24 @@ export const sortBucketsTool = {
     if (!items.every((i) => i.bucketId != null && bucketIds.has(i.bucketId))) return false;
     return true;
   },
+  verifyResult: (d, answer) => {
+    const placements = answer.placements;
+    if (placements == null) return 'unverifiable';
+    const items = d.items ?? [];
+    const bucketIds = new Set((d.buckets ?? []).map((b) => b.id));
+    // Exactly one placement per instance item, into a real bucket.
+    if (placements.length !== items.length) return 'invalid';
+    if (new Set(placements.map((p) => p.itemId)).size !== placements.length) return 'invalid';
+    const truth = new Map(items.map((i) => [i.id, i.bucketId]));
+    let correctCount = 0;
+    for (const p of placements) {
+      if (!truth.has(p.itemId) || !bucketIds.has(p.bucketId)) return 'invalid';
+      if (truth.get(p.itemId) === p.bucketId) correctCount++;
+    }
+    // Mirrors sortOutcome in block_logic.dart.
+    if (correctCount === items.length) return 'correct';
+    return correctCount > 0 ? 'partially_correct' : 'incorrect';
+  },
   promptSpec:
     '* "sort_buckets" (version 1) — the student classifies 3-8 items into 2-4 groups. data: buckets[{id, label}], items[{id, label, bucketId: the correct bucket\'s id}]. Use for grammar categories (اسم/فعل/حرف, noun/verb/adjective), classification in science or geography.',
   goldens: [

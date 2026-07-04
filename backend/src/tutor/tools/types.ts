@@ -109,6 +109,49 @@ export interface ToolGolden {
 /** What the learner's action on this tool reports back. */
 export type ResultKind = 'checked' | 'explored' | 'scored';
 
+/** The canonical outcome wire values (same enum the result schema uses). */
+export type ResultOutcome = 'correct' | 'partially_correct' | 'incorrect' | 'explored';
+
+/**
+ * The machine-verifiable half of a learner result — the final SUBMISSION,
+ * not a verdict. One flat shape for all tools (like the payload data); each
+ * tool reads only its own field. The server recomputes correctness from this
+ * against the ORIGINAL stored instance, so a client-claimed outcome is never
+ * trusted when an answer is present.
+ */
+export interface ResultAnswer {
+  /** number_line: the final placed value. */
+  value?: number | null;
+  /** order_sequence: the item ids in the order the learner built. */
+  order?: string[] | null;
+  /** sort_buckets: where each item was FIRST placed (what scoring counts). */
+  placements?: Array<{ itemId: string; bucketId: string }> | null;
+  /** match_pairs: how many wrong picks happened before all pairs locked. */
+  wrongTries?: number | null;
+}
+
+export const ResultAnswerSchema = z.object({
+  value: z.number().nullable().optional(),
+  order: z.array(z.string().max(40)).max(8).nullable().optional(),
+  placements: z
+    .array(z.object({ itemId: z.string().min(1).max(40), bucketId: z.string().min(1).max(40) }))
+    .max(8)
+    .nullable()
+    .optional(),
+  wrongTries: z.number().int().min(0).max(99).nullable().optional(),
+});
+
+/**
+ * What a tool's verifier says about a submission:
+ *  - a ResultOutcome — deterministically recomputed from the answer;
+ *  - 'invalid'      — an answer was supplied but does not fit this instance
+ *                     (unknown ids, non-finite value…): tampered or buggy,
+ *                     never trusted;
+ *  - 'unverifiable' — no usable answer field for this tool (old client):
+ *                     fall back to the client-reported outcome, flagged as such.
+ */
+export type VerifyVerdict = ResultOutcome | 'invalid' | 'unverifiable';
+
 /** Declared, tested RTL behavior (INTERACTIVE_PLATFORM.md §2 note). */
 export type RtlBehavior = 'mirrors' | 'axis_ltr' | 'follows_text';
 
@@ -143,6 +186,12 @@ export interface ToolDescriptor<Id extends string = string> {
    * the structural schema, mirrored by the tool's Dart renderable check.
    */
   validate: (data: ToolDataView) => boolean;
+  /**
+   * Server-side result verification: recompute the outcome from the learner's
+   * structured answer against THIS instance's data. Must mirror the tool's
+   * Dart outcome logic (block_logic.dart) exactly.
+   */
+  verifyResult: (data: ToolDataView, answer: ResultAnswer) => VerifyVerdict;
   /** The exact bullet injected into the tutor system prompt for this tool. */
   promptSpec: string;
   goldens: ToolGolden[];

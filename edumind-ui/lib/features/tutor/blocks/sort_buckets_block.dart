@@ -39,6 +39,10 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
   int _correct = 0;
   final List<String> _mistakes = [];
 
+  /// Where each item was placed (one tap per item) — the machine-verifiable
+  /// submission the backend recomputes the score from.
+  final List<Map<String, String>> _placements = [];
+
   /// Bucket just tapped (flash feedback); null between items.
   String? _flashBucketId;
   bool _flashRight = false;
@@ -59,6 +63,7 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
     final item = widget.payload.items[_index];
     final right = item.bucketId == bucket.id;
     setState(() {
+      _placements.add({'itemId': item.id, 'bucketId': bucket.id});
       _flashBucketId = bucket.id;
       _flashRight = right;
       if (right) {
@@ -95,6 +100,7 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
         attempted: true,
         answerOrState: summary,
         outcome: outcome,
+        answer: {'placements': List<Map<String, String>>.of(_placements)},
         learningSignal: _mistakes.isEmpty ? null : _mistakes.join('، '),
       ),
       summary,

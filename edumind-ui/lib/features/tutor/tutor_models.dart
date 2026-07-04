@@ -180,12 +180,19 @@ enum InteractiveOutcome {
 }
 
 /// The structured result a block reports back through the tutor flow.
+///
+/// [answer] is the machine-verifiable final submission (number_line: {value},
+/// order_sequence: {order}, sort_buckets: {placements}, match_pairs:
+/// {wrongTries}) — the backend recomputes correctness from it against the
+/// original instance, so the outcome here is a claim the server checks, not
+/// a verdict it trusts.
 class InteractiveResult {
   InteractiveResult({
     required this.blockType,
     required this.attempted,
     required this.answerOrState,
     required this.outcome,
+    this.answer,
     this.learningSignal,
   });
 
@@ -193,6 +200,7 @@ class InteractiveResult {
   final bool attempted;
   final String answerOrState;
   final InteractiveOutcome outcome;
+  final Map<String, dynamic>? answer;
   final String? learningSignal;
 
   Map<String, dynamic> toMap() => {
@@ -200,6 +208,7 @@ class InteractiveResult {
         'attempted': attempted,
         'answerOrState': answerOrState,
         'correctnessOrOutcome': outcome.wire,
+        if (answer != null) 'answer': answer,
         if (learningSignal != null) 'learningSignal': learningSignal,
       };
 }

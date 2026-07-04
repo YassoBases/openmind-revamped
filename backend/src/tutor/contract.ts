@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import { sanitizeForClaude } from '@edumind/shared';
 import { INTERACTIVE_BLOCK_TYPES, getTool, mergedDataFields } from './tools/registry.js';
-import type { ToolDataView } from './tools/types.js';
+import { ResultAnswerSchema, type ToolDataView } from './tools/types.js';
 
 export const TUTOR_RESPONSE_TYPES = [
   'explanation',
@@ -77,6 +77,12 @@ export function validateInteractivePayload(p: InteractivePayload): InteractivePa
 /**
  * What the CLIENT reports after the learner acted on a block. Travels inside
  * the normal tutor message body so the follow-up is a real conversation turn.
+ *
+ * TRUST MODEL: correctnessOrOutcome is a CLAIM, never taken at face value.
+ * When `answer` (the structured final submission) is present, the route
+ * recomputes the outcome server-side against the ORIGINAL stored instance
+ * (tutor/result.ts) and overrides a wrong claim; without it (older clients)
+ * the claim is used but flagged client_reported in the learning signal.
  */
 export const InteractiveResultSchema = z.object({
   blockType: z.enum(INTERACTIVE_BLOCK_TYPES),
@@ -84,6 +90,8 @@ export const InteractiveResultSchema = z.object({
   /** Compact human-readable action state, e.g. "رتبت: تبخر → تكاثف → هطول". */
   answerOrState: z.string().max(500),
   correctnessOrOutcome: z.enum(['correct', 'partially_correct', 'incorrect', 'explored']),
+  /** The machine-verifiable final submission (see tools/types.ts). */
+  answer: ResultAnswerSchema.optional(),
   /** Optional extra pedagogy signal, e.g. "أخطأ في موضع التكاثف مرتين". */
   learningSignal: z.string().max(300).optional(),
 });

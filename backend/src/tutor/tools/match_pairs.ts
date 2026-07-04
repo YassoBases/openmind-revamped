@@ -34,6 +34,19 @@ export const matchPairsTool = {
     if (new Set(pairs.map((p) => p.right.trim())).size !== pairs.length) return false;
     return true;
   },
+  verifyResult: (d, answer) => {
+    const wrongTries = answer.wrongTries;
+    if (wrongTries == null) return 'unverifiable';
+    if (!Number.isInteger(wrongTries) || wrongTries < 0) return 'invalid';
+    const total = (d.pairs ?? []).length;
+    // All pairs always end up locked (wrong picks stay open for retry), so
+    // the outcome derives from the reported mistake count — mirrors
+    // matchOutcome in block_logic.dart. The count itself is client-reported
+    // process data (no final state can prove it), which the learning signal
+    // records honestly.
+    if (wrongTries === 0) return 'correct';
+    return wrongTries < total ? 'partially_correct' : 'incorrect';
+  },
   promptSpec:
     '* "match_pairs" (version 1) — the student connects each item to its one true match across two columns. data: pairs[{id, left, right}] (3-6 pairs; left = the prompt side, right = its match; every left label distinct, every right label distinct, exactly one right per left). Use for English vocabulary↔meaning, Arabic root↔word pattern or word↔meaning, science concept↔definition, social-studies event or landmark↔place, person or consequence.',
   goldens: [

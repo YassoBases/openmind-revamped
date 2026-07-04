@@ -16,6 +16,18 @@ the first proof of this architecture, not its final scope.**
 > `edumind-ui/test/fixtures/tool_goldens.json` (staleness-tested on both
 > sides) so the two languages cannot drift. Next per §5: `balance_scale`,
 > `timeline`.
+>
+> **Result integrity (follow-up milestone).** A learner result is now a claim
+> the server checks, never a verdict it trusts: blocks submit a structured
+> `answer` (value / order / placements / wrongTries), `tutor/result.ts`
+> matches it to the newest unanswered instance in the persisted thread
+> (one-attempt and duplicate rules enforced server-side), and each
+> descriptor's `verifyResult` recomputes the outcome against the original
+> instance data — wrong claims are overridden, unmatched/tampered submissions
+> are stripped safely (the turn and tutor text survive). Every submission
+> leaves one minimal `learningSignal` on the student turn's context (tool,
+> version, primitive, subject/concept when known, completion, final outcome,
+> verification status, reject reason, attempt) for future personalization.
 
 The long-term product: a tutor that helps learners understand any school
 subject through a growing library of safe, reusable, subject-appropriate

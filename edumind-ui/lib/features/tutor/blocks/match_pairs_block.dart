@@ -106,6 +106,7 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
         attempted: true,
         answerOrState: summary,
         outcome: outcome,
+        answer: {'wrongTries': _mistakes},
         learningSignal: _wrongTries.isEmpty ? null : _wrongTries.join('، '),
       ),
       summary,
