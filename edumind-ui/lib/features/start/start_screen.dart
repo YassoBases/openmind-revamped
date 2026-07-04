@@ -34,6 +34,7 @@ class _StartScreenState extends State<StartScreen> {
   int _pathDone = 0;
   int _pathReady = 0;
   bool _allDone = false;
+  bool _gradeSoon = false;
   bool _loading = true;
 
   @override
@@ -54,11 +55,17 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Future<void> _load({bool sync = true}) async {
-    final catalogs = await LearnCatalogLoader.catalogs();
+    final catalogs = await LearnCatalogLoader.catalogs(
+      language: Session.instance.language,
+      grade: Session.instance.grade,
+    );
     final store = await LearnProgressStore.load();
     void recompute() {
       final completed = store.completed;
       final resume = store.resume;
+      // No catalogs for this grade = the curriculum is still being authored.
+      // That is a different truth than "you finished everything".
+      _gradeSoon = catalogs.isEmpty;
       _action = startAction(
         catalogs,
         completed,
@@ -66,7 +73,7 @@ class _StartScreenState extends State<StartScreen> {
         resumeExperienceId: resume?.experienceId,
         resumeStep: resume?.step ?? 0,
       );
-      _allDone = _action == null;
+      _allDone = !_gradeSoon && _action == null;
       if (_action != null) {
         final (done, ready) = pathProgress(_action!.position.path, completed);
         _pathDone = done;
@@ -123,23 +130,29 @@ class _StartScreenState extends State<StartScreen> {
                     l.translate('start_subtitle'),
                     style: TextStyle(fontSize: 14, height: 1.6, color: cs.onSurfaceVariant),
                   ),
-                  const SizedBox(height: 14),
-                  // The context lens — a small secondary control, never a tab.
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: ActionChip(
-                      avatar: Text(contextEmoji(lens), style: const TextStyle(fontSize: 15)),
-                      label: Text(
-                        lens == null
-                            ? l.translate('ctx_chip_pick')
-                            : '${l.translate('ctx_chip_label')}: ${l.translate('ctx_$lens')}',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  if (!_gradeSoon) ...[
+                    const SizedBox(height: 14),
+                    // The context lens — a small secondary control, never a tab.
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: ActionChip(
+                        avatar: Text(contextEmoji(lens), style: const TextStyle(fontSize: 15)),
+                        label: Text(
+                          lens == null
+                              ? l.translate('ctx_chip_pick')
+                              : '${l.translate('ctx_chip_label')}: ${l.translate('ctx_$lens')}',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                        onPressed: _openContextSheet,
                       ),
-                      onPressed: _openContextSheet,
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 26),
-                  _allDone ? _allDoneCard(l, cs) : _momentCard(l, cs),
+                  _gradeSoon
+                      ? _gradeSoonCard(l, cs)
+                      : _allDone
+                          ? _allDoneCard(l, cs)
+                          : _momentCard(l, cs),
                 ],
               ),
       ),
@@ -245,6 +258,50 @@ class _StartScreenState extends State<StartScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Grades whose curriculum is still being authored (8/9 today): the honest
+  /// compact state — no dead «ابدأ التجربة» button, one real capability.
+  Widget _gradeSoonCard(AppLocalizations l, ColorScheme cs) {
+    final gradeWord = l.translate('grade_word_${Session.instance.grade}');
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        border: Border.all(color: cs.outlineVariant),
+        borderRadius: BorderRadius.circular(Palette.radiusCard),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('🌱', style: TextStyle(fontSize: 32)),
+          const SizedBox(height: 8),
+          Text(
+            l.translateWith('grade_soon_title', {'g': gradeWord}),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, height: 1.5),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l.translate('grade_soon_body'),
+            style: TextStyle(fontSize: 13.5, height: 1.6, color: cs.onSurfaceVariant),
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: widget.onAskTutor,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Palette.radiusButton),
+              ),
+            ),
+            icon: const Icon(Icons.support_agent_rounded),
+            label: Text(
+              l.translate('start_ask_title'),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
       ),
     );
   }

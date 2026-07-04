@@ -8,6 +8,13 @@ import '../../core/session.dart';
 /// A saved mid-experience position (step index the learner reached).
 typedef LessonResume = ({String pathId, String experienceId, int step});
 
+/// Completion keys that moved when the catalog was restructured (v2: the
+/// curriculum paths). Old key → the same experience's key today. Progress is
+/// sacred: a learner who finished a station under the old path keeps it.
+const kLegacyCompletionKeys = <String, String>{
+  'neighborhood_engineer/triangle_garden': 'land_of_difference/triangle_garden',
+};
+
 /// Completion state for learning experiences — local-first with backend sync.
 ///
 /// SharedPreferences stays the instant, offline source of truth for the UI
@@ -28,8 +35,30 @@ class LearnProgressStore {
   static final ValueNotifier<int> revision = ValueNotifier(0);
 
   static Future<LearnProgressStore> load() async {
-    _instance ??= LearnProgressStore._(await SharedPreferences.getInstance());
+    if (_instance == null) {
+      _instance = LearnProgressStore._(await SharedPreferences.getInstance());
+      await _instance!._migrateLegacyKeys();
+    }
     return _instance!;
+  }
+
+  /// Tests re-seed SharedPreferences between cases; the singleton must not
+  /// carry the previous seed's prefs (and must re-run the key migration).
+  @visibleForTesting
+  static void resetForTesting() => _instance = null;
+
+  /// Forward-migrates locally stored legacy completion keys (idempotent).
+  /// Uses the normal [markCompleted] path so the new key also reaches the
+  /// backend; the legacy key stays in the set harmlessly — nothing references
+  /// it after the catalog restructure.
+  Future<void> _migrateLegacyKeys() async {
+    final local = completed;
+    for (final MapEntry(key: legacy, value: current)
+        in kLegacyCompletionKeys.entries) {
+      if (!local.contains(legacy) || local.contains(current)) continue;
+      final slash = current.indexOf('/');
+      await markCompleted(current.substring(0, slash), current.substring(slash + 1));
+    }
   }
 
   Set<String> get completed {
@@ -70,6 +99,16 @@ class LearnProgressStore {
     final exp = m['experienceId'] as String?;
     final step = (m['step'] as num?)?.toInt() ?? 0;
     if (path == null || exp == null || step <= 0) return null;
+    // A marker saved before the catalog restructure points at the old path.
+    final canonical = kLegacyCompletionKeys['$path/$exp'];
+    if (canonical != null) {
+      final slash = canonical.indexOf('/');
+      return (
+        pathId: canonical.substring(0, slash),
+        experienceId: canonical.substring(slash + 1),
+        step: step,
+      );
+    }
     return (pathId: path, experienceId: exp, step: step);
   }
 
@@ -97,9 +136,11 @@ class LearnProgressStore {
     if (!Session.instance.registered) return false;
     try {
       final res = await Api.learnProgress();
+      // Remote rows written before the catalog restructure carry legacy
+      // keys (e.g. from an old install) — translate them on the way in.
       final remote = <String>{
         for (final item in (res['items'] as List? ?? const []))
-          '${(item as Map)['pathId']}/${item['experienceId']}',
+          _canonicalKey('${(item as Map)['pathId']}/${item['experienceId']}'),
       };
       final local = completed;
 
@@ -119,5 +160,38 @@ class LearnProgressStore {
     } catch (_) {
       return false; // offline — local state stands
     }
+  }
+
+  static String _canonicalKey(String key) => kLegacyCompletionKeys[key] ?? key;
+
+  // ---- Check-step results ---------------------------------------------------
+  // «تحقق من الفهم»: correctness is recorded, never a completion gate. Kept
+  // local-first (backend columns are a later, separate step); last write wins
+  // on replay. Immediately useful as tutor-help context and for أنا later.
+  static const _checkKey = 'learnCheckResults';
+
+  /// (correct, total) of the last check run for an experience, or null.
+  (int correct, int total)? checkResult(String pathId, String experienceId) {
+    final raw = _prefs.getString(_checkKey);
+    if (raw == null) return null;
+    final value =
+        (jsonDecode(raw) as Map<String, dynamic>)['$pathId/$experienceId'];
+    if (value is! String) return null;
+    final slash = value.indexOf('/');
+    if (slash <= 0) return null;
+    final correct = int.tryParse(value.substring(0, slash));
+    final total = int.tryParse(value.substring(slash + 1));
+    if (correct == null || total == null || total <= 0) return null;
+    return (correct, total);
+  }
+
+  Future<void> saveCheckResult(
+      String pathId, String experienceId, int correct, int total) async {
+    final raw = _prefs.getString(_checkKey);
+    final map = raw == null
+        ? <String, dynamic>{}
+        : jsonDecode(raw) as Map<String, dynamic>;
+    map['$pathId/$experienceId'] = '$correct/$total';
+    await _prefs.setString(_checkKey, jsonEncode(map));
   }
 }

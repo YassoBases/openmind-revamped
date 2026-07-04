@@ -7,14 +7,22 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('bundled learning catalogs parse and are internally consistent', () async {
-    final catalogs = await LearnCatalogLoader.catalogs();
+    final catalogs = await LearnCatalogLoader.catalogs(grade: 7);
     expect(catalogs, isNotEmpty);
 
     for (final catalog in catalogs) {
       expect(catalog.paths, isNotEmpty);
+      // Path ids are progress-key prefixes: they must be unique per catalog.
+      final ids = catalog.paths.map((p) => p.id).toList();
+      expect(ids.toSet().length, ids.length, reason: 'duplicate path ids');
+
       for (final path in catalog.paths) {
         expect(path.id, isNotEmpty);
+        expect(path.tagline, isNotEmpty, reason: '«يعبر عن» is the path identity');
         expect(path.experiences, isNotEmpty);
+        final expIds = path.experiences.map((e) => e.id).toList();
+        expect(expIds.toSet().length, expIds.length,
+            reason: 'duplicate experience ids in ${path.id}');
 
         for (final exp in path.experiences) {
           if (!exp.ready) continue;
@@ -31,9 +39,11 @@ void main() {
                     'in ${path.id}/${exp.id}',
               );
             }
-            // Choices are answerable and self-explaining.
-            final choice = step.choice;
-            if (choice != null) {
+            // Choices (and check items) are answerable and self-explaining.
+            for (final choice in [
+              if (step.choice != null) step.choice!,
+              ...step.checkItems,
+            ]) {
               expect(choice.options.length, greaterThanOrEqualTo(2));
               expect(choice.correctIndex, inInclusiveRange(0, choice.options.length - 1));
               expect(choice.correctFeedback, isNotEmpty);
@@ -46,6 +56,13 @@ void main() {
                 expect(step.widget, isNotNull, reason: '${path.id}/${exp.id}');
               case LearnStepKind.choice:
                 expect(step.choice, isNotNull, reason: '${path.id}/${exp.id}');
+              case LearnStepKind.check:
+                // Verification needs items, and stays lens-invariant like
+                // mechanics: check steps never carry narrative variants.
+                expect(step.checkItems.length, inInclusiveRange(2, 3),
+                    reason: '${path.id}/${exp.id}');
+                expect(step.variants, isEmpty,
+                    reason: 'check is identical across lenses');
               case LearnStepKind.scene:
               case LearnStepKind.apply:
                 break;
@@ -56,21 +73,52 @@ void main() {
     }
   });
 
-  test('the grade-7 math catalog ships the neighborhood triangle experience', () async {
-    final catalogs = await LearnCatalogLoader.catalogs(language: 'ar');
+  test('grade gating is a hard filter — no grade ever borrows another\'s catalog',
+      () async {
+    // Grade 7 is the only authored grade today.
+    final grade7 = await LearnCatalogLoader.catalogs(language: 'ar', grade: 7);
+    expect(grade7, isNotEmpty);
+    expect(grade7.every((c) => c.grade == 7), isTrue);
+
+    // Grades 8/9 must get the honest empty answer, never grade-7 content.
+    for (final grade in [8, 9]) {
+      final catalogs = await LearnCatalogLoader.catalogs(language: 'ar', grade: grade);
+      expect(catalogs, isEmpty, reason: 'grade $grade has no authored catalog');
+    }
+  });
+
+  test('the grade-7 math catalog is the eight curriculum paths', () async {
+    final catalogs = await LearnCatalogLoader.catalogs(language: 'ar', grade: 7);
     final math = catalogs.firstWhere((c) => c.subject == 'الرياضيات');
     expect(math.grade, 7);
+    expect(math.paths.map((p) => p.id).toList(), [
+      'city_keys',
+      'missing_number',
+      'unshakable_city',
+      'mirror_world',
+      'sure_path',
+      'land_of_difference',
+      'beyond_walls',
+      'city_eye',
+    ]);
+  });
 
-    final path = math.paths.firstWhere((p) => p.id == 'neighborhood_engineer');
+  test('the grade-7 math catalog ships the triangle-area station', () async {
+    final catalogs = await LearnCatalogLoader.catalogs(language: 'ar', grade: 7);
+    final math = catalogs.firstWhere((c) => c.subject == 'الرياضيات');
+
+    final path = math.paths.firstWhere((p) => p.id == 'land_of_difference');
     final exp = path.experiences.firstWhere((e) => e.id == 'triangle_garden');
     expect(exp.ready, isTrue);
-    // The pedagogy arc: situation → free action → prediction → constraint → application.
+    // The pedagogy arc: situation → free action → prediction → constraint →
+    // application → verification.
     expect(exp.steps.map((s) => s.kind).toList(), [
       LearnStepKind.scene,
       LearnStepKind.explore,
       LearnStepKind.choice,
       LearnStepKind.challenge,
       LearnStepKind.apply,
+      LearnStepKind.check,
     ]);
     // The challenge target is reachable on the widget's own grid.
     final challenge = exp.steps.firstWhere((s) => s.kind == LearnStepKind.challenge);
@@ -86,9 +134,9 @@ void main() {
   });
 
   test('triangle experience ships two context-lens variants that reword only the story', () async {
-    final catalogs = await LearnCatalogLoader.catalogs(language: 'ar');
+    final catalogs = await LearnCatalogLoader.catalogs(language: 'ar', grade: 7);
     final math = catalogs.firstWhere((c) => c.subject == 'الرياضيات');
-    final path = math.paths.firstWhere((p) => p.id == 'neighborhood_engineer');
+    final path = math.paths.firstWhere((p) => p.id == 'land_of_difference');
     final exp = path.experiences.firstWhere((e) => e.id == 'triangle_garden');
 
     final scene = exp.steps.firstWhere((s) => s.kind == LearnStepKind.scene);

@@ -61,7 +61,20 @@ class AppLocalizations {
       'journey_title': 'My Journey',
       'journey_subtitle':
           'Your real Grade 7 map: what you completed, where you are, and what unlocks next.',
+      'journey_pick_sub':
+          'Pick your path: each one is a big idea from your curriculum, told through real lessons.',
+      'journey_pick_path': 'Pick your path!',
       'journey_locked': 'Locked',
+      'path_ready_progress': '{n} of {m} ready',
+      // honest grade gating (grades whose curriculum is not authored yet)
+      'grade_word_7': 'Grade 7',
+      'grade_word_8': 'Grade 8',
+      'grade_word_9': 'Grade 9',
+      'grade_soon_title': 'The {g} curriculum is being prepared',
+      'grade_soon_body':
+          "We are building your grade's lessons with the same care we gave Grade 7 — and we will never show you content that is not for your grade.",
+      'grade_soon_can': 'What you can do now',
+      'grade_soon_ask': 'Ask your tutor about any lesson',
       'start_greeting': 'Welcome back,',
       'start_subtitle': 'One clear step at a time — pick up where you left off.',
       'start_continue': 'CONTINUE YOUR JOURNEY',
@@ -113,6 +126,11 @@ class AppLocalizations {
       'learn_done_body': 'You made the decisions and discovered the idea in',
       'learn_back_to_path': 'Back to the journey',
       'learn_need_help': 'Need help?',
+      // check step (تحقق من الفهم)
+      'learn_check_item': 'Question {n} of {m}',
+      'learn_check_next': 'Next',
+      'learn_check_score': 'You answered {c} of {m} correctly',
+      'learn_check_review': 'Review the idea with your tutor',
       // Ask OpenMind (tutor)
       'nav_ask': 'Ask',
       'tutor_title': 'Ask OpenMind',
@@ -367,7 +385,20 @@ class AppLocalizations {
       'journey_title': 'رحلتي',
       'journey_subtitle':
           'خريطتك الحقيقية للصف السابع: ما أنجزته، وأين تقف الآن، وما الذي يُفتح بعده.',
+      'journey_pick_sub':
+          'اختر مسارك: كل مسار فكرة كبيرة من منهاجك تُروى عبر دروس حقيقية.',
+      'journey_pick_path': 'اختر مسارك!',
       'journey_locked': 'مقفلة',
+      'path_ready_progress': '{n} من {m} جاهزة',
+      // honest grade gating (grades whose curriculum is not authored yet)
+      'grade_word_7': 'الصف السابع',
+      'grade_word_8': 'الصف الثامن',
+      'grade_word_9': 'الصف التاسع',
+      'grade_soon_title': 'منهاج {g} قيد الإعداد',
+      'grade_soon_body':
+          'نبني دروس صفك بالعناية نفسها التي بنينا بها دروس الصف السابع، ولن نعرض لك محتوى ليس لصفك.',
+      'grade_soon_can': 'ما تستطيع فعله الآن',
+      'grade_soon_ask': 'اسأل مساعدك عن أي درس',
       'start_greeting': 'أهلًا بعودتك،',
       'start_subtitle': 'خطوة واضحة واحدة في كل مرة — تابع من حيث توقفت.',
       'start_continue': 'تابع رحلتك',
@@ -419,6 +450,11 @@ class AppLocalizations {
       'learn_done_body': 'اتخذت القرارات واكتشفت الفكرة بنفسك في',
       'learn_back_to_path': 'العودة إلى الرحلة',
       'learn_need_help': 'هل تحتاج مساعدة؟',
+      // check step (تحقق من الفهم)
+      'learn_check_item': 'سؤال {n} من {m}',
+      'learn_check_next': 'التالي',
+      'learn_check_score': 'أجبت صحيحًا عن {c} من {m}',
+      'learn_check_review': 'راجع الفكرة مع مساعدك',
       // Ask OpenMind (tutor)
       'nav_ask': 'اسأل',
       'tutor_title': 'اسأل أوبن مايند',

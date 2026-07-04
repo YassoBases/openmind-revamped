@@ -40,11 +40,16 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   void initState() {
     super.initState();
     _step = widget.initialStep.clamp(0, widget.experience.steps.length - 1);
+    _checkPicked = List<int?>.filled(_current.checkItems.length, null);
   }
 
   // Per-step interaction state, reset on advance.
   LearnWidgetStatus _widgetStatus = const LearnWidgetStatus();
   int? _picked;
+
+  // Check-step state: one answer slot per item, walked one item at a time.
+  int _checkIndex = 0;
+  List<int?> _checkPicked = const [];
 
   // What the student tried across the experience — tutor-help context.
   final List<String> _attempts = [];
@@ -64,6 +69,9 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
       LearnStepKind.choice => _picked != null,
       LearnStepKind.challenge => _widgetStatus.targetMet,
       LearnStepKind.apply => s.choice == null || _picked != null,
+      // Answered-all, never all-correct: like `choice`, a wrong pick teaches
+      // through its feedback instead of blocking the finish.
+      LearnStepKind.check => !_checkPicked.contains(null),
     };
   }
 
@@ -134,11 +142,14 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   }
 
   Future<void> _next() async {
+    await _recordCheckIfAny();
     if (_step < widget.experience.steps.length - 1) {
       setState(() {
         _step++;
         _widgetStatus = const LearnWidgetStatus();
         _picked = null;
+        _checkIndex = 0;
+        _checkPicked = List<int?>.filled(_current.checkItems.length, null);
       });
       // The reached step is the real resumable position (fire-and-forget).
       final store = await LearnProgressStore.load();
@@ -149,6 +160,20 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     await store.clearResume(widget.path.id, widget.experience.id);
     await store.markCompleted(widget.path.id, widget.experience.id);
     if (mounted) setState(() => _done = true);
+  }
+
+  /// Records the leaving step's check score (last write wins on replay).
+  /// Recorded, never gated — the score only feeds أنا and tutor context.
+  Future<void> _recordCheckIfAny() async {
+    final s = _current;
+    if (s.kind != LearnStepKind.check || s.checkItems.isEmpty) return;
+    var correct = 0;
+    for (var i = 0; i < s.checkItems.length; i++) {
+      if (_checkPicked[i] == s.checkItems[i].correctIndex) correct++;
+    }
+    final store = await LearnProgressStore.load();
+    await store.saveCheckResult(
+        widget.path.id, widget.experience.id, correct, s.checkItems.length);
   }
 
   @override
@@ -275,14 +300,125 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
           const SizedBox(height: 14),
           _choiceBlock(step.choice!),
         ],
+        if (step.kind == LearnStepKind.check && step.checkItems.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _checkBlock(step),
+        ],
       ],
     );
   }
 
-  Widget _choiceBlock(LearnChoice choice) {
+  /// «تحقق من الفهم»: the step's items one at a time, with a sub-progress
+  /// line. Feedback teaches either way; the score is summarized at the end
+  /// and a weak one offers the tutor — it never blocks finishing.
+  Widget _checkBlock(LearnStep step) {
+    final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final answered = _picked != null;
-    final correct = _picked == choice.correctIndex;
+    final items = step.checkItems;
+    final item = items[_checkIndex];
+    final answered = _checkPicked[_checkIndex] != null;
+    final allAnswered = !_checkPicked.contains(null);
+    var correct = 0;
+    for (var i = 0; i < items.length; i++) {
+      if (_checkPicked[i] == items[i].correctIndex) correct++;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              l
+                  .translate('learn_check_item')
+                  .replaceFirst('{n}', '${_checkIndex + 1}')
+                  .replaceFirst('{m}', '${items.length}'),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            const Spacer(),
+            for (var i = 0; i < items.length; i++)
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsetsDirectional.only(start: 5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _checkPicked[i] != null
+                      ? _accent
+                      : cs.surfaceContainerHighest,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _itemBlock(
+          item,
+          picked: _checkPicked[_checkIndex],
+          onPick: (i) => setState(() {
+            _checkPicked[_checkIndex] = i;
+            if (i != item.correctIndex) {
+              _attempts.add('${item.prompt} → ${item.options[i]}');
+            }
+          }),
+        ),
+        if (answered && _checkIndex < items.length - 1) ...[
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: FilledButton.tonal(
+              onPressed: () => setState(() => _checkIndex++),
+              child: Text(l.translate('learn_check_next')),
+            ),
+          ),
+        ],
+        if (allAnswered) ...[
+          const SizedBox(height: 14),
+          Text(
+            l
+                .translate('learn_check_score')
+                .replaceFirst('{c}', '$correct')
+                .replaceFirst('{m}', '${items.length}'),
+            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+          ),
+          if (correct * 2 < items.length)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: _openHelp,
+                icon: Icon(Icons.support_agent_rounded, size: 18, color: _accent),
+                label: Text(l.translate('learn_check_review')),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _choiceBlock(LearnChoice choice) => _itemBlock(
+        choice,
+        picked: _picked,
+        onPick: (i) => setState(() {
+          _picked = i;
+          if (i != choice.correctIndex) {
+            _attempts.add('${choice.prompt} → ${choice.options[i]}');
+          }
+        }),
+      );
+
+  /// One answerable question: prompt, options, feedback either way. Shared
+  /// by the step-level choice and the check items — same look, same rules.
+  Widget _itemBlock(
+    LearnChoice choice, {
+    required int? picked,
+    required ValueChanged<int> onPick,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final answered = picked != null;
+    final correct = picked == choice.correctIndex;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -294,7 +430,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         for (var i = 0; i < choice.options.length; i++)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: _option(choice, i),
+            child: _option(choice, i, picked: picked, onPick: onPick),
           ),
         if (answered) ...[
           const SizedBox(height: 4),
@@ -319,10 +455,15 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     );
   }
 
-  Widget _option(LearnChoice choice, int i) {
+  Widget _option(
+    LearnChoice choice,
+    int i, {
+    required int? picked,
+    required ValueChanged<int> onPick,
+  }) {
     final cs = Theme.of(context).colorScheme;
-    final answered = _picked != null;
-    final isPicked = _picked == i;
+    final answered = picked != null;
+    final isPicked = picked == i;
     final isRight = i == choice.correctIndex;
 
     Color border = cs.outlineVariant;
@@ -337,14 +478,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
 
     return InkWell(
       borderRadius: BorderRadius.circular(Palette.radiusButton),
-      onTap: answered
-          ? null
-          : () => setState(() {
-                _picked = i;
-                if (i != choice.correctIndex) {
-                  _attempts.add('${choice.prompt} → ${choice.options[i]}');
-                }
-              }),
+      onTap: answered ? null : () => onPick(i),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),

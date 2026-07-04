@@ -78,7 +78,7 @@ class _EduMindRootState extends State<EduMindRoot> {
     final screens = middle
         ? <Widget>[
             StartScreen(onAskTutor: () => _goTo(2), onOpenJourney: () => _goTo(1)),
-            const JourneyScreen(),
+            JourneyScreen(onAskTutor: () => _goTo(2)),
             const AskScreen(),
             const MeScreen(),
           ]
