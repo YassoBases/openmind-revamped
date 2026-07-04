@@ -92,8 +92,10 @@ class LearnExperience {
 
 /// The step kinds the engine understands. The arc is fixed by the pedagogy:
 /// live the situation → act freely and observe → commit to a prediction →
-/// solve under a real constraint → apply the discovered idea.
-enum LearnStepKind { scene, explore, choice, challenge, apply }
+/// solve under a real constraint → apply the discovered idea → verify the
+/// understanding landed. The short explanation of the methodology is NOT a
+/// step: it stays on-demand through the in-experience tutor help sheet.
+enum LearnStepKind { scene, explore, choice, challenge, apply, check }
 
 /// Optional context-lens overrides for one step's NARRATIVE fields. A variant
 /// may reword the story (title/body/emoji/successText) for the learner's
@@ -122,6 +124,8 @@ class LearnStepVariant {
 ///  - choice:    [choice] must be answered (right or wrong — feedback teaches)
 ///  - challenge: [widget] with a target; passable only when the target holds
 ///  - apply:     fixed [widget] and/or [choice] tying the idea to real life
+///  - check:     [checkItems] quick verification — passable once every item
+///               is answered; correctness is recorded, never a gate
 class LearnStep {
   LearnStep({
     required this.kind,
@@ -130,6 +134,7 @@ class LearnStep {
     this.emoji,
     this.widget,
     this.choice,
+    this.checkItems = const [],
     this.successText,
     this.variants = const {},
   });
@@ -140,6 +145,11 @@ class LearnStep {
   final String? emoji;
   final LearnWidgetSpec? widget;
   final LearnChoice? choice;
+
+  /// `check` items: 2-3 quick questions verifying the station's one idea.
+  /// Reuses the LearnChoice shape. Deliberately outside the lens system —
+  /// verification, like mechanics, is identical across every lens.
+  final List<LearnChoice> checkItems;
 
   /// Shown when a challenge target is reached.
   final String? successText;
@@ -167,6 +177,9 @@ class LearnStep {
         choice: m['choice'] == null
             ? null
             : LearnChoice.fromMap(m['choice'] as Map<String, dynamic>),
+        checkItems: ((m['checkItems'] as List?) ?? const [])
+            .map((c) => LearnChoice.fromMap((c as Map).cast<String, dynamic>()))
+            .toList(),
         successText: m['successText'] as String?,
         variants: ((m['variants'] as Map?) ?? const {}).map(
           (k, v) => MapEntry(

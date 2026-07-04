@@ -50,7 +50,10 @@ class _MeScreenState extends State<MeScreen> {
   }
 
   Future<void> _load() async {
-    final catalogs = await LearnCatalogLoader.catalogs();
+    final catalogs = await LearnCatalogLoader.catalogs(
+      language: Session.instance.language,
+      grade: Session.instance.grade,
+    );
     final store = await LearnProgressStore.load();
     final completed = store.completed;
     var pathsDone = 0, pathsTotal = 0;

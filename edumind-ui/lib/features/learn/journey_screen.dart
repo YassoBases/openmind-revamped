@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
 
 import '../../app_localizations.dart';
+import '../../core/middle_palette.dart';
 import '../../core/palette.dart';
-import 'experience_screen.dart';
+import '../../core/session.dart';
+import '../../widgets/mascot.dart';
+import 'grade_soon_view.dart';
 import 'journey_logic.dart';
 import 'learn_catalog.dart';
 import 'learn_models.dart';
 import 'learn_progress_store.dart';
+import 'path_screen.dart';
 
-/// "رحلتي" — the real Grade-7 learning map. Every path is a connected area:
-/// its experiences are stations on a winding trail (painted connectors, not a
-/// list of cards), with a true state per node — completed / current position
-/// («أنت هنا») / locked / honest «قريبًا» — computed by journey_logic.dart
-/// from persisted progress (local + backend-synced). Tapping an open station
-/// launches the real interactive experience.
+/// "رحلتي" — the curriculum path list. One decision: pick a path. Each row
+/// is a path's identity (icon, title, «يعبر عن», honest ready-progress);
+/// tapping pushes the path's own station trail (PathScreen). Catalogs are
+/// grade-gated: a grade without authored content gets the honest
+/// GradeSoonView, never another grade's map.
 class JourneyScreen extends StatefulWidget {
-  const JourneyScreen({super.key});
+  const JourneyScreen({super.key, this.onAskTutor});
+
+  /// Jumps to the مساعدي tab (wired by the root shell) — the one real
+  /// capability offered while a grade's curriculum is still being built.
+  final VoidCallback? onAskTutor;
 
   @override
   State<JourneyScreen> createState() => _JourneyScreenState();
@@ -45,7 +52,10 @@ class _JourneyScreenState extends State<JourneyScreen> {
   }
 
   Future<void> _load({bool sync = true}) async {
-    final catalogs = await LearnCatalogLoader.catalogs();
+    final catalogs = await LearnCatalogLoader.catalogs(
+      language: Session.instance.language,
+      grade: Session.instance.grade,
+    );
     final store = await LearnProgressStore.load();
     if (mounted) {
       setState(() {
@@ -59,382 +69,194 @@ class _JourneyScreenState extends State<JourneyScreen> {
     }
   }
 
-  Future<void> _open(LearnPath path, LearnExperience experience) async {
-    await Navigator.push<bool>(
+  void _openPath(LearnPath path) {
+    Navigator.push<void>(
       context,
-      MaterialPageRoute(
-        builder: (_) => ExperienceScreen(path: path, experience: experience),
-      ),
-    );
-    if (mounted) await _load(sync: false);
+      MaterialPageRoute(builder: (_) => PathScreen(path: path)),
+    ).then((_) {
+      if (mounted) _load(sync: false);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
     final catalogs = _catalogs;
 
     return Scaffold(
+      backgroundColor: MiddlePalette.ivory,
       body: SafeArea(
         child: catalogs == null
             ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 96),
-                children: [
-                  Text(
-                    l.translate('journey_title'),
-                    style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l.translate('journey_subtitle'),
-                    style: TextStyle(fontSize: 14, height: 1.6, color: cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 20),
-                  for (final catalog in catalogs) ...[
-                    Text(
-                      '${catalog.subject} — ${l.translate('learn_grade')} ${catalog.grade}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurfaceVariant,
+            : catalogs.isEmpty
+                ? GradeSoonView(
+                    grade: Session.instance.grade,
+                    onAskTutor: widget.onAskTutor,
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 96),
+                    children: [
+                      Text(
+                        l.translate('journey_title'),
+                        style: const TextStyle(
+                          fontSize: 23,
+                          fontWeight: FontWeight.w900,
+                          color: MiddlePalette.blueInk,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    for (final path in catalog.paths) _pathArea(path, l),
-                  ],
-                ],
-              ),
-      ),
-    );
-  }
-
-  /// One connected area of the map: header + winding station trail.
-  Widget _pathArea(LearnPath path, AppLocalizations l) {
-    final cs = Theme.of(context).colorScheme;
-    final accent = hexToColor(path.colorHex);
-    final states = journeyNodeStates(path, _completed);
-    final (done, ready) = pathProgress(path, _completed);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 22),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.04),
-        border: Border.all(color: accent.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(Palette.radiusCard),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(Palette.radiusButton),
-                ),
-                alignment: Alignment.center,
-                child: Text(path.emoji, style: const TextStyle(fontSize: 22)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      path.title,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                    ),
-                    Text(
-                      path.tagline,
-                      style: TextStyle(fontSize: 12.5, height: 1.5, color: cs.onSurfaceVariant),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '$done/$ready',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: done == ready && ready > 0 ? accent : cs.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          _TrailMap(
-            path: path,
-            states: states,
-            accent: accent,
-            onOpen: (e) => _open(path, e),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The winding trail of one path: stations at alternating offsets, joined by
-/// a painted route. Pure presentation — states come from journey_logic.
-class _TrailMap extends StatelessWidget {
-  const _TrailMap({
-    required this.path,
-    required this.states,
-    required this.accent,
-    required this.onOpen,
-  });
-
-  final LearnPath path;
-  final List<JourneyNodeState> states;
-  final Color accent;
-  final ValueChanged<LearnExperience> onOpen;
-
-  static const _rowH = 112.0;
-  static const _topPad = 40.0;
-  static const _node = 58.0;
-  static const _labelW = 132.0;
-
-  /// Horizontal wave the trail follows (fractions of the width).
-  static const _wave = [0.5, 0.2, 0.5, 0.8];
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final rtl = Directionality.of(context) == TextDirection.rtl;
-    final n = path.experiences.length;
-    final height = _topPad + _rowH * (n - 1) + _node + 46;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        Offset center(int i) {
-          var f = _wave[i % _wave.length];
-          if (rtl) f = 1 - f;
-          return Offset(w * f, _topPad + _rowH * i + _node / 2);
-        }
-
-        final centers = [for (var i = 0; i < n; i++) center(i)];
-
-        return SizedBox(
-          height: height,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _TrailPainter(
-                    centers: centers,
-                    states: states,
-                    accent: accent,
-                    idle: cs.outlineVariant,
+                      const SizedBox(height: 4),
+                      Text(
+                        l.translate('journey_pick_sub'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.6,
+                          color: MiddlePalette.body,
+                        ),
+                      ),
+                      // Hudhud's guide moment — only until real progress
+                      // exists; a returning learner gets a quiet header.
+                      if (_completed.isEmpty) ...[
+                        const SizedBox(height: 14),
+                        _hudhudMoment(l),
+                      ],
+                      const SizedBox(height: 18),
+                      for (final catalog in catalogs) ...[
+                        Text(
+                          '${catalog.subject} — '
+                          '${l.translate('learn_grade')} ${catalog.grade}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: MiddlePalette.body,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        for (final path in catalog.paths) _pathRow(path, l),
+                      ],
+                    ],
                   ),
-                ),
-              ),
-              for (var i = 0; i < n; i++) ..._station(
-                context, l, cs, path.experiences[i], states[i], centers[i]),
-            ],
-          ),
-        );
-      },
+      ),
     );
   }
 
-  List<Widget> _station(
-    BuildContext context,
-    AppLocalizations l,
-    ColorScheme cs,
-    LearnExperience e,
-    JourneyNodeState state,
-    Offset c,
-  ) {
-    final openable =
-        state == JourneyNodeState.completed || state == JourneyNodeState.current;
-    final current = state == JourneyNodeState.current;
-
-    final circle = switch (state) {
-      JourneyNodeState.completed => Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: accent,
-            boxShadow: [
-              BoxShadow(
-                color: accent.withValues(alpha: 0.35),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: const Icon(Icons.check_rounded, size: 28, color: Colors.white),
+  Widget _hudhudMoment(AppLocalizations l) {
+    return Row(
+      children: [
+        const Mascot(
+          size: 56,
+          accent: MiddlePalette.blueInk,
+          expression: MascotExpression.happy,
         ),
-      JourneyNodeState.current => Container(
+        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: cs.surface,
-            border: Border.all(color: accent, width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: accent.withValues(alpha: 0.30),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            color: MiddlePalette.softBlue,
+            borderRadius: BorderRadius.circular(999),
           ),
-          child: Icon(Icons.play_arrow_rounded, size: 30, color: accent),
-        ),
-      JourneyNodeState.locked => Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: cs.surfaceContainerHighest,
-            border: Border.all(color: cs.outlineVariant),
-          ),
-          child: Icon(Icons.lock_rounded, size: 20, color: cs.onSurfaceVariant),
-        ),
-      JourneyNodeState.soon => Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-            border: Border.all(color: cs.outlineVariant),
-          ),
-          child: Icon(Icons.more_horiz_rounded, size: 22, color: cs.onSurfaceVariant),
-        ),
-    };
-
-    final subLabel = switch (state) {
-      JourneyNodeState.soon => l.translate('learn_soon'),
-      JourneyNodeState.locked => l.translate('journey_locked'),
-      JourneyNodeState.completed => l.translate('learn_replay'),
-      JourneyNodeState.current => null,
-    };
-
-    return [
-      // «أنت هنا» — the learner's position on the map.
-      if (current)
-        Positioned(
-          left: c.dx - 50,
-          top: c.dy - _node / 2 - 30,
-          width: 100,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: accent,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                l.translate('journey_here'),
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
+          child: Text(
+            l.translate('journey_pick_path'),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: MiddlePalette.blueInk,
             ),
           ),
         ),
-      Positioned(
-        left: c.dx - _node / 2,
-        top: c.dy - _node / 2,
-        width: _node,
-        height: _node,
-        child: Semantics(
-          button: openable,
-          label: e.title,
-          child: InkResponse(
-            radius: _node / 2 + 6,
-            onTap: openable ? () => onOpen(e) : null,
-            child: circle,
-          ),
-        ),
-      ),
-      Positioned(
-        left: c.dx - _labelW / 2,
-        top: c.dy + _node / 2 + 6,
-        width: _labelW,
-        child: GestureDetector(
-          onTap: openable ? () => onOpen(e) : null,
-          child: Column(
-            children: [
-              Text(
-                e.title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  height: 1.35,
-                  fontWeight: current ? FontWeight.w800 : FontWeight.w600,
-                  color: openable ? cs.onSurface : cs.onSurfaceVariant,
+      ],
+    );
+  }
+
+  /// One path row: identity + honest progress, one tap → its trail.
+  Widget _pathRow(LearnPath path, AppLocalizations l) {
+    final accent = hexToColor(path.colorHex);
+    final (done, ready) = pathProgress(path, _completed);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(Palette.radiusCard),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Palette.radiusCard),
+          onTap: () => _openPath(path),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              border: Border.all(color: MiddlePalette.outline),
+              borderRadius: BorderRadius.circular(Palette.radiusCard),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(Palette.radiusButton),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(path.emoji, style: const TextStyle(fontSize: 22)),
                 ),
-              ),
-              if (subLabel != null)
-                Text(
-                  subLabel,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: state == JourneyNodeState.completed
-                        ? accent
-                        : cs.onSurfaceVariant,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        path.title,
+                        style: const TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          color: MiddlePalette.blueInk,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        path.tagline,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          height: 1.4,
+                          color: MiddlePalette.body,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+                const SizedBox(width: 8),
+                if (ready > 0)
+                  SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: CircularProgressIndicator(
+                      value: done / ready,
+                      strokeWidth: 3.5,
+                      color: accent,
+                      backgroundColor: MiddlePalette.softBlue,
+                    ),
+                  )
+                else
+                  Text(
+                    l.translate('learn_soon'),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: MiddlePalette.body,
+                    ),
+                  ),
+                const SizedBox(width: 6),
+                Icon(
+                  rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                  color: MiddlePalette.body,
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ];
+    );
   }
-}
-
-/// Paints the route between stations: a smooth S-curve, colored up to the
-/// learner's position and faded beyond it.
-class _TrailPainter extends CustomPainter {
-  _TrailPainter({
-    required this.centers,
-    required this.states,
-    required this.accent,
-    required this.idle,
-  });
-
-  final List<Offset> centers;
-  final List<JourneyNodeState> states;
-  final Color accent;
-  final Color idle;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paintDone = Paint()
-      ..color = accent.withValues(alpha: 0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-    final paintIdle = Paint()
-      ..color = idle.withValues(alpha: 0.7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-
-    for (var i = 0; i + 1 < centers.length; i++) {
-      final a = centers[i];
-      final b = centers[i + 1];
-      final midY = (a.dy + b.dy) / 2;
-      final path = Path()
-        ..moveTo(a.dx, a.dy)
-        ..cubicTo(a.dx, midY, b.dx, midY, b.dx, b.dy);
-      // The segment leaving a completed station is part of the traveled road.
-      final traveled = states[i] == JourneyNodeState.completed;
-      canvas.drawPath(path, traveled ? paintDone : paintIdle);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_TrailPainter old) =>
-      old.centers != centers ||
-      old.states != states ||
-      old.accent != accent ||
-      old.idle != idle;
 }
