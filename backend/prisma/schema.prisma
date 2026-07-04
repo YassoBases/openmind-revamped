@@ -142,6 +142,7 @@ model PathNode {
   topic           String
   orderIndex      Int
   xpReward        Int
+  depth           Int          @default(0) // spiral depth: 0=basic, 1=deepen, 2=mastery
   learningPathId  String
   learningPath    LearningPath @relation(fields: [learningPathId], references: [id])
   createdAt       DateTime     @default(now())

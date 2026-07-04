@@ -72,6 +72,7 @@ function pathNodeView(pn: PathNodeRow) {
     topic: pn.topic,
     orderIndex: pn.orderIndex,
     xpReward: pn.xpReward,
+    depth: pn.depth,
     learningPathId: pn.learningPathId,
     createdAt: pn.createdAt.toISOString(),
   };
