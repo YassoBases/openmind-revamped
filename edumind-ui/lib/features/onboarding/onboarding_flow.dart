@@ -40,12 +40,11 @@ const kOnbInterests = [
   (id: 'nature', icon: Icons.eco_outlined, key: 'onb_int_nature'),
 ];
 
-/// Personal accent choices — approved OpenMind color tokens only
-/// (palette.dart kColorChoices). Order puts the default (blue) first.
+/// Personal accent choices — a curated four from the approved OpenMind
+/// accent tokens (palette.dart kColorChoices), picked for equal visual
+/// weight: no over-saturated yellow/green circles. Default (blue) first.
 final kOnbAccents = [
   (color: kColorChoices[1], key: 'onb_color_blue'), // 1CB0F6
-  (color: kColorChoices[0], key: 'onb_color_green'), // 58CC02
-  (color: kColorChoices[2], key: 'onb_color_yellow'), // FFC800
   (color: kColorChoices[5], key: 'onb_color_teal'), // 00C2A8
   (color: kColorChoices[4], key: 'onb_color_coral'), // FF6F61
   (color: kColorChoices[7], key: 'onb_color_orange'), // FFA94D
@@ -74,12 +73,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   bool get _canAdvance => switch (_step) {
-        1 => _name.text.trim().isNotEmpty,
-        2 => _grade != null,
-        3 => _interests.isNotEmpty,
-        4 => _style != null,
-        _ => true,
-      };
+    1 => _name.text.trim().isNotEmpty,
+    2 => _grade != null,
+    3 => _interests.isNotEmpty,
+    4 => _style != null,
+    _ => true,
+  };
 
   void _next() {
     if (!_canAdvance) return;
@@ -100,9 +99,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   /// the backend when reachable. A short celebratory beat plays meanwhile.
   Future<void> _finish() async {
     setState(() => _saving = true);
-    final lang = Provider.of<LanguageProvider>(context, listen: false)
-        .currentLocale
-        .languageCode;
+    final lang = Provider.of<LanguageProvider>(
+      context,
+      listen: false,
+    ).currentLocale.languageCode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', _name.text.trim());
     await prefs.setInt('user_grade', _grade!);
@@ -128,63 +128,92 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return Scaffold(
-      backgroundColor: OnbColors.ivory,
-      body: _saving
-          ? _CompletionView(name: _name.text.trim(), accent: kOnbAccents[_accent].color)
-          : _step == 0
-              ? _WelcomeStep(onStart: _next)
-              : SafeArea(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 20, 0),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              onPressed: _back,
-                              icon: const Icon(Icons.arrow_back, color: OnbColors.blue),
-                              tooltip: l.translate('onb_back'),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OnbProgressBar(
-                                current: _step - 1,
-                                total: 4,
-                                semanticLabel: l.translateWith(
-                                    'onb_step_of', {'n': '$_step', 'm': '4'}),
-                              ),
-                            ),
-                          ],
-                        ),
+    final stepLabel = l.translateWith('onb_step_of', {
+      'n': '${_step + 1}',
+      'm': '5',
+    });
+    return OnbRail(
+      child: Scaffold(
+        backgroundColor: OnbColors.ivory,
+        body: _saving
+            ? _CompletionView(
+                name: _name.text.trim(),
+                accent: kOnbAccents[_accent].color,
+              )
+            : _step == 0
+            ? _WelcomeStep(onStart: _next)
+            : SafeArea(
+                child: Column(
+                  children: [
+                    // Quiet orientation header: small back control, a
+                    // compact «الخطوة n من 5» label, five step dots.
+                    Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        10,
+                        8,
+                        20,
+                        0,
                       ),
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: KeyedSubtree(
-                            key: ValueKey(_step),
-                            child: switch (_step) {
-                              1 => _nameStep(l),
-                              2 => _stageStep(l),
-                              3 => _interestsStep(l),
-                              _ => _styleStep(l),
-                            },
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: _back,
+                            icon: const Icon(
+                              Icons.arrow_back,
+                              size: 20,
+                              color: OnbColors.blue,
+                            ),
+                            tooltip: l.translate('onb_back'),
+                            visualDensity: VisualDensity.compact,
                           ),
+                          const SizedBox(width: 2),
+                          Text(
+                            stepLabel,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: OnbColors.body,
+                            ),
+                          ),
+                          const Spacer(),
+                          OnbStepDots(
+                            current: _step,
+                            total: 5,
+                            semanticLabel: stepLabel,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        child: KeyedSubtree(
+                          key: ValueKey(_step),
+                          child: switch (_step) {
+                            1 => _nameStep(l),
+                            2 => _stageStep(l),
+                            3 => _interestsStep(l),
+                            _ => _styleStep(l),
+                          },
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
+      ),
     );
   }
 
   /// Shared step layout: scrollable content + always-visible CTA. The
   /// Scaffold resizes for the keyboard, so the CTA never hides behind it.
-  Widget _stepShell(AppLocalizations l,
-      {required String titleKey,
-      required String subtitleKey,
-      required Widget child,
-      String ctaKey = 'onb_next'}) {
+  Widget _stepShell(
+    AppLocalizations l, {
+    required String titleKey,
+    required String subtitleKey,
+    required Widget child,
+    String ctaKey = 'onb_next',
+  }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: Column(
@@ -195,18 +224,26 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   Text(
                     l.translate(titleKey),
                     style: const TextStyle(
-                        fontSize: 23, fontWeight: FontWeight.w900, color: OnbColors.blueInk, height: 1.35),
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: OnbColors.blueInk,
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     l.translate(subtitleKey),
-                    style: const TextStyle(fontSize: 14.5, color: OnbColors.body, height: 1.6),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: OnbColors.body,
+                      height: 1.65,
+                    ),
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 24),
                   child,
                 ],
               ),
@@ -234,15 +271,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _next(),
         style: const TextStyle(
-            fontSize: 16, fontWeight: FontWeight.w700, color: OnbColors.blueInk),
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: OnbColors.blueInk,
+        ),
         cursorColor: OnbColors.blue,
         decoration: InputDecoration(
           counterText: '',
           hintText: l.translate('onb_name_hint'),
-          hintStyle: const TextStyle(color: OnbColors.body, fontWeight: FontWeight.w500),
+          hintStyle: const TextStyle(
+            color: OnbColors.body,
+            fontWeight: FontWeight.w500,
+          ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 16,
+          ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: OnbColors.outline, width: 1.2),
@@ -273,13 +319,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           Row(
             children: [
               Expanded(
-                child: _stageCard(l, LearningStage.primaryGames, 'onb_stage_primary',
-                    Icons.menu_book_outlined),
+                child: _stageCard(
+                  l,
+                  LearningStage.primaryGames,
+                  'onb_stage_primary',
+                  Icons.menu_book_outlined,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _stageCard(l, LearningStage.middleInteractiveLearning,
-                    'onb_stage_middle', Icons.school_outlined),
+                child: _stageCard(
+                  l,
+                  LearningStage.middleInteractiveLearning,
+                  'onb_stage_middle',
+                  Icons.school_outlined,
+                ),
               ),
             ],
           ),
@@ -296,7 +350,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisCount: 3,
-                      childAspectRatio: 1.9,
+                      childAspectRatio: 2.05,
                       mainAxisSpacing: 10,
                       crossAxisSpacing: 10,
                       children: [
@@ -304,13 +358,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           OnbSelectCard(
                             selected: _grade == g,
                             onTap: () => setState(() => _grade = g),
-                            semanticLabel: l.translateWith('onb_grade_sem', {'g': '$g'}),
+                            semanticLabel: l.translateWith('onb_grade_sem', {
+                              'g': '$g',
+                            }),
                             child: Text(
                               l.translate('onb_g$g'),
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
-                                color: _grade == g ? OnbColors.blue : OnbColors.blueInk,
+                                color: _grade == g
+                                    ? OnbColors.blue
+                                    : OnbColors.blueInk,
                               ),
                             ),
                           ),
@@ -323,7 +381,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
-  Widget _stageCard(AppLocalizations l, LearningStage stage, String key, IconData icon) {
+  Widget _stageCard(
+    AppLocalizations l,
+    LearningStage stage,
+    String key,
+    IconData icon,
+  ) {
     final selected = _stageChoice == stage;
     return OnbSelectCard(
       selected: selected,
@@ -333,22 +396,25 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         if (_grade != null && stageForGrade(_grade!) != stage) _grade = null;
       }),
       semanticLabel: l.translate(key),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(color: OnbColors.softBlue, shape: BoxShape.circle),
-            child: Icon(icon, size: 24, color: OnbColors.blue),
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : OnbColors.softBlue,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 22, color: OnbColors.blue),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 9),
           Text(
             l.translate(key),
             style: TextStyle(
               fontSize: 15.5,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               color: selected ? OnbColors.blue : OnbColors.blueInk,
             ),
           ),
@@ -370,7 +436,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: 2,
-            childAspectRatio: 2.55,
+            childAspectRatio: 2.85,
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
             children: [
@@ -388,13 +454,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(it.icon, size: 21, color: OnbColors.blue),
+                      Icon(it.icon, size: 20, color: OnbColors.blue),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
                           l.translate(it.key),
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                             color: _interests.contains(it.id)
                                 ? OnbColors.blue
@@ -451,15 +517,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 selected: _style == i,
                 onTap: () => setState(() => _style = i),
                 semanticLabel: l.translate(styles[i].key),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                          color: OnbColors.softBlue, shape: BoxShape.circle),
-                      child: Icon(styles[i].icon, size: 20, color: OnbColors.blue),
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: _style == i ? Colors.white : OnbColors.softBlue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        styles[i].icon,
+                        size: 19,
+                        color: OnbColors.blue,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -467,8 +542,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         l.translate(styles[i].key),
                         style: TextStyle(
                           fontSize: 14.5,
-                          fontWeight: FontWeight.w800,
-                          color: _style == i ? OnbColors.blue : OnbColors.blueInk,
+                          fontWeight: FontWeight.w700,
+                          color: _style == i
+                              ? OnbColors.blue
+                              : OnbColors.blueInk,
                         ),
                       ),
                     ),
@@ -480,14 +557,18 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           Text(
             l.translate('onb_accent_title'),
             style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w800, color: OnbColors.blueInk),
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: OnbColors.blueInk,
+            ),
           ),
           const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              for (var i = 0; i < kOnbAccents.length; i++)
+              for (var i = 0; i < kOnbAccents.length; i++) ...[
+                if (i > 0) const SizedBox(width: 16),
                 _accentCircle(l, i),
+              ],
             ],
           ),
         ],
@@ -543,37 +624,69 @@ class _WelcomeStep extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     return Stack(
       children: [
-        const Positioned.fill(child: CustomPaint(painter: WelcomePatternPainter())),
+        const Positioned.fill(
+          child: CustomPaint(painter: WelcomePatternPainter()),
+        ),
         SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: _LanguagePill(),
-                ),
-                const Spacer(),
-                const Center(
-                  child: Mascot(size: 170, expression: MascotExpression.happy),
-                ),
-                const SizedBox(height: 26),
-                Text(
-                  l.translate('onb_title'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 27, fontWeight: FontWeight.w900, color: OnbColors.blueInk, height: 1.35),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  l.translate('onb_subtitle'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15.5, color: OnbColors.body, height: 1.6),
-                ),
-                const Spacer(),
-                OnbPrimaryButton(label: l.translate('onb_cta'), onPressed: onStart),
-              ],
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // The arch scales with the viewport so short screens (and the
+                // keyboard-less 320x568 case) never overflow.
+                final archH = (constraints.maxHeight * 0.40).clamp(
+                  150.0,
+                  265.0,
+                );
+                final archW = archH * (250 / 265);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: _LanguagePill(),
+                    ),
+                    const Spacer(flex: 5),
+                    // Hudhud framed by the arch — always composed together.
+                    Center(
+                      child: ArchHalo(
+                        width: archW,
+                        height: archH,
+                        child: Mascot(
+                          size: archH * 0.62,
+                          expression: MascotExpression.happy,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Text(
+                      l.translate('onb_title'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: OnbColors.blueInk,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l.translate('onb_subtitle'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        color: OnbColors.body,
+                        height: 1.65,
+                      ),
+                    ),
+                    const Spacer(flex: 6),
+                    OnbPrimaryButton(
+                      label: l.translate('onb_cta'),
+                      onPressed: onStart,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -589,25 +702,25 @@ class _LanguagePill extends StatelessWidget {
     final lp = Provider.of<LanguageProvider>(context);
     final isAr = lp.currentLocale.languageCode == 'ar';
     Widget chip(String label, bool active, VoidCallback onTap) => InkWell(
-          onTap: onTap,
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? OnbColors.blue : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: active ? OnbColors.blue : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w800,
-                color: active ? Colors.white : OnbColors.body,
-              ),
-            ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w800,
+            color: active ? Colors.white : OnbColors.body,
           ),
-        );
+        ),
+      ),
+    );
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -643,13 +756,22 @@ class _CompletionView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Mascot(size: 160, expression: MascotExpression.celebrating, accent: accent),
-            const SizedBox(height: 20),
+            ArchHalo(
+              child: Mascot(
+                size: 158,
+                expression: MascotExpression.celebrating,
+                accent: accent,
+              ),
+            ),
+            const SizedBox(height: 22),
             Text(
               l.translateWith('onb_done_hi', {'name': name}),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 24, fontWeight: FontWeight.w900, color: OnbColors.blueInk),
+                fontSize: 25,
+                fontWeight: FontWeight.w800,
+                color: OnbColors.blueInk,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
