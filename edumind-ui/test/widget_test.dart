@@ -31,8 +31,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Your journey starts here'), findsOneWidget);
-    expect(find.byIcon(Icons.play_arrow_rounded), findsWidgets);
+    expect(find.text('Welcome to OpenMind'), findsOneWidget);
+    expect(find.text('Start'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

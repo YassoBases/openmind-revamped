@@ -2,7 +2,7 @@ import 'package:edumind/provider/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'onboarding_screen.dart';
+import 'features/onboarding/onboarding_flow.dart';
 
 // 1. استيراد الملفات الجديدة لإدارة اللغة والترجمة
 // (تأكد من تعديل المسارات بناءً على أسماء ملفاتك)
@@ -72,7 +72,7 @@ class EduMindApp extends StatelessWidget {
       // first-run goes through onboarding (which writes Session.profile).
       home: Session.instance.onboarded
           ? const EduMindRoot()
-          : const OnboardingScreen(),
+          : const OnboardingFlow(),
     );
   }
 }
