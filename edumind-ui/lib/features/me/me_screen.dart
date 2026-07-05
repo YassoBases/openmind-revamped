@@ -6,7 +6,6 @@ import '../../core/api_client.dart';
 import '../../core/palette.dart';
 import '../../core/session.dart';
 import '../../languageswitchertile.dart';
-import '../../theme_selection_screen.dart';
 import '../context/context_sheet.dart';
 import '../learn/journey_logic.dart';
 import '../learn/learn_catalog.dart';
@@ -206,21 +205,6 @@ class _MeScreenState extends State<MeScreen> {
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                     child: LanguageSwitcherTile(),
-                  ),
-                  Divider(height: 1, indent: 16, endIndent: 16, color: cs.outlineVariant),
-                  ListTile(
-                    leading: Icon(Icons.palette_rounded, color: cs.primary),
-                    title: Text(
-                      l.translate('change_theme'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ThemeSelectionScreen(duringOnboarding: false),
-                      ),
-                    ),
                   ),
                   Divider(height: 1, indent: 16, endIndent: 16, color: cs.outlineVariant),
                   ListTile(

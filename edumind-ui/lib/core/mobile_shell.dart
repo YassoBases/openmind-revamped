@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
 import 'session.dart';
 import 'stage.dart';
 
@@ -27,21 +28,30 @@ class MobileShell extends StatelessWidget {
         return LayoutBuilder(
           builder: (context, constraints) {
             if (constraints.maxWidth <= maxWidth + 40) return child;
-            final cs = Theme.of(context).colorScheme;
+            // Warm device framing that matches onboarding's OnbRail: a cream
+            // surround with the phone as an ivory rounded card + hairline.
             return ColoredBox(
-              color: cs.surfaceContainerHighest,
+              color: AppColors.cream,
               child: Center(
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: maxWidth),
+                  margin: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
+                    color: AppColors.ivory,
+                    borderRadius: BorderRadius.circular(AppRadii.rail),
+                    border: Border.all(
+                      color: AppColors.outline.withValues(alpha: 0.8),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: cs.shadow.withValues(alpha: 0.18),
-                        blurRadius: 30,
+                        color: AppColors.blueInk.withValues(alpha: 0.12),
+                        blurRadius: 36,
+                        offset: const Offset(0, 14),
                       ),
                     ],
                   ),
-                  child: ClipRect(child: child),
+                  clipBehavior: Clip.antiAlias,
+                  child: child,
                 ),
               ),
             );

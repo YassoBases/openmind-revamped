@@ -5,7 +5,6 @@ import 'core/api_client.dart';
 import 'core/session.dart';
 import 'features/demos/demos_screen.dart';
 import 'languageswitchertile.dart';
-import 'theme_selection_screen.dart';
 
 /// Settings: language selector, theme, and the backend server address (so a
 /// physical device can point at a laptop's LAN IP without rebuilding). Fully
@@ -62,23 +61,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: const LanguageSwitcherTile(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              leading: Icon(Icons.palette_rounded, color: cs.primary),
-              title: Text(
-                l.translate('change_theme'),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ThemeSelectionScreen(duringOnboarding: false),
-                ),
-              ),
             ),
           ),
           const SizedBox(height: 12),

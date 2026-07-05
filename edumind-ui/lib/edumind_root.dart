@@ -70,8 +70,7 @@ class _EduMindRootState extends State<EduMindRoot> {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    final cs = t.colorScheme;
+    final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
     final middle = _stage == LearningStage.middleInteractiveLearning;
 
@@ -142,26 +141,7 @@ class _EduMindRootState extends State<EduMindRoot> {
           ];
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Subtle “purple rail” ambiance (works in RTL/LTR).
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    cs.primary.withValues(alpha: 0.08),
-                    cs.primary.withValues(alpha: 0.0),
-                  ],
-                  begin: AlignmentDirectional.centerStart,
-                  end: AlignmentDirectional.centerEnd,
-                ),
-              ),
-            ),
-          ),
-          IndexedStack(index: _index, children: screens),
-        ],
-      ),
+      body: IndexedStack(index: _index, children: screens),
       bottomNavigationBar: Container(
         margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         decoration: BoxDecoration(
