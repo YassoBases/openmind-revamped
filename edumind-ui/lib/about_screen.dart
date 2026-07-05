@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_localizations.dart';
+import 'core/app_theme.dart';
 import 'widgets/pressable_scale.dart'; // تأكد من استيراد الوجيهة التفاعلية الخاصة بك
 
 class AboutScreen extends StatefulWidget {
@@ -229,7 +230,7 @@ class _AboutScreenState extends State<AboutScreen>
                       emoji: '🎮',
                       title: l.translate('about_feat1_title'),
                       description: l.translate('about_feat1_desc'),
-                      color: const Color(0xFF7C3AED),
+                      color: AppColors.blueInk,
                     ),
                     const SizedBox(height: 12),
 
@@ -239,7 +240,7 @@ class _AboutScreenState extends State<AboutScreen>
                       emoji: '🧠',
                       title: l.translate('about_feat2_title'),
                       description: l.translate('about_feat2_desc'),
-                      color: const Color(0xFF14B8A6),
+                      color: AppColors.mutedGreen,
                     ),
                     const SizedBox(height: 12),
 
@@ -249,7 +250,7 @@ class _AboutScreenState extends State<AboutScreen>
                       emoji: '🧭',
                       title: l.translate('about_feat3_title'),
                       description: l.translate('about_feat3_desc'),
-                      color: const Color(0xFFF59E0B),
+                      color: AppColors.orange,
                     ),
                     const SizedBox(height: 12),
 
@@ -259,7 +260,7 @@ class _AboutScreenState extends State<AboutScreen>
                       emoji: '🌍',
                       title: l.translate('about_feat4_title'),
                       description: l.translate('about_feat4_desc'),
-                      color: const Color(0xFF3B82F6),
+                      color: AppColors.blue,
                     ),
                     const SizedBox(height: 12),
 
@@ -269,7 +270,7 @@ class _AboutScreenState extends State<AboutScreen>
                       emoji: '🤝',
                       title: l.translate('about_feat5_title'),
                       description: l.translate('about_feat5_desc'),
-                      color: const Color(0xFFEF4444),
+                      color: AppColors.mutedRed,
                     ),
 
                     // تذييل الصفحة اللطيف
@@ -285,7 +286,7 @@ class _AboutScreenState extends State<AboutScreen>
                                 style: const TextStyle(
                                   fontFamily: 'Cairo',
                                   fontSize: 14,
-                                  color: Color(0xFF6A1B9A),
+                                  color: AppColors.blueInk,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

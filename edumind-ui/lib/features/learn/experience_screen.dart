@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_localizations.dart';
+import '../../core/app_theme.dart';
 import '../../core/palette.dart';
 import '../../core/session.dart';
 import '../tutor/tutor_chat.dart';
@@ -288,7 +289,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
                 successText,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Palette.greenShadow,
+                  color: AppColors.mutedGreen,
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
                 ),
@@ -438,7 +439,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: (correct ? Palette.green : Palette.heart).withValues(alpha: 0.12),
+              color: (correct ? AppColors.mutedGreen : AppColors.mutedRed).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(Palette.radiusButton),
             ),
             child: Text(
@@ -446,7 +447,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
               style: TextStyle(
                 height: 1.6,
                 fontWeight: FontWeight.w600,
-                color: correct ? Palette.greenShadow : cs.onSurface,
+                color: correct ? AppColors.mutedGreen : cs.onSurface,
               ),
             ),
           ),
@@ -469,11 +470,11 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     Color border = cs.outlineVariant;
     Color? fill;
     if (answered && isRight) {
-      border = Palette.green;
-      fill = Palette.green.withValues(alpha: 0.10);
+      border = AppColors.mutedGreen;
+      fill = AppColors.mutedGreen.withValues(alpha: 0.10);
     } else if (answered && isPicked) {
-      border = Palette.heart;
-      fill = Palette.heart.withValues(alpha: 0.10);
+      border = AppColors.mutedRed;
+      fill = AppColors.mutedRed.withValues(alpha: 0.10);
     }
 
     return InkWell(

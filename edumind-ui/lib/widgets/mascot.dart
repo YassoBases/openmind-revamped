@@ -27,7 +27,8 @@ class Mascot extends StatefulWidget {
   const Mascot({
     super.key,
     this.size = 140,
-    this.accent = const Color(0xFF58CC02),
+    this.accent = const Color(0xFFE8872E), // AppColors.orange — warm default
+
     this.expression = MascotExpression.happy,
     this.character = MascotCharacter.hoopoe,
     this.showXp,

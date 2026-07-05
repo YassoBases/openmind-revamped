@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app_localizations.dart';
-import '../../../core/palette.dart';
+import '../../../core/app_theme.dart';
 import '../tutor_models.dart';
 import 'block_frame.dart';
 import 'block_logic.dart';
@@ -152,7 +152,7 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
               decoration: BoxDecoration(
                 color: cs.surface,
                 border: Border.all(color: cs.outlineVariant),
-                borderRadius: BorderRadius.circular(Palette.radiusButton),
+                borderRadius: BorderRadius.circular(AppRadii.button),
               ),
               child: Center(
                 child: Text(
@@ -178,10 +178,10 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
   Widget _bucketButton(InteractiveBucket bucket, ColorScheme cs) {
     final flashing = _flashBucketId == bucket.id;
     final Color? flash = flashing
-        ? (_flashRight ? Palette.green : Palette.heart).withValues(alpha: 0.18)
+        ? (_flashRight ? AppColors.mutedGreen : AppColors.mutedRed).withValues(alpha: 0.18)
         : null;
     final Color border =
-        flashing ? (_flashRight ? Palette.green : Palette.heart) : cs.outlineVariant;
+        flashing ? (_flashRight ? AppColors.mutedGreen : AppColors.mutedRed) : cs.outlineVariant;
     return OutlinedButton.icon(
       onPressed: _active ? () => _pick(bucket) : null,
       style: OutlinedButton.styleFrom(
@@ -189,14 +189,14 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
         side: BorderSide(color: border, width: flashing ? 1.8 : 1),
         visualDensity: VisualDensity.compact,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Palette.radiusButton),
+          borderRadius: BorderRadius.circular(AppRadii.button),
         ),
       ),
       icon: flashing
           ? Icon(
               _flashRight ? Icons.check_rounded : Icons.close_rounded,
               size: 15,
-              color: _flashRight ? Palette.greenShadow : Palette.heart,
+              color: _flashRight ? AppColors.mutedGreen : AppColors.mutedRed,
             )
           : const SizedBox.shrink(),
       label: Text(

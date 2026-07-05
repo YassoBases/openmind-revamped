@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// The Duolingo-inspired design language — mirrors shared/src/constants.ts.
+/// The dark "game studio" palette — the composer and game player deliberately
+/// keep a bright-on-dark Duolingo register, distinct from the warm app system
+/// in core/app_theme.dart (AppColors). Everything OUTSIDE the game-creation and
+/// game-player flows should use AppColors / the theme, not these constants.
+/// Also still the home of hexToColor/colorToHex and the game/emoji constants.
 class Palette {
   static const green = Color(0xFF58CC02);
   static const greenShadow = Color(0xFF46A302);
