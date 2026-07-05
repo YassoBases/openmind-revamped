@@ -151,7 +151,11 @@ flutter pub get
 flutter build web
 $env:PORT="53211"; node tool/serve.mjs   # Windows PowerShell
 # or: set PORT=53211 && node tool/serve.mjs   # Windows cmd
-# or: PORT=53211 node tool/serve.mjs          # macOS/Linux
+# or: PORT=53211 node tool/serve
+
+
+
+.mjs          # macOS/Linux
 ```
 
 Without API keys the backend intentionally runs in mock LLM mode, so demo games
@@ -282,7 +286,103 @@ implemented twice) and both wear the student's favorite color.
 
 ---
 
-## Tests
+## Testing the Live App
+
+### Quick visual & functional smoke test
+
+The primary app (Grade 7 math + tutor + personalization) is live on web and ready to test:
+
+**URL:** `https://friendly-meme-694vrq6p949jfr9xw-8099.app.github.dev/`  
+**Port:** 8099 (public via GitHub Codespaces)  
+**Commit:** `de75b35` (all visual refresh phases merged)
+
+#### Full End-to-End Flow (5–10 minutes)
+
+1. **Onboarding** — land on the Arabic-first entry screen
+   - Fill name: `أحمد` (or any name)
+   - Select grade: **7** (إعدادي) for the full math experience
+   - Proceed through language, interests, style preferences
+   - App saves profile locally
+
+2. **Start Screen** (Home / الصفحة الرئيسية)
+   - Shows «أهلًا بك» welcome card
+   - Context lens chip (choose your learning perspective: life contexts like تقنية, بيئة, إلخ)
+   - Ready to launch an experience
+
+3. **Journey Screen** (اختر مسارك)
+   - 8 curriculum paths now visible (مفاتيح المدينة, سرّ الرقم المفقود, مدينة لا تنهار, …)
+   - Each has progress ring + ready/soon status
+   - Warm ivory background, Cairo font, navy/orange accents
+
+4. **Path Detail** (مسار التعلم)
+   - Select any path → shows trail/station map
+   - Progress bar: «X من Y جاهزة»
+   - Stations: completed ✓, current play, locked 🔒, coming soon ⋯
+
+5. **Interactive Experience** (تجربة تفاعلية)
+   - Full 6-step lesson: scene → explore → choice → challenge → apply → **check** (تحقق من الفهم)
+   - **Scene**: narrative setup
+   - **Explore**: draggable widget (triangle area)
+   - **Choice**: select correct answer (muted green on success, muted red on error)
+   - **Challenge**: apply the concept (24 m²)
+   - **Apply**: real-world scenario (24 plants)
+   - **Check** ✨ *NEW*: 2–3 quick verification questions, shows score, offers tutor if weak
+   - Proceed button gates on step readiness, never blocks on score
+
+6. **Completion** — small celebration
+   - Progress saved locally
+   - Return to path detail to see updated progress
+
+7. **Tutor** (اسأل أوبن مايند) — in-app help
+   - Full conversation interface (navy bubble for student, warm for tutor)
+   - Interactive math blocks (order sequences, match pairs, etc.) with muted green/red feedback
+   - Offline: shows honest "offline" message (backend not required to test UI)
+
+8. **Me** (ملفي الشخصي) — learner profile
+   - Shows name, grade, progress stats
+   - Language toggle (عربي / English)
+   - Clean, light UI with no purple anywhere
+
+9. **Grade 8+** (honest unavailable state)
+   - Switch profile to grade 8
+   - Reload app → shows **قيد الإعداد** (Coming Soon)
+   - Hudhud mascot, no fake content, honest copy
+
+#### Visual & UX Checklist
+
+✅ **Color system** — four separate palettes → one warm system  
+   - No purple (#6A1B9A) anywhere  
+   - Ivory background (#FDFBF6) throughout  
+   - Navy/ink primary (#14395C)  
+   - Orange accents (#E8872E) for CTAs  
+   - Soft blue selection surfaces (#E9F1F8)  
+   - Muted green (#3E7C59) for success (never bright neon)  
+   - Muted red (#9E4B47) for error  
+
+✅ **Typography** — real Cairo font now rendering  
+   - Arabic glyphs distinctive vs. old Roboto fallback  
+   - Bilingual support (Arabic-first RTL)  
+
+✅ **Components**  
+   - Nav indicator: soft blue (not purple pill)  
+   - Lesson option feedback: muted colors  
+   - Chat bubbles: navy student, calm tutor, muted-red error  
+   - Buttons: consistent orange CTAs  
+
+✅ **Learning logic** (unchanged, all green)  
+   - 8 curriculum paths canonical for Grade 7  
+   - Check step gates on all-answered (never all-correct)  
+   - Honest grade 8/9 state (no fake content)  
+   - Progress migration from old path IDs working  
+
+✅ **Onboarding** — warm baseline aesthetic  
+   - ArchHalo ornament frame  
+   - Calm mascot moments  
+   - Consistent ivory/navy/orange tokens  
+
+---
+
+## Automated Test Suite
 
 ```bash
 npm test               # shared schema tests + shell static validators + backend API tests
@@ -291,6 +391,10 @@ npm run test:e2e       # Playwright behavioral suite (boots every shell, plays s
 cd edumind-ui && flutter test && flutter analyze && flutter build web
 cd ../flutter_module && flutter test && flutter analyze && flutter build web
 ```
+
+Result from last main merge: **✅ 58 Flutter tests pass** (all 6 phases verified)  
+Result from code analysis: **✅ No issues found** (analyze clean)  
+Result from web build: **✅ Cairo bundled, app boots** (font verified rendering)
 
 ---
 
@@ -316,6 +420,31 @@ parental-consent flow, and a retention policy).
 
 ---
 
+## Visual System Overhaul (Latest)
+
+The app had **four disconnected color palettes** and the Arabic Cairo font was never actually loading (commented out in pubspec, app rendered fallback Roboto). Commit `de75b35` merges a complete visual refresh:
+
+| What was | What is now |
+|---|---|
+| Purple seed (#6A1B9A) everywhere | Warm olive/ivory (#FDFBF6) + navy ink (#14395C) |
+| Silent Roboto fallback | Real Cairo Arabic variable font bundled offline |
+| M3-purple ChatBubble + bright-neon feedback | Navy student bubble + muted green/red feedback |
+| Theme picker (broken, didn't persist) | Single warm theme system; personalization via accent color only |
+| 4 duplicate palettes (Palette, MiddlePalette, OnbColors, hardcoded hex) | One `AppColors` token set + one `AppRadii` scale |
+| Pastel gradient home (cyan→pink→green) | Warm gradient (ivory→softBlue→cream) |
+| Dead stat widgets + orphaned login screen | Pruned; only `EduCard` kept for dark game chrome |
+
+**Five phased implementation** (all merged to main):
+- **A** (Foundation): token file, real Cairo, unified theme, kill purple rail
+- **C1** (Chrome): tutor bubbles, chat, blocks onto warm tokens
+- **C2** (Learn): lesson feedback muted (green/red success/error)
+- **C4** (Primary): home gradient, about feature colors, prune dead code
+- **C5** (Minimal): game-studio documented as intentionally dark, no changes needed
+
+**Result**: onboarding → middle school → tutor → home → all on one warm system. No purple, no neon, consistent RTL typography.
+
+---
+
 ## Repo layout
 
 ```
@@ -323,7 +452,7 @@ shared/           GameSpec contract: Zod schemas, validators, assembly, JSON sch
 samples/          golden demo specs (EN ×3 + AR) — demos, tests and mock mode all eat the same files
 shells/           the product: EduCore/GameFeel/Mascot libs, 3 games, build, preview harness, CI tests
 backend/          Fastify 5 API: pipeline, validators, fact-check, storage, OpenAPI docs
-edumind-ui/       primary learner UI: onboarding, bilingual home/settings, demos, composer, player, local saves
+edumind-ui/       primary learner UI: onboarding, bilingual home/settings/composer/player/tutor, warm visual system
 flutter_module/   reference engine app: composer, player, local library, shell parity checks
 scripts/          Kenney CC0 asset fetchers (optional enhancement — see scripts/KENNEY_README.md)
 docs/API.md       complete REST API reference for integrating OpenMind into another app
