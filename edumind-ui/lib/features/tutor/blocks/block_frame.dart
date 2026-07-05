@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app_localizations.dart';
-import '../../../core/palette.dart';
+import '../../../core/app_theme.dart';
 import '../tutor_models.dart';
 
 /// Shared chrome for every tutor interactive block: title, one-line
@@ -34,9 +34,9 @@ class BlockFrame extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     final (bannerKey, bannerColor) = switch (outcome) {
-      InteractiveOutcome.correct => ('blk_correct', Palette.greenShadow),
-      InteractiveOutcome.partiallyCorrect => ('blk_partial', const Color(0xFFB26A00)),
-      InteractiveOutcome.incorrect => ('blk_incorrect', Palette.heart),
+      InteractiveOutcome.correct => ('blk_correct', AppColors.mutedGreen),
+      InteractiveOutcome.partiallyCorrect => ('blk_partial', AppColors.orangeInk),
+      InteractiveOutcome.incorrect => ('blk_incorrect', AppColors.mutedRed),
       InteractiveOutcome.explored || null => (null, cs.onSurfaceVariant),
     };
 
@@ -44,9 +44,9 @@ class BlockFrame extends StatelessWidget {
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.04),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.35)),
-        borderRadius: BorderRadius.circular(Palette.radiusButton),
+        color: AppColors.softBlue,
+        border: Border.all(color: AppColors.blue.withValues(alpha: 0.20)),
+        borderRadius: BorderRadius.circular(AppRadii.button),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,7 +54,7 @@ class BlockFrame extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.touch_app_rounded, size: 17, color: cs.primary),
+              Icon(Icons.touch_app_rounded, size: 17, color: AppColors.blue),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(

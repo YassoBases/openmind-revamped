@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_localizations.dart';
 import '../../core/api_client.dart';
-import '../../core/palette.dart';
+import '../../core/app_theme.dart';
 import '../../core/session.dart';
 import '../../core/stage.dart';
 import '../../widgets/mascot.dart';
@@ -247,15 +247,15 @@ class TutorChatState extends State<TutorChat> {
                       counterText: '',
                       hintText: l.translate('tutor_input_hint'),
                       filled: true,
-                      fillColor: cs.surface,
+                      fillColor: AppColors.softBlue,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(Palette.radiusInput),
-                        borderSide: BorderSide(color: cs.outlineVariant),
+                        borderRadius: BorderRadius.circular(AppRadii.input),
+                        borderSide: BorderSide.none,
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(Palette.radiusInput),
-                        borderSide: BorderSide(color: cs.outlineVariant),
+                        borderRadius: BorderRadius.circular(AppRadii.input),
+                        borderSide: BorderSide.none,
                       ),
                     ),
                   ),
@@ -372,9 +372,9 @@ class TutorChatState extends State<TutorChat> {
           color: isStudent
               ? cs.primary
               : turn.isError
-                  ? Palette.heart.withValues(alpha: 0.10)
+                  ? AppColors.mutedRedSoft
                   : cs.surface,
-          border: isStudent ? null : Border.all(color: turn.isError ? Palette.heart : cs.outlineVariant),
+          border: isStudent ? null : Border.all(color: turn.isError ? AppColors.mutedRed : cs.outlineVariant),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -420,7 +420,7 @@ class TutorChatState extends State<TutorChat> {
               const SizedBox(height: 6),
               Text(
                 l.translate('tutor_try_again'),
-                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Palette.greenShadow),
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.mutedGreen),
               ),
             ],
           ],

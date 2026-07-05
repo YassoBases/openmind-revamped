@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app_localizations.dart';
-import '../../../core/palette.dart';
+import '../../../core/app_theme.dart';
 import '../tutor_models.dart';
 import 'block_frame.dart';
 import 'block_logic.dart';
@@ -190,21 +190,21 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
           onPressed: _active && !matched ? () => _pickLeft(pair) : null,
           style: OutlinedButton.styleFrom(
             backgroundColor: matched
-                ? Palette.green.withValues(alpha: 0.12)
+                ? AppColors.mutedGreen.withValues(alpha: 0.12)
                 : selected
-                    ? cs.primary.withValues(alpha: 0.12)
+                    ? AppColors.blue.withValues(alpha: 0.12)
                     : null,
             side: BorderSide(
               color: matched
-                  ? Palette.green
+                  ? AppColors.mutedGreen
                   : selected
-                      ? cs.primary
+                      ? AppColors.blue
                       : cs.outlineVariant,
               width: selected || matched ? 1.8 : 1,
             ),
             visualDensity: VisualDensity.compact,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Palette.radiusButton),
+              borderRadius: BorderRadius.circular(AppRadii.button),
             ),
           ),
           child: Text(
@@ -213,7 +213,7 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: matched ? Palette.greenShadow : null,
+              color: matched ? AppColors.mutedGreen : null,
             ),
           ),
         ),
@@ -234,21 +234,21 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
               : null,
           style: OutlinedButton.styleFrom(
             backgroundColor: matched
-                ? Palette.green.withValues(alpha: 0.12)
+                ? AppColors.mutedGreen.withValues(alpha: 0.12)
                 : flashing
-                    ? Palette.heart.withValues(alpha: 0.18)
+                    ? AppColors.mutedRed.withValues(alpha: 0.18)
                     : null,
             side: BorderSide(
               color: matched
-                  ? Palette.green
+                  ? AppColors.mutedGreen
                   : flashing
-                      ? Palette.heart
+                      ? AppColors.mutedRed
                       : cs.outlineVariant,
               width: matched || flashing ? 1.8 : 1,
             ),
             visualDensity: VisualDensity.compact,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Palette.radiusButton),
+              borderRadius: BorderRadius.circular(AppRadii.button),
             ),
           ),
           child: Text(
@@ -257,7 +257,7 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: matched ? Palette.greenShadow : null,
+              color: matched ? AppColors.mutedGreen : null,
             ),
           ),
         ),

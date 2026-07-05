@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app_localizations.dart';
-import '../../../core/palette.dart';
+import '../../../core/app_theme.dart';
 import '../tutor_models.dart';
 import 'block_frame.dart';
 import 'block_logic.dart';
@@ -101,7 +101,7 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
                     style: OutlinedButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(Palette.radiusButton),
+                        borderRadius: BorderRadius.circular(AppRadii.button),
                       ),
                     ),
                     child: Text(item.label, style: const TextStyle(fontSize: 12.5)),
@@ -131,12 +131,12 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
     final Color border = !checked
         ? cs.outlineVariant
         : right
-            ? Palette.green
-            : Palette.heart;
+            ? AppColors.mutedGreen
+            : AppColors.mutedRed;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
-        borderRadius: BorderRadius.circular(Palette.radiusButton),
+        borderRadius: BorderRadius.circular(AppRadii.button),
         onTap: _active ? () => setState(() => _picked.removeAt(i)) : null,
         child: Container(
           width: double.infinity,
@@ -144,19 +144,19 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
           decoration: BoxDecoration(
             color: cs.surface,
             border: Border.all(color: border, width: checked ? 1.6 : 1),
-            borderRadius: BorderRadius.circular(Palette.radiusButton),
+            borderRadius: BorderRadius.circular(AppRadii.button),
           ),
           child: Row(
             children: [
               CircleAvatar(
                 radius: 10,
-                backgroundColor: cs.primary.withValues(alpha: 0.12),
+                backgroundColor: AppColors.blue.withValues(alpha: 0.12),
                 child: Text(
                   '${i + 1}',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: cs.primary,
+                    color: AppColors.blue,
                   ),
                 ),
               ),
@@ -171,7 +171,7 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
                 Icon(
                   right ? Icons.check_rounded : Icons.close_rounded,
                   size: 16,
-                  color: right ? Palette.greenShadow : Palette.heart,
+                  color: right ? AppColors.mutedGreen : AppColors.mutedRed,
                 )
               else if (_active)
                 Icon(Icons.close_rounded, size: 14, color: cs.onSurfaceVariant),
