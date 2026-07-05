@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/palette.dart';
+import '../../../core/app_theme.dart';
 import '../learn_models.dart';
 import 'learn_widget_registry.dart';
 
@@ -79,7 +79,7 @@ class _TrianglePlannerState extends State<TrianglePlanner> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final hit = _targetMet;
-    final accent = hit ? Palette.green : cs.primary;
+    final accent = hit ? AppColors.mutedGreen : cs.primary;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -154,7 +154,7 @@ class _TrianglePlannerState extends State<TrianglePlanner> {
           style: TextStyle(
             fontSize: 19,
             fontWeight: FontWeight.w800,
-            color: hit ? Palette.greenShadow : cs.onSurface,
+            color: hit ? AppColors.mutedGreen : cs.onSurface,
           ),
           child: Text(
             '${trLearnWidget(context, 'area')} = $_area $_unit²'
