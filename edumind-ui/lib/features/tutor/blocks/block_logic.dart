@@ -19,6 +19,50 @@ InteractiveOutcome numberLineOutcome({
       : InteractiveOutcome.incorrect;
 }
 
+/// balance_scale: the beam levels when coefficient*value + constant lands
+/// within the tolerance of target (defaulting to half a step) — the same
+/// "nearest snap wins" convention as numberLineOutcome. Shared by the tutor
+/// adapter (instant local preview) AND the lesson-experience adapter's
+/// server-verify request builder (same equation, same math, single source).
+InteractiveOutcome balanceOutcome({
+  required num value,
+  required num coefficient,
+  required num constant,
+  required num target,
+  required num step,
+  num? tolerance,
+}) {
+  final tol = tolerance ?? step / 2;
+  final lhs = coefficient * value + constant;
+  return (lhs - target).abs() <= tol + 1e-9
+      ? InteractiveOutcome.correct
+      : InteractiveOutcome.incorrect;
+}
+
+/// balance_scale error diagnosis — the procedural-vs-concept discriminator,
+/// the exact mirror of balanceScaleTool.diagnoseError on the server. Returns
+/// an error-pattern tag (readiness_logic.kErrorPatterns) for a wrong answer,
+/// or null when nothing specific can be said. Used for offline/client-side
+/// diagnosis so the two surfaces agree on the same miss.
+String? balanceDiagnosis({
+  required num value,
+  required num coefficient,
+  required num constant,
+  required num target,
+  required num step,
+}) {
+  final v = value, a = coefficient, b = constant, c = target;
+  // Set x to the whole other side (x = c): doesn't see two sides at all.
+  if (v == c) return 'concept_misunderstanding';
+  // Undid the constant but forgot to divide by the coefficient (x = c - b).
+  if (a != 1 && v == c - b) return 'procedural_error';
+  // Sign flip when undoing the constant (x = (c + b)/a instead of (c - b)/a).
+  if (v == (c + b) / a) return 'procedural_error';
+  // Within a step or two of level: right method, arithmetic slipped.
+  if ((a * v + b - c).abs() <= 2 * step) return 'calculation_slip';
+  return 'concept_misunderstanding';
+}
+
 /// order_sequence: how many picked positions match the correct order.
 int orderCorrectPositions(List<String> picked, List<String> correct) {
   var n = 0;

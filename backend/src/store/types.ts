@@ -77,6 +77,40 @@ export interface LearnProgressRow {
   completedAt: Date;
 }
 
+/**
+ * One learner submission — the generalized LearningSignal, one small
+ * append-only row per attempt. Readiness is DERIVED from these (per skill ×
+ * representation × context), never stored. `id` is client-generated so the
+ * log is idempotent across the local cap, the batch upsert, and two-way sync.
+ * A separate domain from completion: evidence never overwrites LearnProgress.
+ */
+export interface LearnEvidenceRow {
+  id: string;
+  studentId: string;
+  skillId: string;
+  representation: string;
+  /** Lens id (market, water_energy…) or null. */
+  context: string | null;
+  source: string; // learn_step | checkpoint | tutor_block | tool_verify
+  kind: string; // exploration | prediction | construction | transfer | recall | explanation
+  outcome: string; // correct | partially_correct | incorrect | explored
+  verification: string; // server_verified | client_reported
+  attempt: number;
+  hints: number;
+  recovered: boolean;
+  errorPattern: string | null;
+  toolId: string | null;
+  pathId: string | null;
+  experienceId: string | null;
+  stepIndex: number | null;
+  /** Time-on-task; never interpreted alone (see readiness derivation). */
+  ms: number | null;
+  createdAt: Date;
+}
+
+/** Client-authored evidence, id + createdAt included (both come from the client). */
+export type LearnEvidenceInput = Omit<LearnEvidenceRow, 'studentId'>;
+
 /** One turn of a tutor conversation (Ask OpenMind / in-experience help). */
 export interface TutorMessageRow {
   id: string;
@@ -112,6 +146,10 @@ export interface Store {
   /** Idempotent completion upsert; `created` is false when it was already recorded. */
   upsertLearnProgress(studentId: string, pathId: string, experienceId: string): Promise<{ row: LearnProgressRow; created: boolean }>;
   listLearnProgress(studentId: string): Promise<LearnProgressRow[]>;
+
+  /** Idempotent batch append of evidence, deduped by client-generated id. */
+  upsertLearnEvidence(studentId: string, events: LearnEvidenceInput[]): Promise<{ accepted: number }>;
+  listLearnEvidence(studentId: string, since?: Date): Promise<LearnEvidenceRow[]>;
 
   createTutorMessage(data: Omit<TutorMessageRow, 'id' | 'createdAt'>): Promise<TutorMessageRow>;
   /** Messages of one conversation, oldest first (capped at limit, newest kept). */

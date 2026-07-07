@@ -14,6 +14,7 @@ import { learnRoutes } from './routes/learn.js';
 import { reviewRoutes } from './routes/review.js';
 import { statsRoutes } from './routes/stats.js';
 import { studentRoutes } from './routes/students.js';
+import { toolsRoutes } from './routes/tools.js';
 import { tutorRoutes } from './routes/tutor.js';
 import type { Store } from './store/types.js';
 
@@ -79,6 +80,7 @@ export async function buildApp(deps: { store: Store; provider: ContentProvider }
   await app.register(statsRoutes, { store: deps.store });
   await app.register(tutorRoutes, { store: deps.store, provider: deps.provider });
   await app.register(learnRoutes, { store: deps.store });
+  await app.register(toolsRoutes, { store: deps.store });
 
   return app;
 }

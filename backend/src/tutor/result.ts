@@ -20,6 +20,7 @@
  * false success, no duplicate result turn, and no poisoned follow-up.
  */
 import type { TutorMessageRow } from '../store/types.js';
+import type { ErrorPattern } from '../learning/evidence.js';
 import type { InteractivePayload, InteractiveResult } from './contract.js';
 import { getTool, subjectFromLabel } from './tools/registry.js';
 import type { ToolDataView } from './tools/types.js';
@@ -57,6 +58,12 @@ export interface LearningSignal {
   rejectReason?: ResultRejectReason;
   /** v1 blocks allow exactly one attempt; stored for future multi-attempt tools. */
   attempt: number;
+  /** The micro-skill this block evidenced (from the client context), when known. */
+  skillId?: string;
+  /** The representation the learner worked in (from the client context). */
+  representation?: string;
+  /** Server-diagnosed error pattern on a non-correct verified verdict. */
+  errorPattern?: ErrorPattern;
 }
 
 export interface AssessedResult {
@@ -89,7 +96,12 @@ function findOpenInstance(
 export function assessInteractiveResult(
   submitted: InteractiveResult,
   messages: TutorMessageRow[],
-  context: { subjectLabel?: string | null; concept?: string | null },
+  context: {
+    subjectLabel?: string | null;
+    concept?: string | null;
+    skills?: string[] | null;
+    representation?: string | null;
+  },
 ): AssessedResult {
   const tool = getTool(submitted.blockType);
   const signal: LearningSignal = {
@@ -104,6 +116,10 @@ export function assessInteractiveResult(
     outcome: null,
     verification: 'rejected',
     attempt: 1,
+    // The first tagged skill of the current step identifies the readiness cell
+    // this block feeds; representation lets it be scored per-representation.
+    ...(context.skills?.[0] ? { skillId: context.skills[0] } : {}),
+    ...(context.representation ? { representation: context.representation } : {}),
   };
   const reject = (reason: ResultRejectReason): AssessedResult => {
     signal.rejectReason = reason;
@@ -135,6 +151,12 @@ export function assessInteractiveResult(
   // Deterministic verification ran — the server's outcome is the outcome.
   signal.verification = 'server_verified';
   signal.outcome = verdict;
+  // Diagnose a verified miss so the readiness signal (and any evidence row the
+  // route writes from it) carries a specific error pattern, not just "wrong".
+  if ((verdict === 'incorrect' || verdict === 'partially_correct') && tool.diagnoseError) {
+    const pattern = tool.diagnoseError(match.payload.data as unknown as ToolDataView, submitted.answer ?? {});
+    if (pattern) signal.errorPattern = pattern;
+  }
   if (submitted.correctnessOrOutcome !== verdict) {
     signal.claimedOutcome = submitted.correctnessOrOutcome;
     return { result: { ...submitted, correctnessOrOutcome: verdict }, signal };

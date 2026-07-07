@@ -13,9 +13,12 @@ import {
   CreateStudentResponse,
   ErrorEnvelope,
   GameView,
+  LearnEvidenceResponse,
   LearnProgressResponse,
   PatchGameBody,
   PatchStudentBody,
+  PostLearnEvidenceBody,
+  PostLearnEvidenceResponse,
   PostSessionBody,
   PostSessionResponse,
   PutLearnProgressBody,
@@ -23,6 +26,8 @@ import {
   RefineGameBody,
   StatsResponse,
   StudentView,
+  ToolVerifyBody,
+  ToolVerifyResponse,
   TutorConversationResponse,
 } from './schemas.js';
 
@@ -247,6 +252,29 @@ export function buildOpenApiDoc(version: string) {
             '201': ok(PutLearnProgressResponse, 'newly completed'),
             '200': ok(PutLearnProgressResponse, 'already completed — original timestamp kept'),
             '400': fail('invalid body'), '401': fail('unauthorized'),
+          },
+        }),
+      },
+      '/api/v1/learn/evidence': {
+        get: op('The authenticated student\'s learning-evidence log (per-skill readiness signal), oldest first; optional ?since=ISO', {
+          tag: 'learn', security: bearer,
+          responses: { '200': ok(LearnEvidenceResponse), '401': fail('unauthorized') },
+        }),
+        post: op('Append learning-evidence events (idempotent batch, deduped by client-generated id)', {
+          tag: 'learn', security: bearer, body: PostLearnEvidenceBody,
+          responses: {
+            '201': ok(PostLearnEvidenceResponse, 'accepted count + new total'),
+            '400': fail('invalid body'), '401': fail('unauthorized'),
+          },
+        }),
+      },
+      '/api/v1/tools/{toolId}/verify': {
+        post: op('Stateless verification of one interactive-tool attempt (data + answer) using the same ToolDescriptor.verifyResult the tutor trusts — used by lesson-experience widgets, which otherwise grade client-side only', {
+          tag: 'tools', security: bearer, params: ['toolId'], body: ToolVerifyBody,
+          responses: {
+            '200': ok(ToolVerifyResponse),
+            '400': fail('invalid body or data not renderable for this tool'),
+            '401': fail('unauthorized'), '404': fail('unknown or unavailable tool'), '429': fail('rate limited'),
           },
         }),
       },

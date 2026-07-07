@@ -76,7 +76,9 @@ describe('tool registry (descriptor invariants)', () => {
 describe('eligibleTools (server-side hard gate)', () => {
   it('grade 7-9 middle stage gets the full catalog; primary gets nothing', () => {
     const g7 = eligibleTools({ grade: 7, stage: 'middle_interactive_learning' }).map((t) => t.id);
-    expect(g7).toEqual(['number_line', 'order_sequence', 'sort_buckets', 'match_pairs']);
+    expect(g7).toEqual([
+      'number_line', 'order_sequence', 'sort_buckets', 'match_pairs', 'balance_scale', 'timeline',
+    ]);
     expect(eligibleTools({ grade: 5, stage: 'primary_games' })).toHaveLength(0);
   });
 
@@ -87,8 +89,18 @@ describe('eligibleTools (server-side hard gate)', () => {
       subject: subjectFromLabel('العلوم'),
     }).map((t) => t.id);
     expect(science).not.toContain('number_line'); // math-only
+    expect(science).not.toContain('timeline'); // social_studies-only
     expect(science).toContain('order_sequence');
     expect(science).toContain('match_pairs');
+
+    const socialStudies = eligibleTools({
+      grade: 8,
+      stage: 'middle_interactive_learning',
+      subject: subjectFromLabel('اجتماعيات'),
+    }).map((t) => t.id);
+    expect(socialStudies).toContain('timeline');
+    expect(socialStudies).not.toContain('number_line');
+    expect(socialStudies).not.toContain('balance_scale');
   });
 
   it('an unknown subject label never blocks — it just does not narrow', () => {
@@ -99,7 +111,7 @@ describe('eligibleTools (server-side hard gate)', () => {
 });
 
 describe('matchGolden (deterministic mock routing)', () => {
-  const middle = ['number_line', 'order_sequence', 'sort_buckets', 'match_pairs'];
+  const middle = ['number_line', 'order_sequence', 'sort_buckets', 'match_pairs', 'balance_scale', 'timeline'];
 
   it('routes each subject example to a valid match_pairs payload', () => {
     const cases: Array<[string, string]> = [
@@ -126,6 +138,16 @@ describe('matchGolden (deterministic mock routing)', () => {
     expect(matchGolden('رتب لي مراحل دورة الماء', middle, true)?.type).toBe('order_sequence');
     expect(matchGolden('صنف الكلمات: اسم أم فعل أم حرف؟', middle, true)?.type).toBe('sort_buckets');
     expect(matchGolden('لماذا نرى البرق قبل الرعد؟', middle, true)).toBeNull();
+  });
+
+  it('routes an equation question to balance_scale', () => {
+    expect(matchGolden('ساعدني أجد المجهول في هذه المعادلة', middle, true)?.type).toBe('balance_scale');
+  });
+
+  it('routes a historical-sequence question to timeline, not order_sequence', () => {
+    // Deliberately avoids order_sequence's own trigger words (رتب/ترتيب/…) so
+    // this proves timeline's distinct routing, not registry-order luck.
+    expect(matchGolden('أخبرني عن أحداث طريق الاستقلال والانتداب', middle, true)?.type).toBe('timeline');
   });
 
   it('normalizes golden data onto the full flat shape', () => {
@@ -215,6 +237,42 @@ describe('verifyResult (deterministic server-side outcome recomputation)', () =>
     expect(v(d, { wrongTries: 0 })).toBe('correct');
     expect(v(d, { wrongTries: 2 })).toBe('partially_correct');
     expect(v(d, { wrongTries: 4 })).toBe('incorrect');
+    expect(v(d, {})).toBe('unverifiable');
+  });
+
+  it('balance_scale: coefficient*value + constant vs target, within tolerance', () => {
+    // x + 3 = 10 → x = 7
+    const d = data({ coefficient: 1, constant: 3, target: 10, min: 0, max: 20, step: 1, tolerance: 0 });
+    const v = tool('balance_scale').verifyResult;
+    expect(v(d, { value: 7 })).toBe('correct');
+    expect(v(d, { value: 6 })).toBe('incorrect');
+    expect(v(d, {})).toBe('unverifiable');
+    expect(v(d, { value: Number.NaN })).toBe('invalid');
+    expect(v(d, { value: 99 })).toBe('invalid'); // outside the rendered beam
+
+    // 2x - 1 = 9 → x = 5, tolerance defaults to half a step
+    const d2 = data({ coefficient: 2, constant: -1, target: 9, min: 0, max: 10, step: 1 });
+    const v2 = tool('balance_scale').verifyResult;
+    expect(v2(d2, { value: 5 })).toBe('correct');
+    expect(v2(d2, { value: 5.2 })).toBe('correct'); // 2*5.2-1=9.4, within the default half-step (0.5) tolerance
+    expect(v2(d2, { value: 4 })).toBe('incorrect');
+  });
+
+  it('timeline: reuses the exact order_sequence permutation logic (shared verifyOrderPermutation)', () => {
+    const d = data({
+      items: [
+        { id: 'ottoman_end', label: '١٩١٨', bucketId: null },
+        { id: 'mandate', label: '١٩٢٠', bucketId: null },
+        { id: 'revolt', label: '١٩٢٥', bucketId: null },
+        { id: 'independence', label: '١٩٤٦', bucketId: null },
+      ],
+      correctOrder: ['ottoman_end', 'mandate', 'revolt', 'independence'],
+    });
+    expect(tool('timeline').verifyResult).toBe(tool('order_sequence').verifyResult);
+    const v = tool('timeline').verifyResult;
+    expect(v(d, { order: ['ottoman_end', 'mandate', 'revolt', 'independence'] })).toBe('correct');
+    expect(v(d, { order: ['ottoman_end', 'revolt', 'mandate', 'independence'] })).toBe('partially_correct');
+    expect(v(d, { order: ['independence', 'revolt', 'mandate', 'ottoman_end'] })).toBe('incorrect');
     expect(v(d, {})).toBe('unverifiable');
   });
 });

@@ -17,7 +17,15 @@ import {
   InteractiveResultSchema,
   TutorContextSchema,
 } from './tutor/contract.js';
+import { ResultAnswerSchema } from './tutor/tools/types.js';
 import { LEARNING_CONTEXTS, LEARNING_STAGES, MAX_GRADE, MIN_GRADE } from './learning/stage.js';
+import {
+  ERROR_PATTERNS,
+  EVIDENCE_KINDS,
+  EVIDENCE_OUTCOMES,
+  EVIDENCE_SOURCES,
+  EVIDENCE_VERIFICATIONS,
+} from './learning/evidence.js';
 
 export const ErrorEnvelope = z.object({
   error: z.object({
@@ -212,6 +220,90 @@ export const PutLearnProgressResponse = z.object({
   alreadyCompleted: z.boolean(),
   completedAt: z.string(),
   total: z.number(),
+});
+
+// ---- learning evidence (per-skill readiness log) ---------------------------
+
+/**
+ * One learner submission. Client-authored (id + createdAt included) and
+ * append-only, so upserts are idempotent by id. A separate domain from
+ * completion — evidence feeds readiness/diagnostics, never overwrites it.
+ */
+export const LearnEvidenceEvent = z.object({
+  id: z.string().min(8).max(64),
+  skillId: z.string().min(1).max(80),
+  representation: z.string().min(1).max(20),
+  context: z.string().max(40).nullable().optional(),
+  source: z.enum(EVIDENCE_SOURCES),
+  kind: z.enum(EVIDENCE_KINDS),
+  outcome: z.enum(EVIDENCE_OUTCOMES),
+  verification: z.enum(EVIDENCE_VERIFICATIONS),
+  attempt: z.number().int().min(1).max(99).optional(),
+  hints: z.number().int().min(0).max(99).optional(),
+  recovered: z.boolean().optional(),
+  errorPattern: z.enum(ERROR_PATTERNS).nullable().optional(),
+  toolId: z.string().max(40).nullable().optional(),
+  pathId: z.string().max(80).nullable().optional(),
+  experienceId: z.string().max(80).nullable().optional(),
+  stepIndex: z.number().int().min(0).max(200).nullable().optional(),
+  ms: z.number().int().min(0).nullable().optional(),
+  createdAt: z.string(),
+});
+
+export const PostLearnEvidenceBody = z.object({
+  events: z.array(LearnEvidenceEvent).min(1).max(100),
+});
+
+export const LearnEvidenceResponse = z.object({
+  items: z.array(z.record(z.string(), z.unknown())),
+  total: z.number(),
+});
+
+export const PostLearnEvidenceResponse = z.object({
+  accepted: z.number(),
+  total: z.number(),
+});
+
+// ---- stateless tool verification (shared by Ask Hudhud AND lesson experiences) ----
+
+/**
+ * A lesson-experience widget's attempt: the instance data it authored
+ * (client-bundled catalog content, so this call cannot be tamper-proof the
+ * way the tutor's thread-anchored verification is — see routes/tools.ts)
+ * plus the learner's structured answer. `data` is validated against the
+ * named tool's own semantic gate before verifyResult ever runs.
+ */
+export const ToolVerifyBody = z.object({
+  data: z.record(z.string(), z.unknown()),
+  answer: ResultAnswerSchema,
+  /**
+   * Optional — absent means today's behavior byte-for-byte. When present, the
+   * graded attempt is recorded as a server_verified evidence row (the server
+   * fills outcome/verification/errorPattern from its own verdict, so the
+   * client cannot forge those). The rest is position context the server
+   * doesn't recompute.
+   */
+  evidence: z
+    .object({
+      eventId: z.string().min(8).max(64),
+      skillId: z.string().min(1).max(80),
+      representation: z.string().min(1).max(20),
+      context: z.string().max(40).nullable().optional(),
+      kind: z.enum(EVIDENCE_KINDS),
+      attempt: z.number().int().min(1).max(99).optional(),
+      hints: z.number().int().min(0).max(99).optional(),
+      pathId: z.string().max(80).nullable().optional(),
+      experienceId: z.string().max(80).nullable().optional(),
+      stepIndex: z.number().int().min(0).max(200).nullable().optional(),
+      ms: z.number().int().min(0).nullable().optional(),
+    })
+    .optional(),
+});
+
+export const ToolVerifyResponse = z.object({
+  verdict: z.string(),
+  /** The tool's diagnosis of a non-correct answer, when it has one. */
+  errorPattern: z.string().nullable().optional(),
 });
 
 export function league(xp: number): 'bronze' | 'silver' | 'gold' {

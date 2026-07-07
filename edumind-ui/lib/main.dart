@@ -2,6 +2,7 @@ import 'package:edumind/provider/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'features/auth/welcome_back_screen.dart';
 import 'features/onboarding/onboarding_flow.dart';
 
 // 1. استيراد الملفات الجديدة لإدارة اللغة والترجمة
@@ -68,11 +69,17 @@ class EduMindApp extends StatelessWidget {
       // desktop-web viewports (tabs and pushed routes alike).
       builder: (context, child) => MobileShell(child: child!),
 
-      // Route by profile state: returning students land on the app shell;
-      // first-run goes through onboarding (which writes Session.profile).
-      home: Session.instance.onboarded
-          ? const EduMindRoot()
-          : const OnboardingFlow(),
+      // Route by profile state: first-run goes through onboarding (which
+      // writes Session.profile). A returning student with a saved device
+      // token gets one real verification hop (WelcomeBackScreen →
+      // GET /students/me) before the app shell; a profile saved without a
+      // token (offline first-run never reached the server) has nothing to
+      // verify and goes straight in, as before.
+      home: !Session.instance.onboarded
+          ? const OnboardingFlow()
+          : Session.instance.token != null
+              ? const WelcomeBackScreen()
+              : const EduMindRoot(),
     );
   }
 }

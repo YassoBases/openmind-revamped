@@ -274,8 +274,8 @@ class TutorChatState extends State<TutorChat> {
   }
 
   Widget _emptyState(AppLocalizations l, ColorScheme cs) {
-    // The mascot belongs to the primary product; middle schoolers get a calm,
-    // purposeful companion mark instead.
+    // Hudhud fronts every "Ask" moment — calmer and smaller for middle
+    // schoolers, warm and expressive for primary — never a generic icon.
     final middle =
         Session.instance.stage == LearningStage.middleInteractiveLearning;
     return SingleChildScrollView(
@@ -284,15 +284,7 @@ class TutorChatState extends State<TutorChat> {
         children: [
           const SizedBox(height: 8),
           if (middle)
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: cs.primary.withValues(alpha: 0.10),
-              ),
-              child: Icon(Icons.psychology_alt_rounded, size: 38, color: cs.primary),
-            )
+            Mascot(size: 64, accent: cs.primary, expression: MascotExpression.idle)
           else
             const Mascot(size: 96, expression: MascotExpression.happy),
           const SizedBox(height: 10),
@@ -362,6 +354,13 @@ class TutorChatState extends State<TutorChat> {
     final l = AppLocalizations.of(context)!;
     final isStudent = turn.isStudent;
     final reply = turn.reply;
+    // Grades 7-9 (Ask Hudhud) use the soft learning-yellow retry treatment;
+    // the elementary "Ask OpenMind" tab keeps its existing amber look
+    // unchanged — this component is shared by both stages, so only the
+    // middle-school reading of "error" moves to the new palette.
+    final middle = Session.instance.stage == LearningStage.middleInteractiveLearning;
+    final errorColor = middle ? AppColors.retryYellowInk : AppColors.mutedAmber;
+    final errorSoft = middle ? AppColors.retryYellowSoft : AppColors.mutedAmberSoft;
     return Align(
       alignment: isStudent ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
       child: Container(
@@ -372,9 +371,9 @@ class TutorChatState extends State<TutorChat> {
           color: isStudent
               ? cs.primary
               : turn.isError
-                  ? AppColors.mutedRedSoft
+                  ? errorSoft
                   : cs.surface,
-          border: isStudent ? null : Border.all(color: turn.isError ? AppColors.mutedRed : cs.outlineVariant),
+          border: isStudent ? null : Border.all(color: turn.isError ? errorColor : cs.outlineVariant),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -385,14 +384,34 @@ class TutorChatState extends State<TutorChat> {
               _typeChip(reply.responseType, cs),
               const SizedBox(height: 6),
             ],
-            Text(
-              turn.text,
-              style: TextStyle(
-                fontSize: 14.5,
-                height: 1.7,
-                color: isStudent ? cs.onPrimary : cs.onSurface,
+            if (turn.isError) ...[
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.refresh_rounded, size: 15, color: errorColor),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      turn.text,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        height: 1.7,
+                        fontWeight: FontWeight.w600,
+                        color: errorColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ] else
+              Text(
+                turn.text,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  height: 1.7,
+                  color: isStudent ? cs.onPrimary : cs.onSurface,
+                ),
+              ),
             // Ask → See → Try: an approved block renders from the controlled
             // registry only; the learner's action returns through send() as a
             // real conversation turn with the structured result attached.

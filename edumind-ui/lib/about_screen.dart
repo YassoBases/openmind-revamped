@@ -270,7 +270,7 @@ class _AboutScreenState extends State<AboutScreen>
                       emoji: '🤝',
                       title: l.translate('about_feat5_title'),
                       description: l.translate('about_feat5_desc'),
-                      color: AppColors.mutedRed,
+                      color: AppColors.mutedAmber,
                     ),
 
                     // تذييل الصفحة اللطيف

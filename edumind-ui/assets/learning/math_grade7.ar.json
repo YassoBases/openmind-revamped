@@ -4,6 +4,71 @@
  "subject": "الرياضيات",
  "grade": 7,
  "methodologyNote": "المسار للواجهة، والدروس للمنهاج، وطريقة التعلّم واحدة وتتكرر مع كل درس",
+ "skills": [
+  {
+   "id": "eq.equality_balance",
+   "title": "علامة يساوي تعني توازنًا",
+   "conceptFamily": "equality",
+   "prereqs": []
+  },
+  {
+   "id": "eq.solve_x_plus_b",
+   "title": "حل معادلة من خطوة واحدة (x + ب = ج)",
+   "conceptFamily": "linear_equations",
+   "prereqs": ["eq.equality_balance"],
+   "drill": {
+    "type": "balance_scale",
+    "paramRanges": {"coefficient": [1, 1], "constant": [2, 9], "solution": [2, 10]},
+    "fixed": {"min": 0, "max": 20, "step": 1}
+   }
+  },
+  {
+   "id": "eq.solve_ax_plus_b",
+   "title": "حل معادلة من خطوتين (أ×x + ب = ج)",
+   "conceptFamily": "linear_equations",
+   "prereqs": ["eq.solve_x_plus_b"],
+   "drill": {
+    "type": "balance_scale",
+    "paramRanges": {"coefficient": [2, 4], "constant": [1, 6], "solution": [2, 6]},
+    "fixed": {"min": 0, "max": 30, "step": 1}
+   }
+  },
+  {
+   "id": "eq.check_solution",
+   "title": "التحقق من الحل بالتعويض",
+   "conceptFamily": "linear_equations",
+   "prereqs": ["eq.solve_x_plus_b"]
+  },
+  {
+   "id": "geo.tri_area_formula",
+   "title": "مساحة المثلث = (القاعدة × الارتفاع) ÷ 2",
+   "conceptFamily": "triangle_area",
+   "prereqs": [],
+   "drill": {
+    "type": "triangle_area",
+    "paramRanges": {"base": [3, 8], "height": [3, 8]},
+    "fixed": {"maxDim": 12, "unit": "م"}
+   }
+  },
+  {
+   "id": "geo.tri_area_scaling",
+   "title": "أثر تغيير القاعدة أو الارتفاع في المساحة",
+   "conceptFamily": "triangle_area",
+   "prereqs": ["geo.tri_area_formula"]
+  },
+  {
+   "id": "geo.area_units",
+   "title": "وحدات المساحة (م²) مقابل وحدات الطول (م)",
+   "conceptFamily": "measurement_units",
+   "prereqs": []
+  },
+  {
+   "id": "geo.tri_area_apply",
+   "title": "استخدام المساحة في قرار واقعي",
+   "conceptFamily": "triangle_area",
+   "prereqs": ["geo.tri_area_formula", "geo.area_units"]
+  }
+ ],
  "paths": [
   {
    "id": "city_keys",
@@ -73,7 +138,175 @@
      "id": "equations",
      "title": "المعادلات",
      "subtitle": "ميزان يجب أن يبقى متوازنًا — هكذا تجد الرقم المفقود",
-     "status": "soon"
+     "status": "ready",
+     "steps": [
+      {
+       "kind": "scene",
+       "emoji": "🔒",
+       "title": "سرّ الصندوق المقفل",
+       "body": "وجد فريقكم في المدرسة صندوقًا معدنيًا فيه عدد من الكرات الزجاجية، وفوقه ورقة صغيرة تقول: إذا أضفنا 3 كرات إلى ما بداخله يصبح المجموع 10 كرات بالضبط. لا أحد يتذكر كم كرة بداخل الصندوق الآن — وأنت من سيكتشف العدد المجهول باستخدام ميزان التوازن.",
+       "variants": {
+        "market": {
+         "emoji": "📦",
+         "title": "سرّ الصندوق في المستودع",
+         "body": "وجد عمّك في مستودع محلّه صندوقًا مغلقًا من علب الحلوى، وفوقه ورقة تقول: إذا أضفنا 3 علب إلى ما بداخله يصبح المجموع 10 علب بالضبط. لا أحد يتذكر كم علبة بداخل الصندوق الآن — وأنت من سيكتشف العدد المجهول باستخدام ميزان التوازن."
+        },
+        "water_energy": {
+         "emoji": "💧",
+         "title": "سرّ الخزّان الصغير",
+         "body": "لاحظ فنيّو الصيانة أن الخزّان الصغير يحمل ملصقًا غريبًا: إذا أضفنا 3 لترات إلى الكمية المخزَّنة فيه يصبح المجموع 10 لترات بالضبط. لا أحد يتذكر كم لترًا في الخزان الآن — وأنت من سيكتشف الكمية المجهولة باستخدام ميزان التوازن."
+        }
+       }
+      },
+      {
+       "kind": "explore",
+       "title": "جرّب بنفسك",
+       "body": "حرّك x على الميزان وراقب الطرفين. جرّب أكثر من قيمة، وشاهد متى يستقر الميزان متوازنًا.",
+       "skills": ["eq.equality_balance"],
+       "widget": {
+        "type": "balance_scale",
+        "params": {
+         "coefficient": 1,
+         "constant": 3,
+         "target": 10,
+         "min": 0,
+         "max": 15,
+         "step": 1,
+         "views": ["equation", "table"]
+        }
+       }
+      },
+      {
+       "kind": "choice",
+       "title": "توقّع قبل أن تكمل",
+       "body": "الميزان يجب أن يبقى متوازنًا دائمًا — هذا هو معنى علامة يساوي (=).",
+       "skills": ["eq.equality_balance"],
+       "choice": {
+        "prompt": "لو أضفنا العدد 5 إلى الطرف الأيسر من الميزان فقط، ماذا يحدث؟",
+        "options": [
+         "يميل الميزان نحو اليسار",
+         "يبقى متوازنًا",
+         "يميل نحو اليمين",
+         "ينكسر الميزان"
+        ],
+        "correctIndex": 0,
+        "distractorPatterns": [null, "concept_misunderstanding", "representation_confusion", "concept_misunderstanding"],
+        "correctFeedback": "صحيح! أي إضافة إلى طرف واحد فقط تكسر التوازن. لإبقاء الميزان متزنًا يجب أن نضيف العدد نفسه إلى الطرفين معًا.",
+        "wrongFeedback": "تذكّر: الميزان يميل نحو الطرف الذي زاد وزنه وحده. لإبقائه متزنًا، يجب إضافة العدد نفسه إلى الطرفين معًا — هذه هي القاعدة الذهبية في حلّ المعادلات."
+       }
+      },
+      {
+       "kind": "challenge",
+       "title": "مساهمة الصف في الهدية",
+       "body": "جمع الصف مبلغًا من المال ليشتروا هدية لمعلّمهم، وكل ثلاثة تلاميذ تشاركوا بالمبلغ نفسه x. بعد أن أضافوا 2 ليرة من صندوق النشاط صار المجموع 17 ليرة: 3x + 2 = 17. حرّك x حتى يتزن الميزان، ثم تحقق. تذكّر: حلّ واحد فقط يوازن هذا الميزان.",
+       "skills": ["eq.solve_ax_plus_b"],
+       "widget": {
+        "type": "balance_scale",
+        "params": {
+         "coefficient": 3,
+         "constant": 2,
+         "target": 17,
+         "min": 0,
+         "max": 10,
+         "step": 1
+        }
+       },
+       "successText": "ممتاز! x = 5 — كل تلميذ من الثلاثة ساهم بخمس ليرات بالضبط.",
+       "variants": {
+        "market": {
+         "title": "مساهمة الزبائن في صندوق الخصم",
+         "body": "جمع ثلاثة زبائن مبلغًا للمساهمة في صندوق خصم مشترك بالمبلغ نفسه x لكل واحد. بعد أن أضاف صاحب المحل 2 ليرة من عنده صار المجموع 17 ليرة: 3x + 2 = 17. حرّك x حتى يتزن الميزان، ثم تحقق.",
+         "successText": "ممتاز! x = 5 — كل زبون من الثلاثة ساهم بخمس ليرات بالضبط."
+        },
+        "water_energy": {
+         "title": "توزيع فاتورة الماء المشتركة",
+         "body": "اتفقت ثلاث شقق على توزيع فاتورة خزّان الماء المشترك بالتساوي x لكل شقة. بعد أن أُضيفت 2 ليرة رسوم صيانة صار المجموع 17 ليرة: 3x + 2 = 17. حرّك x حتى يتزن الميزان، ثم تحقق.",
+         "successText": "ممتاز! x = 5 — كل شقة من الثلاث دفعت خمس ليرات بالضبط."
+        }
+       }
+      },
+      {
+       "kind": "apply",
+       "emoji": "🎁",
+       "title": "قرارك الأخير: كم عضوًا في النادي؟",
+       "body": "جمع نادي المدرسة مبلغًا لشراء لوازم موزّعة بالتساوي على أعضائه x. بعد أن أضاف المشرف 4 ليرات من ميزانية النشاط صار المجموع 22 ليرة: x + 4 = 22. وازن الميزان أولًا، ثم قرر.",
+       "skills": ["eq.check_solution"],
+       "widget": {
+        "type": "balance_scale",
+        "params": {
+         "coefficient": 1,
+         "constant": 4,
+         "target": 22,
+         "min": 0,
+         "max": 30,
+         "step": 1
+        }
+       },
+       "choice": {
+        "prompt": "بعد أن وازنت الميزان، كم عضوًا شارك في النادي؟",
+        "options": [
+         "18 عضوًا",
+         "22 عضوًا",
+         "4 أعضاء",
+         "26 عضوًا"
+        ],
+        "correctIndex": 0,
+        "distractorPatterns": [null, "concept_misunderstanding", "concept_misunderstanding", "procedural_error"],
+        "correctFeedback": "قرار صحيح! من المعادلة x + 4 = 22 نجد x = 18 عضوًا — بهذا العدد بالضبط ستوزَّع اللوازم دون نقص أو زيادة.",
+        "wrongFeedback": "المعادلة x + 4 = 22 تعني أننا نبحث عن العدد الذي إذا أضفنا إليه 4 أصبح 22. اطرح 4 من 22 فتحصل على 18 عضوًا."
+       }
+      },
+      {
+       "kind": "check",
+       "emoji": "🎯",
+       "title": "تحقق من فهمك",
+       "body": "ثلاثة أسئلة سريعة — لا جديد هنا، فقط ما اكتشفته بنفسك على الميزان.",
+       "checkItems": [
+        {
+         "prompt": "إذا كان x + 5 = 12، فما قيمة x؟",
+         "options": ["7", "17", "5", "2"],
+         "correctIndex": 0,
+         "skills": ["eq.solve_x_plus_b"],
+         "rep": "symbolic",
+         "distractorPatterns": [null, "procedural_error", "concept_misunderstanding", "calculation_slip"],
+         "correctFeedback": "صحيح: 12 - 5 = 7.",
+         "wrongFeedback": "لإيجاد x اطرح 5 من الطرفين: x = 12 - 5 = 7."
+        },
+        {
+         "prompt": "إذا كان 2x = 14، فما قيمة x؟",
+         "options": ["7", "12", "28", "16"],
+         "correctIndex": 0,
+         "skills": ["eq.solve_ax_plus_b"],
+         "rep": "symbolic",
+         "distractorPatterns": [null, "calculation_slip", "procedural_error", "calculation_slip"],
+         "correctFeedback": "صحيح: 14 ÷ 2 = 7.",
+         "wrongFeedback": "لإيجاد x اقسم الطرفين على 2: x = 14 ÷ 2 = 7."
+        },
+        {
+         "prompt": "أي عبارة تصف المعادلة بشكل صحيح؟",
+         "options": [
+          "ميزان يجب أن يبقى متوازنًا",
+          "جملة عادية بلا شرط",
+          "رسم بياني فقط",
+          "جدول أرقام"
+         ],
+         "correctIndex": 0,
+         "skills": ["eq.equality_balance"],
+         "rep": "verbal",
+         "distractorPatterns": [null, "concept_misunderstanding", "representation_confusion", "representation_confusion"],
+         "correctFeedback": "بالضبط — أي عملية نجريها على طرف يجب أن تتكرر على الطرف الآخر ليبقى الميزان متزنًا.",
+         "wrongFeedback": "المعادلة علامة يساوي (=) تربط طرفين يجب أن يبقيا متساويين — تمامًا كميزان يجب أن يبقى متوازنًا."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "checkpoints": [
+    {
+     "id": "cp_missing_number_1",
+     "afterExperience": "equations",
+     "skills": ["eq.equality_balance", "eq.solve_x_plus_b", "eq.solve_ax_plus_b"]
     }
    ]
   },
@@ -247,6 +480,7 @@
        "kind": "explore",
        "title": "جرّب بنفسك",
        "body": "اسحب النقطتين البيضاويتين لتغيّر طول قاعدة القطعة وارتفاعها، وراقب كيف تتغيّر المساحة. هل تلاحظ علاقة تربط القاعدة والارتفاع بالمساحة؟",
+       "skills": ["geo.tri_area_formula"],
        "widget": {
         "type": "triangle_area",
         "params": {
@@ -270,6 +504,7 @@
        "kind": "choice",
        "title": "توقّع قبل أن تكمل",
        "body": "المهندس الجيد يتوقّع النتيجة قبل أن يجرّبها.",
+       "skills": ["geo.tri_area_scaling"],
        "choice": {
         "prompt": "لو ضاعفنا طول القاعدة وأبقينا الارتفاع كما هو، ماذا يحدث لمساحة القطعة؟",
         "options": [
@@ -279,6 +514,7 @@
          "تصبح أربعة أضعاف"
         ],
         "correctIndex": 0,
+        "distractorPatterns": [null, "concept_misunderstanding", "concept_misunderstanding", "transfer_difficulty"],
         "correctFeedback": "أحسنت! المساحة = (القاعدة × الارتفاع) ÷ 2، فإذا تضاعفت القاعدة وبقي الارتفاع ثابتًا تضاعف ناتج الضرب، وتضاعفت المساحة معه.",
         "wrongFeedback": "لاحظ أن المساحة = (القاعدة × الارتفاع) ÷ 2. إذا تضاعفت القاعدة وبقي الارتفاع ثابتًا، فإن ناتج الضرب يتضاعف، وبالتالي تتضاعف المساحة. جرّبها ذهنيًا: 4×4 ثم 8×4."
        }
@@ -287,6 +523,7 @@
        "kind": "challenge",
        "title": "تبرّع المشتل: تربة تكفي 24 مترًا مربعًا",
        "body": "تبرّع مشتل قريب بتربة زراعية تكفي لتغطية 24 مترًا مربعًا بالضبط، دون زيادة أو نقصان. اسحب النقطتين حتى تصبح مساحة القطعة 24 م² تمامًا. تذكّر: هناك أكثر من حلّ صحيح!",
+       "skills": ["geo.tri_area_formula"],
        "widget": {
         "type": "triangle_area",
         "params": {
@@ -316,6 +553,7 @@
        "emoji": "🌼",
        "title": "قرارك الأخير: كم شتلة نطلب؟",
        "body": "بجانب نافورة الساحة قطعة مثلثة أخرى أبعادها ثابتة: قاعدتها 6 أمتار وارتفاعها 4 أمتار. ينصح صاحب المشتل بزراعة شتلتين في كل متر مربع.",
+       "skills": ["geo.tri_area_apply"],
        "widget": {
         "type": "triangle_area",
         "params": {
@@ -335,6 +573,7 @@
          "20 شتلة"
         ],
         "correctIndex": 0,
+        "distractorPatterns": [null, "transfer_difficulty", "concept_misunderstanding", "calculation_slip"],
         "correctFeedback": "قرار صحيح! المساحة = (6 × 4) ÷ 2 = 12 م²، وبمعدل شتلتين لكل متر مربع نحتاج 24 شتلة. بهذا الحساب لن تشتري اللجنة أكثر من حاجتها، ولن ينقص الركن الأخضر شيء.",
         "wrongFeedback": "الحساب على خطوتين: أولًا المساحة = (6 × 4) ÷ 2 = 12 م². ثانيًا عدد الشتلات = 12 × 2 = 24 شتلة. هكذا يحسبها المهندس قبل الشراء."
        }
@@ -349,6 +588,9 @@
          "prompt": "مثلث قاعدته 10 أمتار وارتفاعه 6 أمتار، ما مساحته؟",
          "options": ["30 م²", "60 م²", "16 م²", "26 م²"],
          "correctIndex": 0,
+         "skills": ["geo.tri_area_formula"],
+         "rep": "symbolic",
+         "distractorPatterns": [null, "concept_misunderstanding", "concept_misunderstanding", "calculation_slip"],
          "correctFeedback": "صحيح: (10 × 6) ÷ 2 = 30 م².",
          "wrongFeedback": "تذكّر القانون الذي اكتشفته: المساحة = (القاعدة × الارتفاع) ÷ 2 = (10 × 6) ÷ 2 = 30 م²."
         },
@@ -356,6 +598,9 @@
          "prompt": "لو نصّفنا الارتفاع وأبقينا القاعدة كما هي، ماذا يحدث للمساحة؟",
          "options": ["تنقص إلى النصف", "تتضاعف", "لا تتغيّر", "تنقص إلى الربع"],
          "correctIndex": 0,
+         "skills": ["geo.tri_area_scaling"],
+         "rep": "verbal",
+         "distractorPatterns": [null, "concept_misunderstanding", "concept_misunderstanding", "transfer_difficulty"],
          "correctFeedback": "تمامًا — المساحة تتغيّر مع الارتفاع: نصف الارتفاع يعني نصف المساحة.",
          "wrongFeedback": "المساحة = (القاعدة × الارتفاع) ÷ 2، فإذا صار الارتفاع نصف ما كان، صارت المساحة نصف ما كانت."
         },
@@ -368,6 +613,9 @@
           "(القاعدة + الارتفاع) ÷ 2"
          ],
          "correctIndex": 0,
+         "skills": ["geo.tri_area_formula"],
+         "rep": "symbolic",
+         "distractorPatterns": [null, "concept_misunderstanding", "concept_misunderstanding", "concept_misunderstanding"],
          "correctFeedback": "هذا هو القانون — المثلث نصف مستطيل له القاعدة والارتفاع نفسهما.",
          "wrongFeedback": "القاعدة × الارتفاع تعطي مساحة المستطيل الكامل، والمثلث القائم نصفه بالضبط: (القاعدة × الارتفاع) ÷ 2."
         }
@@ -386,6 +634,13 @@
      "title": "مساحة الدائرة",
      "subtitle": "من قطع صغيرة إلى قانون مساحة الدائرة كاملة",
      "status": "soon"
+    }
+   ],
+   "checkpoints": [
+    {
+     "id": "cp_land_of_difference_1",
+     "afterExperience": "triangle_garden",
+     "skills": ["geo.tri_area_formula", "geo.tri_area_scaling", "geo.area_units", "geo.tri_area_apply"]
     }
    ]
   },

@@ -53,6 +53,28 @@ What is working in the M5b build:
 - The composer can generate a new game through the backend and launch it in the
   player.
 - Web saves use IndexedDB; native saves use Drift/SQLite.
+- Returning students pass through a one-tap session-restore check
+  (`WelcomeBackScreen`) that verifies the saved device token against
+  `GET /students/me` before entering the app, instead of silently trusting a
+  possibly-stale token; a failed check clears only the dead credentials and
+  falls back to onboarding, never touching local progress.
+- The tutor's "Ask" surface is branded **Ask Hudhud**: a shared contextual
+  bottom sheet (`openAskHudhud`) that any stuck-learner affordance — inside a
+  lesson step, on a path's station list — can open, seeded with wherever the
+  learner actually is. Always the same `TutorChat`, never a second chat
+  system.
+- The middle-school learn platform now spans two subjects (Grade 7 math +
+  social studies) and six interactive tool types — the original
+  `number_line`/`order_sequence`/`sort_buckets`/`match_pairs` plus new
+  `balance_scale` (adjust-and-observe linear equations) and `timeline`
+  (chronological ordering) — all graded through one descriptor-driven path
+  shared by lesson widgets and Ask Hudhud blocks alike.
+- A per-skill readiness/evidence system now sits underneath both surfaces: an
+  append-only evidence log (local-first on the client, synced to the backend)
+  drives readiness-based checkpoints between skill clusters and diagnoses
+  wrong answers into specific error patterns, so both a support action and
+  Hudhud's hints can target the actual misconception instead of a generic
+  retry.
 - `flutter_module/` remains as the engine/reference Flutter app, while
   `edumind-ui/` is the polished UI shell being carried forward.
 
@@ -148,7 +170,6 @@ For a release-style web build:
 ```bash
 cd edumind-ui
 flutter pub get
-flutter build web
 $env:PORT="53211"; node tool/serve.mjs   # Windows PowerShell
 # or: set PORT=53211 && node tool/serve.mjs   # Windows cmd
 # or: PORT=53211 node tool/serve
@@ -178,7 +199,8 @@ npm run build          # builds the shared lib + the three shells
 npm run preview        # → http://localhost:8765
 ```
 
-Open the harness, click a demo spec (Water Cycle quest / World Capitals shootout
+Open the harness, click a demo flutter build web
+spec (Water Cycle quest / World Capitals shootout
 / Plant Cell draw-board / Arabic quest), and play end to end: tutorial level,
 teach cards, questions with two-stage hints, explanations on right *and* wrong
 answers, summary screen. The harness also simulates progressive start (boot with
@@ -216,8 +238,52 @@ live:
   pipeline metrics (per-stage latency, escalation rate, cache hit rates,
   estimated cost per game).
 - **Auth:** `POST /api/v1/students` returns `{ studentId, token }`; everything
-  else takes `Authorization: Bearer <token>`. Nickname-only accounts.
+  else takes `Authorization: Bearer <token>`. Nickname-only accounts — there is
+  no password or email, so a client re-verifies a saved token with
+  `GET /students/me` rather than doing a real login (see
+  [Interactive tools & the readiness system](#interactive-tools--the-readiness-system)
+  below for how the Flutter client uses this).
+- **Tools & evidence:** `POST /api/v1/tools/:toolId/verify` grades an
+  interactive-tool submission server-side (rate-limited per student per
+  minute via `MAX_TOOL_VERIFY_PER_MINUTE`, default 120) and optionally records
+  a per-skill evidence row; `GET`/`POST /api/v1/learn/evidence` sync that
+  append-only evidence log.
 - Seed a demo student: `npm run seed` (prints a usable token).
+
+---
+
+## Interactive tools & the readiness system
+
+Six descriptor-driven manipulatives — `number_line`, `order_sequence`,
+`sort_buckets`, `match_pairs`, and the newer `balance_scale` (learner adjusts
+an unknown against a live balance beam — Grade 7's "an equation stays equal"
+concept as a consequence, not a checked placement) and `timeline` (order 3–8
+events chronologically; shares `order_sequence`'s permutation grading). Each
+tool is one `ToolDescriptor` (`backend/src/tutor/tools/`) declaring its data
+shape, `validate`, `verifyResult`, and an optional `diagnoseError` — the same
+descriptor renders as a lesson-catalog widget
+(`edumind-ui/lib/features/learn/widgets/`) *and* an Ask Hudhud tutor block
+(`.../features/tutor/blocks/`), backed by shared core logic in
+`edumind-ui/lib/shared/interactive_tools/`, so both surfaces share one
+grading truth instead of two. Lesson-widget submissions can now also be
+verified server-side via `POST /api/v1/tools/:toolId/verify` (previously
+100% client-graded) — documented as a weaker trust model than the tutor path
+in `backend/src/routes/tools.ts`, since the client supplies both the puzzle
+instance and the answer.
+
+Underneath both surfaces, an append-only per-skill evidence log
+(`LearnEvidence` in Postgres, `learn_evidence_store.dart` local-first on the
+client) feeds a pure readiness function (`readiness_logic.dart` /
+`backend/src/learning/evidence.ts`, kept in sync) scored per skill ×
+representation × context. A non-correct, server-verified attempt is
+diagnosed into one of six error patterns (concept misunderstanding,
+representation confusion, wrong unit, calculation slip, procedural error,
+transfer difficulty), each mapped to a specific support action
+(`backend/src/learning/support.ts` / `support_actions.dart`). `checkpoint_logic.dart`
+uses current readiness to assemble a drill/reuse/transfer checkpoint once a
+path crosses a cluster of skills, and the tutor's `TutorContext` now carries
+`skills`/`readiness` so Hudhud's hints target the weakest prerequisite and
+respond to the diagnosed pattern instead of a generic retry.
 
 ---
 
@@ -234,7 +300,10 @@ Onboarding (Hudhud-guided: nickname, grade 1-6, language, profile preferences,
 theme) -> dashboard/home path (XP, streaks, saved games, Demo Games) -> composer
 (subject, free-text topic, game type, theme, length, difficulty) -> player. The
 app can launch bundled demos without the backend, or generate through the
-backend and then save the completed game locally for offline replay.
+backend and then save the completed game locally for offline replay. Returning
+students with a saved device token see a one-tap `WelcomeBackScreen` session
+check first; anywhere a learner gets stuck, **Ask Hudhud** opens the same
+contextual tutor sheet, seeded with the current step.
 
 `flutter_module/` is still useful for engine parity checks and lower-level
 player work, but `edumind-ui/` is the current learner-facing app.
@@ -452,7 +521,8 @@ shared/           GameSpec contract: Zod schemas, validators, assembly, JSON sch
 samples/          golden demo specs (EN ×3 + AR) — demos, tests and mock mode all eat the same files
 shells/           the product: EduCore/GameFeel/Mascot libs, 3 games, build, preview harness, CI tests
 backend/          Fastify 5 API: pipeline, validators, fact-check, storage, OpenAPI docs
-edumind-ui/       primary learner UI: onboarding, bilingual home/settings/composer/player/tutor, warm visual system
+edumind-ui/       primary learner UI: onboarding, session-restore, bilingual home/settings/composer/player/tutor
+                  (Ask Hudhud), interactive tools + readiness/evidence system, warm visual system
 flutter_module/   reference engine app: composer, player, local library, shell parity checks
 scripts/          Kenney CC0 asset fetchers (optional enhancement — see scripts/KENNEY_README.md)
 docs/API.md       complete REST API reference for integrating OpenMind into another app

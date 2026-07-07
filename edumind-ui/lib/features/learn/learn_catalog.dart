@@ -12,6 +12,7 @@ class LearnCatalogLoader {
   /// never needs to load a file to know it is for another grade.
   static const _manifest = [
     (file: 'math_grade7.ar.json', grade: 7, language: 'ar'),
+    (file: 'social_studies_grade7.ar.json', grade: 7, language: 'ar'),
   ];
   static final Map<String, LearnCatalog> _cache = {};
 

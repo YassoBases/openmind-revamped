@@ -106,6 +106,18 @@ class Session {
     }
   }
 
+  /// Drops only the (now-invalid) device credentials — never the learner's
+  /// local profile, learning progress, or completed lessons. Used when the
+  /// backend rejects the saved token (e.g. the account no longer exists
+  /// server-side): the learner goes through onboarding again to register a
+  /// new device account, but nothing they already did on this device is
+  /// deleted. [LearnProgressStore] lives under its own SharedPreferences
+  /// keys and is never touched by either method here.
+  Future<void> clearAuth() async {
+    await _prefs.remove('token');
+    await _prefs.remove('studentId');
+  }
+
   Future<void> reset() async {
     await _prefs.remove('token');
     await _prefs.remove('studentId');

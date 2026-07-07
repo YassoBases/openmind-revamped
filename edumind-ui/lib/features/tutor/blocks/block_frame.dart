@@ -33,10 +33,14 @@ class BlockFrame extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
+    // Correct is the one true success green; partial and incorrect share the
+    // same soft learning-yellow retry treatment (never red/purple/amber/
+    // orange — orange stays reserved for progress/discovery elsewhere on this
+    // screen).
     final (bannerKey, bannerColor) = switch (outcome) {
       InteractiveOutcome.correct => ('blk_correct', AppColors.mutedGreen),
-      InteractiveOutcome.partiallyCorrect => ('blk_partial', AppColors.orangeInk),
-      InteractiveOutcome.incorrect => ('blk_incorrect', AppColors.mutedRed),
+      InteractiveOutcome.partiallyCorrect => ('blk_partial', AppColors.retryYellowInk),
+      InteractiveOutcome.incorrect => ('blk_incorrect', AppColors.retryYellowInk),
       InteractiveOutcome.explored || null => (null, cs.onSurfaceVariant),
     };
 

@@ -8,9 +8,11 @@ import '../../widgets/mascot.dart';
 import 'grade_soon_view.dart';
 import 'journey_logic.dart';
 import 'learn_catalog.dart';
+import 'learn_evidence_store.dart';
 import 'learn_models.dart';
 import 'learn_progress_store.dart';
 import 'path_screen.dart';
+import 'readiness_logic.dart';
 
 /// "رحلتي" — the curriculum path list. One decision: pick a path. Each row
 /// is a path's identity (icon, title, «يعبر عن», honest ready-progress);
@@ -31,6 +33,7 @@ class JourneyScreen extends StatefulWidget {
 class _JourneyScreenState extends State<JourneyScreen> {
   List<LearnCatalog>? _catalogs;
   Set<String> _completed = {};
+  Map<String, Readiness> _readiness = {};
 
   @override
   void initState() {
@@ -39,11 +42,14 @@ class _JourneyScreenState extends State<JourneyScreen> {
     // Progress can change while this tab sits in the IndexedStack (an
     // experience finished from Home, or a background backend sync).
     LearnProgressStore.revision.addListener(_onProgressChanged);
+    // The next-goal chip follows the learner's evidence log.
+    LearnEvidenceStore.revision.addListener(_onProgressChanged);
   }
 
   @override
   void dispose() {
     LearnProgressStore.revision.removeListener(_onProgressChanged);
+    LearnEvidenceStore.revision.removeListener(_onProgressChanged);
     super.dispose();
   }
 
@@ -57,15 +63,25 @@ class _JourneyScreenState extends State<JourneyScreen> {
       grade: Session.instance.grade,
     );
     final store = await LearnProgressStore.load();
+    final evidence = await LearnEvidenceStore.load();
     if (mounted) {
       setState(() {
         _catalogs = catalogs;
         _completed = store.completed;
+        _readiness = deriveSkillReadiness(evidence.events);
       });
     }
-    // Reconcile with the backend in the background; refresh if it changed.
-    if (sync && await store.syncWithBackend() && mounted) {
-      setState(() => _completed = store.completed);
+    // Reconcile both stores with the backend in the background; refresh if
+    // anything changed.
+    if (sync && mounted) {
+      final progressChanged = await store.syncWithBackend();
+      final evidenceChanged = await evidence.syncWithBackend();
+      if ((progressChanged || evidenceChanged) && mounted) {
+        setState(() {
+          _completed = store.completed;
+          _readiness = deriveSkillReadiness(evidence.events);
+        });
+      }
     }
   }
 
@@ -84,7 +100,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     final catalogs = _catalogs;
 
     return Scaffold(
-      backgroundColor: MiddlePalette.ivory,
+      backgroundColor: MiddlePalette.cream,
       body: SafeArea(
         child: catalogs == null
             ? const Center(child: CircularProgressIndicator())
@@ -131,10 +147,44 @@ class _JourneyScreenState extends State<JourneyScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        for (final path in catalog.paths) _pathRow(path, l),
+                        for (final path in catalog.paths)
+                          _pathRow(path, catalog, l),
                       ],
                     ],
                   ),
+      ),
+    );
+  }
+
+  /// The one-line "where to next" under a path's current station — the
+  /// visible journey's forward pointer, named as a real micro-skill. A
+  /// filled pill (not inline text) so it reads as the progress/discovery
+  /// signal it is, distinct from the path's own identity color.
+  Widget _goalChip(LearnSkill goal, AppLocalizations l) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: MiddlePalette.discovery.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.flag_rounded, size: 13, color: MiddlePalette.discovery),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              l.translateWith('journey_next_goal', {'skill': goal.title}),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: MiddlePalette.discovery,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -168,15 +218,22 @@ class _JourneyScreenState extends State<JourneyScreen> {
   }
 
   /// One path row: identity + honest progress, one tap → its trail.
-  Widget _pathRow(LearnPath path, AppLocalizations l) {
+  Widget _pathRow(LearnPath path, LearnCatalog catalog, AppLocalizations l) {
     final accent = hexToColor(path.colorHex);
     final (done, ready) = pathProgress(path, _completed);
     final rtl = Directionality.of(context) == TextDirection.rtl;
 
+    // The next meaningful goal on this path's current station — the visible
+    // "where to next", grounded in the learner's own readiness.
+    final current = currentExperience(path, _completed);
+    final goal = current == null
+        ? null
+        : nextGoal(current, catalog, _readiness);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: Colors.white,
+        color: MiddlePalette.card,
         borderRadius: BorderRadius.circular(Palette.radiusCard),
         child: InkWell(
           borderRadius: BorderRadius.circular(Palette.radiusCard),
@@ -223,6 +280,10 @@ class _JourneyScreenState extends State<JourneyScreen> {
                           color: MiddlePalette.body,
                         ),
                       ),
+                      if (goal != null) ...[
+                        const SizedBox(height: 6),
+                        _goalChip(goal, l),
+                      ],
                     ],
                   ),
                 ),
@@ -234,7 +295,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
                     child: CircularProgressIndicator(
                       value: done / ready,
                       strokeWidth: 3.5,
-                      color: accent,
+                      color: MiddlePalette.discovery,
                       backgroundColor: MiddlePalette.softBlue,
                     ),
                   )

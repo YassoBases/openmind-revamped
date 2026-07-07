@@ -22,6 +22,8 @@ export interface Config {
   corsOrigins: string | boolean;
   maxGenerationsPerHour: number;
   maxTutorMessagesPerHour: number;
+  /** Stateless tool-verify calls (lesson-experience grading) — cheap, no LLM, so a per-minute budget fits better than per-hour. */
+  maxToolVerifyPerMinute: number;
 }
 
 function bool(v: string | undefined, dflt = false): boolean {
@@ -56,6 +58,7 @@ export function loadConfig(env = process.env): Config {
     corsOrigins: env.CORS_ORIGINS ? env.CORS_ORIGINS : true, // permissive in dev
     maxGenerationsPerHour: Number(env.MAX_GENERATIONS_PER_HOUR) || 20,
     maxTutorMessagesPerHour: Number(env.MAX_TUTOR_MESSAGES_PER_HOUR) || 60,
+    maxToolVerifyPerMinute: Number(env.MAX_TOOL_VERIFY_PER_MINUTE) || 120,
   };
 }
 

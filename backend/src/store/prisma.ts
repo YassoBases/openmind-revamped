@@ -1,7 +1,7 @@
 /** Prisma-backed store (Postgres 16 / Neon). */
 import { randomUUID } from 'node:crypto';
 import type { GameSpec } from '@edumind/shared';
-import type { GameRow, GameStatus, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, XpEventRow } from './types.js';
+import type { GameRow, GameStatus, LearnEvidenceInput, LearnEvidenceRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, XpEventRow } from './types.js';
 
 // PrismaClient is loaded lazily so the backend can boot (memory mode) even if
 // `prisma generate` has never run.
@@ -115,6 +115,23 @@ export async function createPrismaStore(): Promise<Store> {
         where: { studentId },
         orderBy: { completedAt: 'asc' },
       })) as LearnProgressRow[];
+    },
+
+    async upsertLearnEvidence(studentId: string, events: LearnEvidenceInput[]) {
+      if (events.length === 0) return { accepted: 0 };
+      // Idempotent by client-generated id — skipDuplicates makes a replayed
+      // batch (offline retry, cross-device sync) a no-op for seen ids.
+      const res = await prisma.learnEvidence.createMany({
+        data: events.map((e) => ({ ...e, studentId })),
+        skipDuplicates: true,
+      });
+      return { accepted: res.count };
+    },
+    async listLearnEvidence(studentId: string, since?: Date) {
+      return (await prisma.learnEvidence.findMany({
+        where: { studentId, ...(since ? { createdAt: { gte: since } } : {}) },
+        orderBy: { createdAt: 'asc' },
+      })) as LearnEvidenceRow[];
     },
 
     async createTutorMessage(data) {

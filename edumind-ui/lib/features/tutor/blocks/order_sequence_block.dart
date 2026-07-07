@@ -132,7 +132,7 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
         ? cs.outlineVariant
         : right
             ? AppColors.mutedGreen
-            : AppColors.mutedRed;
+            : AppColors.retryYellow;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
@@ -171,7 +171,7 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
                 Icon(
                   right ? Icons.check_rounded : Icons.close_rounded,
                   size: 16,
-                  color: right ? AppColors.mutedGreen : AppColors.mutedRed,
+                  color: right ? AppColors.mutedGreen : AppColors.retryYellowInk,
                 )
               else if (_active)
                 Icon(Icons.close_rounded, size: 14, color: cs.onSurfaceVariant),

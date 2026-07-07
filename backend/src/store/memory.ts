@@ -1,6 +1,6 @@
 /** In-memory store — dev fallback when DATABASE_URL is unset. Data dies on restart. */
 import { randomUUID } from 'node:crypto';
-import type { GameRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, XpEventRow } from './types.js';
+import type { GameRow, LearnEvidenceInput, LearnEvidenceRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, XpEventRow } from './types.js';
 
 export class MemoryStore implements Store {
   kind = 'memory' as const;
@@ -10,6 +10,7 @@ export class MemoryStore implements Store {
   private xpEvents: XpEventRow[] = [];
   private tutorMessages: TutorMessageRow[] = [];
   private learnProgress: LearnProgressRow[] = [];
+  private learnEvidence: LearnEvidenceRow[] = [];
   private streakDays = new Set<string>();
   private cache = new Map<string, { content: Record<string, unknown>; expiresAt: number }>();
 
@@ -108,6 +109,23 @@ export class MemoryStore implements Store {
     return this.learnProgress
       .filter((p) => p.studentId === studentId)
       .sort((a, b) => a.completedAt.getTime() - b.completedAt.getTime());
+  }
+
+  async upsertLearnEvidence(studentId: string, events: LearnEvidenceInput[]) {
+    let accepted = 0;
+    for (const e of events) {
+      // Idempotent by id (per student): the same event replayed never doubles.
+      if (this.learnEvidence.some((r) => r.studentId === studentId && r.id === e.id)) continue;
+      this.learnEvidence.push({ ...e, studentId });
+      accepted++;
+    }
+    return { accepted };
+  }
+
+  async listLearnEvidence(studentId: string, since?: Date) {
+    return this.learnEvidence
+      .filter((e) => e.studentId === studentId && (!since || e.createdAt >= since))
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 
   async createTutorMessage(data: Omit<TutorMessageRow, 'id' | 'createdAt'>) {

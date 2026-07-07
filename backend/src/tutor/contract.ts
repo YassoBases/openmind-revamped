@@ -141,5 +141,23 @@ export const TutorContextSchema = z.object({
   attempts: z.array(z.string().max(200)).max(10).optional(),
   /** Ids of experiences the student completed (personalization signal). */
   completedExperiences: z.array(z.string().max(120)).max(50).optional(),
+  /** Micro-skill ids the current step evidences — what to ground a hint in. */
+  skills: z.array(z.string().max(80)).max(10).optional(),
+  /**
+   * Compact per-skill readiness for this experience (+ prereqs): where the
+   * learner is on each micro-skill and the error patterns recently diagnosed,
+   * so the hint answers the pattern and starts from the weakest prerequisite.
+   */
+  readiness: z
+    .array(
+      z.object({
+        skill: z.string().max(80),
+        rep: z.string().max(20),
+        level: z.string().max(20),
+        recentErrorPatterns: z.array(z.string().max(40)).max(5).optional(),
+      }),
+    )
+    .max(12)
+    .optional(),
 });
 export type TutorContext = z.infer<typeof TutorContextSchema>;

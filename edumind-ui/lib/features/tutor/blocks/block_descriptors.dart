@@ -19,6 +19,16 @@ class TutorBlockDescriptor {
   final bool Function(InteractivePayload p) renderable;
 }
 
+/// Shared render-safety check for the order-permutation mechanic
+/// (order_sequence, timeline) — both tools reuse this instead of redeclaring
+/// it, so the rule can never drift between them (mirrors validateOrderShape
+/// in backend/src/tutor/tools/types.ts).
+bool _orderRenderable(InteractivePayload p) =>
+    p.items.length >= 3 &&
+    p.correctOrder.length == p.items.length &&
+    p.items.map((i) => i.id).toSet().containsAll(p.correctOrder) &&
+    p.correctOrder.toSet().length == p.correctOrder.length;
+
 final Map<String, TutorBlockDescriptor> kTutorBlockDescriptors = {
   'number_line': TutorBlockDescriptor(
     version: 1,
@@ -32,14 +42,7 @@ final Map<String, TutorBlockDescriptor> kTutorBlockDescriptors = {
         p.target! >= p.min! &&
         p.target! <= p.max!,
   ),
-  'order_sequence': TutorBlockDescriptor(
-    version: 1,
-    renderable: (p) =>
-        p.items.length >= 3 &&
-        p.correctOrder.length == p.items.length &&
-        p.items.map((i) => i.id).toSet().containsAll(p.correctOrder) &&
-        p.correctOrder.toSet().length == p.correctOrder.length,
-  ),
+  'order_sequence': TutorBlockDescriptor(version: 1, renderable: _orderRenderable),
   'sort_buckets': TutorBlockDescriptor(
     version: 1,
     renderable: (p) =>
@@ -57,4 +60,20 @@ final Map<String, TutorBlockDescriptor> kTutorBlockDescriptors = {
         p.pairs.map((x) => x.left.trim()).toSet().length == p.pairs.length &&
         p.pairs.map((x) => x.right.trim()).toSet().length == p.pairs.length,
   ),
+  'balance_scale': TutorBlockDescriptor(
+    version: 1,
+    renderable: (p) =>
+        p.coefficient != null &&
+        p.coefficient != 0 &&
+        p.constant != null &&
+        p.target != null &&
+        p.min != null &&
+        p.max != null &&
+        p.step != null &&
+        p.min! < p.max! &&
+        p.step! > 0 &&
+        (p.target! - p.constant!) / p.coefficient! >= p.min! &&
+        (p.target! - p.constant!) / p.coefficient! <= p.max!,
+  ),
+  'timeline': TutorBlockDescriptor(version: 1, renderable: _orderRenderable),
 };

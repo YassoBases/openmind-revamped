@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import type { ToolDescriptor } from './types.js';
+import { NumericField, UnitField, type ToolDescriptor } from './types.js';
 
 /**
  * number_line — place a value on a bounded numeric axis. Subject-specific
@@ -23,12 +22,12 @@ export const numberLineTool = {
   fallback:
     'For numeric ideas that are not about POSITION on a scale (e.g. operations practice), explain or ask a guiding question instead.',
   dataFields: {
-    min: z.number().nullable(),
-    max: z.number().nullable(),
-    step: z.number().nullable(),
-    target: z.number().nullable(),
-    tolerance: z.number().nullable(),
-    unit: z.string().max(60).nullable(),
+    min: NumericField,
+    max: NumericField,
+    step: NumericField,
+    target: NumericField,
+    tolerance: NumericField,
+    unit: UnitField,
   },
   validate: (d) => {
     const { min, max, step, target } = d;

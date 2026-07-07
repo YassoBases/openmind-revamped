@@ -178,10 +178,10 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
   Widget _bucketButton(InteractiveBucket bucket, ColorScheme cs) {
     final flashing = _flashBucketId == bucket.id;
     final Color? flash = flashing
-        ? (_flashRight ? AppColors.mutedGreen : AppColors.mutedRed).withValues(alpha: 0.18)
+        ? (_flashRight ? AppColors.mutedGreen.withValues(alpha: 0.18) : AppColors.retryYellowSoft)
         : null;
     final Color border =
-        flashing ? (_flashRight ? AppColors.mutedGreen : AppColors.mutedRed) : cs.outlineVariant;
+        flashing ? (_flashRight ? AppColors.mutedGreen : AppColors.retryYellow) : cs.outlineVariant;
     return OutlinedButton.icon(
       onPressed: _active ? () => _pick(bucket) : null,
       style: OutlinedButton.styleFrom(
@@ -196,7 +196,7 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
           ? Icon(
               _flashRight ? Icons.check_rounded : Icons.close_rounded,
               size: 15,
-              color: _flashRight ? AppColors.mutedGreen : AppColors.mutedRed,
+              color: _flashRight ? AppColors.mutedGreen : AppColors.retryYellowInk,
             )
           : const SizedBox.shrink(),
       label: Text(

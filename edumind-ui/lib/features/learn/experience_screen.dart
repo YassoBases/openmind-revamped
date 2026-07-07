@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../app_localizations.dart';
 import '../../core/app_theme.dart';
+import '../../core/middle_palette.dart';
 import '../../core/palette.dart';
 import '../../core/session.dart';
-import '../tutor/tutor_chat.dart';
+import '../tutor/ask_hudhud_sheet.dart';
 import '../tutor/tutor_models.dart';
+import 'learn_evidence_store.dart';
 import 'learn_models.dart';
 import 'learn_progress_store.dart';
+import 'readiness_logic.dart';
+import 'support_actions.dart';
 import 'widgets/learn_widget_registry.dart';
 
 /// The generic step player: walks one LearnExperience's steps and gates the
@@ -21,6 +25,7 @@ class ExperienceScreen extends StatefulWidget {
     required this.path,
     required this.experience,
     this.initialStep = 0,
+    this.isCheckpoint = false,
   });
 
   final LearnPath path;
@@ -28,6 +33,11 @@ class ExperienceScreen extends StatefulWidget {
 
   /// Resume position (from the persisted [LearnProgressStore.resume]).
   final int initialStep;
+
+  /// True when [experience] is a synthetic checkpoint (see checkpoint_logic).
+  /// Its evidence is tagged source `checkpoint`, and it never writes a resume
+  /// marker — a diagnostic is taken in one sitting.
+  final bool isCheckpoint;
 
   @override
   State<ExperienceScreen> createState() => _ExperienceScreenState();
@@ -55,6 +65,15 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   // What the student tried across the experience — tutor-help context.
   final List<String> _attempts = [];
 
+  // Per-step evidence signals, reset on advance. Time-on-task is recorded but
+  // never read as low readiness on its own (see EvidenceEvent.ms).
+  DateTime _stepStartedAt = DateTime.now();
+  int _stepHints = 0; // Hudhud opens during this step
+  bool _exploreEmitted = false; // explore-interaction is emitted once
+  bool _challengeEmitted = false; // challenge target-met is emitted once
+  final Set<int> _checkEmitted = {}; // check items already recorded
+  final List<String> _checkWrongPatterns = []; // diagnosed misses this check
+
   LearnStep get _current => widget.experience.steps[_step];
   Color get _accent => hexToColor(widget.path.colorHex);
 
@@ -81,64 +100,53 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   /// guides without giving the goal away (enforced server-side by the tutor
   /// prompt). The student stays in the experience; the sheet never advances
   /// steps for them.
-  void _openHelp() {
+  Future<void> _openHelp() async {
     final l = AppLocalizations.of(context)!;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
     final step = _current;
-    final ctx = TutorContext(
-      source: 'experience',
-      subject: 'الرياضيات',
-      pathId: widget.path.id,
-      pathTitle: widget.path.title,
-      experienceId: widget.experience.id,
-      experienceTitle: widget.experience.title,
-      concept: widget.experience.subtitle,
-      stepKind: step.kind.name,
-      // What is actually on the student's screen (lens-resolved wording).
-      stepTitle: step.titleFor(_lens),
-      state: _widgetStatus.detail,
-      attempts: List.of(_attempts),
-    );
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetCtx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
-        child: SizedBox(
-          height: MediaQuery.of(sheetCtx).size.height * 0.72,
-          child: Column(
-            children: [
-              Text(
-                l.translate('tutor_help_title'),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 6),
-              Expanded(
-                child: TutorChat(
-                  context_: ctx,
-                  seedQuestions: [
-                    if (Directionality.of(context) == TextDirection.rtl) ...const [
-                      'أنا عالق في هذه الخطوة، أعطني تلميحًا',
-                      'اشرح لي الفكرة بمثال من الحياة',
-                    ] else ...const [
-                      'I am stuck on this step, give me a hint',
-                      'Explain the idea with a real-life example',
-                    ],
-                  ],
-                  // Mid-lesson quick actions — each one is a real question
-                  // through the same backend tutor call.
-                  quickActions: [
-                    l.translate('qa_hint_only'),
-                    l.translate('qa_simpler'),
-                    l.translate('qa_try_again'),
-                    l.translate('qa_ask_me'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+    // A help open on this step lowers the confidence of its evidence — a
+    // correct answer that needed a hint is weighed less than an unaided one.
+    _stepHints++;
+    // A compact readiness slice for THIS experience's skills — lets Hudhud
+    // ground the hint in the weakest one and respond to the diagnosed error
+    // pattern (see prompts.ts INSIDE AN EXPERIENCE), never a generic hint.
+    final readinessSlice = await _readinessSlice();
+    if (!mounted) return;
+    openAskHudhud(
+      context,
+      context_: TutorContext(
+        source: 'experience',
+        subject: 'الرياضيات',
+        pathId: widget.path.id,
+        pathTitle: widget.path.title,
+        experienceId: widget.experience.id,
+        experienceTitle: widget.experience.title,
+        concept: widget.experience.subtitle,
+        stepKind: step.kind.name,
+        // What is actually on the student's screen (lens-resolved wording).
+        stepTitle: step.titleFor(_lens),
+        state: _widgetStatus.detail,
+        attempts: List.of(_attempts),
+        skills: step.skills,
+        readiness: readinessSlice,
       ),
+      seedQuestions: [
+        if (rtl) ...const [
+          'أنا عالق في هذه الخطوة، أعطني تلميحًا',
+          'اشرح لي الفكرة بمثال من الحياة',
+        ] else ...const [
+          'I am stuck on this step, give me a hint',
+          'Explain the idea with a real-life example',
+        ],
+      ],
+      // Mid-lesson quick actions — each one is a real question through the
+      // same backend tutor call.
+      quickActions: [
+        l.translate('qa_hint_only'),
+        l.translate('qa_simpler'),
+        l.translate('qa_try_again'),
+        l.translate('qa_ask_me'),
+      ],
     );
   }
 
@@ -151,10 +159,19 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         _picked = null;
         _checkIndex = 0;
         _checkPicked = List<int?>.filled(_current.checkItems.length, null);
+        _stepStartedAt = DateTime.now();
+        _stepHints = 0;
+        _exploreEmitted = false;
+        _challengeEmitted = false;
+        _checkEmitted.clear();
+        _checkWrongPatterns.clear();
       });
       // The reached step is the real resumable position (fire-and-forget).
-      final store = await LearnProgressStore.load();
-      await store.saveResume(widget.path.id, widget.experience.id, _step);
+      // A checkpoint is taken in one sitting — it is never resumable.
+      if (!widget.isCheckpoint) {
+        final store = await LearnProgressStore.load();
+        await store.saveResume(widget.path.id, widget.experience.id, _step);
+      }
       return;
     }
     final store = await LearnProgressStore.load();
@@ -177,10 +194,113 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         widget.path.id, widget.experience.id, correct, s.checkItems.length);
   }
 
+  /// Appends one evidence event per tagged skill for the current step's
+  /// outcome — the readiness signal behind the journey chip and (later)
+  /// checkpoints. Fire-and-forget, local-first, never blocks the UI; an
+  /// untagged step records nothing. Verification is client_reported: this is
+  /// the player's own observation of the outcome (the server-verified rows
+  /// come from the tutor and checkpoint paths).
+  Future<void> _emitEvidence({
+    required List<String> skills,
+    required String rep,
+    required String kind,
+    required String outcome,
+    String? errorPattern,
+    int attempt = 1,
+    bool recovered = false,
+  }) async {
+    if (skills.isEmpty) return;
+    final store = await LearnEvidenceStore.load();
+    final now = DateTime.now();
+    final ms = now.difference(_stepStartedAt).inMilliseconds;
+    for (final skillId in skills) {
+      await store.append(EvidenceEvent(
+        id: newEvidenceId(),
+        skillId: skillId,
+        representation: rep,
+        context: _lens,
+        source: widget.isCheckpoint ? 'checkpoint' : 'learn_step',
+        kind: kind,
+        outcome: outcome,
+        verification: 'client_reported',
+        attempt: attempt,
+        hints: _stepHints,
+        recovered: recovered,
+        errorPattern: errorPattern,
+        pathId: widget.path.id,
+        experienceId: widget.experience.id,
+        stepIndex: _step,
+        ms: ms,
+        createdAt: now,
+      ));
+    }
+  }
+
+  /// A ≤8-entry readiness slice for the skills this experience touches, each
+  /// {skill, rep, level, recentErrorPatterns} — the compact view Hudhud reads.
+  Future<List<Map<String, dynamic>>> _readinessSlice() async {
+    final expSkills = <String>{};
+    for (final s in widget.experience.steps) {
+      expSkills.addAll(s.skills);
+      for (final item in s.checkItems) {
+        expSkills.addAll(item.skills);
+      }
+    }
+    if (expSkills.isEmpty) return const [];
+    final store = await LearnEvidenceStore.load();
+    final readiness = deriveReadiness(store.events);
+    final slice = <Map<String, dynamic>>[];
+    for (final r in readiness.values) {
+      if (!expSkills.contains(r.skillId) || r.level == ReadinessLevel.unseen) {
+        continue;
+      }
+      slice.add({
+        'skill': r.skillId,
+        'rep': r.representation,
+        'level': r.level.name,
+        if (r.recentErrorPatterns.isNotEmpty)
+          'recentErrorPatterns': r.recentErrorPatterns,
+      });
+      if (slice.length >= 8) break;
+    }
+    return slice;
+  }
+
+  /// Widget status callback: keeps the gate state and emits the two
+  /// widget-driven signals once each — exploration when the learner first
+  /// touches an explore manipulative, construction when a challenge target
+  /// is first reached.
+  void _onWidgetStatus(LearnWidgetStatus status) {
+    setState(() => _widgetStatus = status);
+    final step = _current;
+    if (step.kind == LearnStepKind.explore &&
+        status.interacted &&
+        !_exploreEmitted) {
+      _exploreEmitted = true;
+      _emitEvidence(
+        skills: step.skills,
+        rep: step.representation,
+        kind: step.evidenceKind,
+        outcome: 'explored',
+      );
+    } else if (step.kind == LearnStepKind.challenge &&
+        status.targetMet &&
+        !_challengeEmitted) {
+      _challengeEmitted = true;
+      _emitEvidence(
+        skills: step.skills,
+        rep: step.representation,
+        kind: step.evidenceKind,
+        outcome: 'correct',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return Scaffold(
+      backgroundColor: MiddlePalette.cream,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -211,8 +331,11 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
                         height: 6,
                         margin: const EdgeInsetsDirectional.only(end: 5),
                         decoration: BoxDecoration(
+                          // Progress is always the discovery/progress color —
+                          // never the path's own identity color — so "how far
+                          // am I" reads the same on every path.
                           color: i <= _step
-                              ? _accent
+                              ? MiddlePalette.discovery
                               : Theme.of(context).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(999),
                         ),
@@ -221,20 +344,40 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
                 ],
               ),
             ),
-            IconButton(
-              tooltip: l.translate('learn_need_help'),
-              icon: Icon(Icons.support_agent_rounded, color: _accent),
-              onPressed: _openHelp,
-            ),
+            AskHudhudEntry(onPressed: _openHelp, color: MiddlePalette.primaryAction),
           ],
         ),
+        const SizedBox(height: 6),
+        Text(
+          l.translateWith('learn_step_progress', {'n': '${_step + 1}', 'm': '${steps.length}'}),
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: MiddlePalette.body,
+          ),
+        ),
+        if (widget.isCheckpoint) ...[
+          const SizedBox(height: 10),
+          _checkpointBanner(l),
+        ],
         const SizedBox(height: 10),
-        Expanded(child: SingleChildScrollView(child: _stepBody(_current))),
+        Expanded(
+          child: _current.kind == LearnStepKind.scene
+              // A pure-narrative step has no widget/choice to anchor the eye,
+              // so it gets a real focal point (the badge) and sits centered
+              // in the available height instead of top-pinned with a dead
+              // gap above the continue button.
+              ? Center(child: SingleChildScrollView(child: _sceneBody(_current)))
+              : SingleChildScrollView(child: _stepBody(_current)),
+        ),
         const SizedBox(height: 12),
         FilledButton(
           onPressed: _canContinue ? _next : null,
           style: FilledButton.styleFrom(
-            backgroundColor: _accent,
+            // The one primary action per step: always this fixed blue, never
+            // the path's personalization color, so a learner always knows
+            // which button is "the" next tap.
+            backgroundColor: MiddlePalette.primaryAction,
             minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(Palette.radiusButton),
@@ -251,7 +394,152 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     );
   }
 
+  /// One small "what kind of step is this, what do I do" tag — scene,
+  /// explore (+ challenge), and decision (choice/apply/check) each get their
+  /// own icon, label and color so the four step families are told apart at a
+  /// glance, not just by their layout. Purely presentational: it reads
+  /// [LearnStepKind], it never changes gating or content.
+  Widget _kindBadge(LearnStepKind kind, AppLocalizations l) {
+    final (label, hint, icon, color) = switch (kind) {
+      LearnStepKind.scene => (
+          'learn_kind_scene',
+          'learn_hint_scene',
+          Icons.auto_stories_rounded,
+          MiddlePalette.blueInk,
+        ),
+      LearnStepKind.explore || LearnStepKind.challenge => (
+          'learn_kind_explore',
+          'learn_hint_explore',
+          Icons.touch_app_rounded,
+          MiddlePalette.discovery,
+        ),
+      LearnStepKind.choice || LearnStepKind.apply => (
+          'learn_kind_decision',
+          'learn_hint_decision',
+          Icons.help_rounded,
+          MiddlePalette.primaryAction,
+        ),
+      LearnStepKind.check => (
+          'learn_kind_decision',
+          'learn_hint_check',
+          Icons.help_rounded,
+          MiddlePalette.primaryAction,
+        ),
+    };
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: color),
+              const SizedBox(width: 4),
+              Text(
+                l.translate(label),
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: color),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          l.translate(hint),
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: MiddlePalette.body),
+        ),
+      ],
+    );
+  }
+
+  /// Top-of-screen banner shown only when [widget.isCheckpoint] — a checkpoint
+  /// experience is a distinct kind of moment (a diagnostic, not a lesson), so
+  /// it gets its own fixed, primary-blue banner rather than blending into the
+  /// ordinary step chrome.
+  Widget _checkpointBanner(AppLocalizations l) {
+    const color = MiddlePalette.primaryAction;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(Palette.radiusButton),
+      ),
+      child: Row(
+        children: [
+          const Text('🎯', style: TextStyle(fontSize: 20)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.translate('checkpoint_title'),
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: color),
+                ),
+                Text(
+                  l.translate('checkpoint_sub'),
+                  style: const TextStyle(fontSize: 11.5, height: 1.4, color: MiddlePalette.body),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A pure-narrative beat (no manipulative, no choice): one clear focal
+  /// point instead of a stray inline glyph over empty space.
+  Widget _sceneBody(LearnStep step) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final emoji = step.emojiFor(_lens);
+    final body = step.bodyFor(_lens);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _kindBadge(step.kind, l),
+        const SizedBox(height: 14),
+        if (emoji != null) ...[
+          Container(
+            width: 92,
+            height: 92,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _accent.withValues(alpha: 0.12),
+              border: Border.all(color: _accent.withValues(alpha: 0.5), width: 2),
+            ),
+            child: Text(emoji, style: const TextStyle(fontSize: 42)),
+          ),
+          const SizedBox(height: 18),
+        ],
+        Text(
+          step.titleFor(_lens),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, height: 1.5),
+        ),
+        if (body.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, height: 1.7, color: cs.onSurfaceVariant),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _stepBody(LearnStep step) {
+    final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final emoji = step.emojiFor(_lens);
     final body = step.bodyFor(_lens);
@@ -259,6 +547,8 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _kindBadge(step.kind, l),
+        const SizedBox(height: 12),
         if (emoji != null) ...[
           Text(emoji, style: const TextStyle(fontSize: 44)),
           const SizedBox(height: 8),
@@ -276,10 +566,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         ],
         if (step.widget != null) ...[
           const SizedBox(height: 14),
-          buildLearnWidget(
-            step.widget!,
-            (status) => setState(() => _widgetStatus = status),
-          ),
+          buildLearnWidget(step.widget!, _onWidgetStatus),
           if (step.kind == LearnStepKind.challenge &&
               _widgetStatus.targetMet &&
               successText != null) ...[
@@ -349,7 +636,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _checkPicked[i] != null
-                      ? _accent
+                      ? MiddlePalette.discovery
                       : cs.surfaceContainerHighest,
                 ),
               ),
@@ -359,12 +646,29 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         _itemBlock(
           item,
           picked: _checkPicked[_checkIndex],
-          onPick: (i) => setState(() {
-            _checkPicked[_checkIndex] = i;
-            if (i != item.correctIndex) {
-              _attempts.add('${item.prompt} → ${item.options[i]}');
+          onPick: (i) {
+            final idx = _checkIndex;
+            setState(() {
+              _checkPicked[idx] = i;
+              if (i != item.correctIndex) {
+                _attempts.add('${item.prompt} → ${item.options[i]}');
+              }
+            });
+            if (_checkEmitted.add(idx)) {
+              final step = _current;
+              final correct = i == item.correctIndex;
+              final pattern = correct ? null : item.patternFor(i);
+              if (pattern != null) _checkWrongPatterns.add(pattern);
+              _emitEvidence(
+                // A check item may narrow to its own skills; else inherit.
+                skills: item.skills.isNotEmpty ? item.skills : step.skills,
+                rep: item.rep ?? step.representation,
+                kind: step.evidenceKind,
+                outcome: correct ? 'correct' : 'incorrect',
+                errorPattern: pattern,
+              );
             }
-          }),
+          },
         ),
         if (answered && _checkIndex < items.length - 1) ...[
           const SizedBox(height: 10),
@@ -385,12 +689,17 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
                 .replaceFirst('{m}', '${items.length}'),
             style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
           ),
+          // A diagnosed miss gets a specific next move, not a generic "review".
+          if (_dominantSupport() case final action?) ...[
+            const SizedBox(height: 8),
+            _supportHint(action, l),
+          ],
           if (correct * 2 < items.length)
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(
                 onPressed: _openHelp,
-                icon: Icon(Icons.support_agent_rounded, size: 18, color: _accent),
+                icon: const Icon(Icons.support_agent_rounded, size: 18, color: MiddlePalette.primaryAction),
                 label: Text(l.translate('learn_check_review')),
               ),
             ),
@@ -399,15 +708,67 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     );
   }
 
+  /// The support action for the most common diagnosed miss in this check, or
+  /// null when every wrong pick was untagged (nothing specific to say).
+  SupportAction? _dominantSupport() {
+    if (_checkWrongPatterns.isEmpty) return null;
+    final counts = <String, int>{};
+    for (final p in _checkWrongPatterns) {
+      counts[p] = (counts[p] ?? 0) + 1;
+    }
+    final top = counts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+    return supportForPattern(top);
+  }
+
+  /// A calm, specific "here's your next move" line — the diagnosis made
+  /// actionable, distinct from the generic tutor offer.
+  Widget _supportHint(SupportAction action, AppLocalizations l) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: MiddlePalette.primaryAction.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(Palette.radiusButton),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lightbulb_outline_rounded, size: 18, color: MiddlePalette.primaryAction),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l.translate(supportMessageKey(action)),
+              style: TextStyle(height: 1.6, fontWeight: FontWeight.w600, color: cs.onSurface),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _choiceBlock(LearnChoice choice) => _itemBlock(
         choice,
         picked: _picked,
-        onPick: (i) => setState(() {
-          _picked = i;
-          if (i != choice.correctIndex) {
-            _attempts.add('${choice.prompt} → ${choice.options[i]}');
-          }
-        }),
+        onPick: (i) {
+          setState(() {
+            _picked = i;
+            if (i != choice.correctIndex) {
+              _attempts.add('${choice.prompt} → ${choice.options[i]}');
+            }
+          });
+          final step = _current;
+          final correct = i == choice.correctIndex;
+          // The step kind sets the evidence kind: a `choice` step is a
+          // prediction, an `apply` step's choice is transfer evidence.
+          _emitEvidence(
+            skills: step.skills,
+            rep: choice.rep ?? step.representation,
+            kind: step.evidenceKind,
+            outcome: correct ? 'correct' : 'incorrect',
+            errorPattern: correct ? null : choice.patternFor(i),
+          );
+        },
       );
 
   /// One answerable question: prompt, options, feedback either way. Shared
@@ -417,7 +778,6 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     required int? picked,
     required ValueChanged<int> onPick,
   }) {
-    final cs = Theme.of(context).colorScheme;
     final answered = picked != null;
     final correct = picked == choice.correctIndex;
     return Column(
@@ -439,16 +799,34 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: (correct ? AppColors.mutedGreen : AppColors.mutedRed).withValues(alpha: 0.12),
+              // Correct stays the one true success green; anything else is
+              // the soft learning-yellow retry treatment — never red/amber/
+              // orange, a wrong pick is a teaching moment, not an alarm.
+              color: correct
+                  ? AppColors.mutedGreen.withValues(alpha: 0.12)
+                  : AppColors.retryYellowSoft,
               borderRadius: BorderRadius.circular(Palette.radiusButton),
             ),
-            child: Text(
-              correct ? choice.correctFeedback : choice.wrongFeedback,
-              style: TextStyle(
-                height: 1.6,
-                fontWeight: FontWeight.w600,
-                color: correct ? AppColors.mutedGreen : cs.onSurface,
-              ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  correct ? Icons.check_circle_rounded : Icons.refresh_rounded,
+                  size: 18,
+                  color: correct ? AppColors.mutedGreen : AppColors.retryYellowInk,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    correct ? choice.correctFeedback : choice.wrongFeedback,
+                    style: TextStyle(
+                      height: 1.6,
+                      fontWeight: FontWeight.w600,
+                      color: correct ? AppColors.mutedGreen : AppColors.retryYellowInk,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -473,8 +851,8 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
       border = AppColors.mutedGreen;
       fill = AppColors.mutedGreen.withValues(alpha: 0.10);
     } else if (answered && isPicked) {
-      border = AppColors.mutedRed;
-      fill = AppColors.mutedRed.withValues(alpha: 0.10);
+      border = AppColors.retryYellow;
+      fill = AppColors.retryYellowSoft;
     }
 
     return InkWell(
@@ -488,9 +866,19 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
           border: Border.all(color: border, width: 1.6),
           borderRadius: BorderRadius.circular(Palette.radiusButton),
         ),
-        child: Text(
-          choice.options[i],
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, height: 1.5),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                choice.options[i],
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, height: 1.5),
+              ),
+            ),
+            if (answered && isRight)
+              const Icon(Icons.check_circle_rounded, size: 20, color: AppColors.mutedGreen)
+            else if (answered && isPicked)
+              const Icon(Icons.cancel_rounded, size: 20, color: AppColors.retryYellowInk),
+          ],
         ),
       ),
     );
@@ -534,7 +922,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
           style: FilledButton.styleFrom(
-            backgroundColor: _accent,
+            backgroundColor: MiddlePalette.primaryAction,
             minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(Palette.radiusButton),

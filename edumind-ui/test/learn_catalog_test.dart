@@ -103,6 +103,37 @@ void main() {
     ]);
   });
 
+  test('the grade-7 social studies catalog ships the path-to-independence timeline', () async {
+    final catalogs = await LearnCatalogLoader.catalogs(language: 'ar', grade: 7);
+    // Grade 7 now bundles two subject catalogs — math is not the only one.
+    expect(catalogs.map((c) => c.subject).toList(),
+        containsAll(['الرياضيات', 'الاجتماعيات']));
+
+    final social = catalogs.firstWhere((c) => c.subject == 'الاجتماعيات');
+    expect(social.grade, 7);
+    expect(social.paths.map((p) => p.id).toList(), ['time_compass']);
+
+    final path = social.paths.single;
+    final exp = path.experiences.firstWhere((e) => e.id == 'path_to_independence');
+    expect(exp.ready, isTrue);
+    expect(exp.steps.map((s) => s.kind).toList(), [
+      LearnStepKind.scene,
+      LearnStepKind.explore,
+      LearnStepKind.choice,
+      LearnStepKind.challenge,
+      LearnStepKind.apply,
+      LearnStepKind.check,
+    ]);
+
+    // The challenge is a genuine permutation puzzle: correctOrder is exactly
+    // the item ids, just reordered — every id accounted for, none invented.
+    final challenge = exp.steps.firstWhere((s) => s.kind == LearnStepKind.challenge);
+    final items = (challenge.widget!.params['items'] as List).cast<Map>();
+    final order = (challenge.widget!.params['correctOrder'] as List).cast<String>();
+    expect(order.toSet(), items.map((i) => i['id'] as String).toSet());
+    expect(order.toSet().length, order.length);
+  });
+
   test('the grade-7 math catalog ships the triangle-area station', () async {
     final catalogs = await LearnCatalogLoader.catalogs(language: 'ar', grade: 7);
     final math = catalogs.firstWhere((c) => c.subject == 'الرياضيات');

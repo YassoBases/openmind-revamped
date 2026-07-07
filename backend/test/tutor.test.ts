@@ -234,6 +234,38 @@ describe('tutor', () => {
       expect(messages[3].interactivePayload).toBeNull();
     });
 
+    it('a server-verified block result with skills context becomes a per-skill evidence row', async () => {
+      // Offer a balance_scale block (equation trigger), then submit a wrong,
+      // structured answer with the step's skill tag as context.
+      const first = await g7('POST', '/api/v1/tutor/messages', { question: 'ساعدني في حل معادلة على الميزان' });
+      const conversationId = first.json().conversationId;
+      expect(first.json().reply.interactivePayload?.type).toBe('balance_scale');
+
+      const res = await g7('POST', '/api/v1/tutor/messages', {
+        question: 'حرّكت x',
+        conversationId,
+        context: { source: 'experience', skills: ['eq.solve_x_plus_b'], pathId: 'missing_number', experienceId: 'equations' },
+        interactiveResult: {
+          blockType: 'balance_scale',
+          attempted: true,
+          answerOrState: 'x = 10',
+          correctnessOrOutcome: 'correct', // a wrong CLAIM — the server overrides it
+          answer: { value: 10 }, // golden target is 10 → x=10 means "set x to the whole side"
+        },
+      });
+      expect(res.statusCode).toBe(201);
+
+      const log = await g7('GET', '/api/v1/learn/evidence');
+      const row = log.json().items.find((r: { toolId?: string }) => r.toolId === 'balance_scale');
+      expect(row).toMatchObject({
+        skillId: 'eq.solve_x_plus_b',
+        source: 'tutor_block',
+        verification: 'server_verified',
+        outcome: 'incorrect', // server recomputed, overriding the "correct" claim
+        errorPattern: 'concept_misunderstanding',
+      });
+    });
+
     it('rejects a malformed interactiveResult', async () => {
       const res = await g7('POST', '/api/v1/tutor/messages', {
         question: 'انتهيت',

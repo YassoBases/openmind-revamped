@@ -84,6 +84,7 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
       const assessed = assessInteractiveResult(body.interactiveResult, recentMessages, {
         subjectLabel: body.context?.subject,
         concept: body.context?.concept,
+        skills: body.context?.skills,
       });
       interactiveResult = assessed.result;
       learningSignal = assessed.signal;
@@ -213,6 +214,40 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
       });
     } catch (err) {
       req.log.error(err, '[tutor] failed to persist conversation turn');
+    }
+
+    // Bridge a server-verified block result into the per-skill evidence log,
+    // so the tutor path feeds the same readiness/diagnostics as lessons. The
+    // server owns this row (source tutor_block); the client picks it up on its
+    // next evidence sync. Best-effort — never fails the reply.
+    if (learningSignal?.verification === 'server_verified' && learningSignal.skillId) {
+      try {
+        await store.upsertLearnEvidence(student.id, [
+          {
+            id: randomUUID(),
+            skillId: learningSignal.skillId,
+            representation: learningSignal.representation ?? 'manipulative',
+            // The tutor context carries no lens id today; left null.
+            context: null,
+            source: 'tutor_block',
+            kind: 'construction',
+            outcome: learningSignal.outcome ?? 'explored',
+            verification: 'server_verified',
+            attempt: learningSignal.attempt,
+            hints: 0,
+            recovered: false,
+            errorPattern: learningSignal.errorPattern ?? null,
+            toolId: learningSignal.tool,
+            pathId: body.context?.pathId ?? null,
+            experienceId: body.context?.experienceId ?? null,
+            stepIndex: null,
+            ms: null,
+            createdAt: new Date(),
+          },
+        ]);
+      } catch (err) {
+        req.log.warn(err, '[tutor] failed to record block evidence');
+      }
     }
 
     return reply.code(201).send({ conversationId, reply: result.data, model: result.model });

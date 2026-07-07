@@ -1,0 +1,182 @@
+{
+ "language": "ar",
+ "subject": "الاجتماعيات",
+ "grade": 7,
+ "catalogVersion": 1,
+ "skills": [
+  {
+   "id": "hist.chronology",
+   "title": "ترتيب الأحداث زمنيًا",
+   "conceptFamily": "chronology",
+   "prereqs": []
+  },
+  {
+   "id": "hist.cause_effect",
+   "title": "العلاقة بين الأحداث (سبب ونتيجة)",
+   "conceptFamily": "chronology",
+   "prereqs": ["hist.chronology"]
+  },
+  {
+   "id": "hist.independence_facts",
+   "title": "محطات طريق الاستقلال",
+   "conceptFamily": "national_history",
+   "prereqs": ["hist.chronology"]
+  }
+ ],
+ "paths": [
+  {
+   "id": "time_compass",
+   "title": "بوصلة الزمن",
+   "tagline": "أحداث تُروى بترتيبها الصحيح",
+   "emoji": "🧭",
+   "color": "#B8622E",
+   "experiences": [
+    {
+     "id": "path_to_independence",
+     "title": "طريق الاستقلال",
+     "subtitle": "ترتّب صورًا من الماضي لتكتشف كيف نالت بلادك استقلالها",
+     "status": "ready",
+     "steps": [
+      {
+       "kind": "scene",
+       "emoji": "🗂️",
+       "title": "صندوق الصور القديم",
+       "body": "وجدت في مكتبة جدّك صندوقًا قديمًا فيه صور وبطاقات مبعثرة عن أحداث مرّت بها بلادك في طريقها نحو الاستقلال. البطاقات غير مرتبة، وجدّك يطلب منك أن ترتبها بنفسك لتروي القصة الصحيحة من البداية إلى النهاية."
+      },
+      {
+       "kind": "explore",
+       "title": "جرّب بنفسك",
+       "body": "المس البطاقات الثلاث بالترتيب الزمني الذي تراه صحيحًا، وشاهد الخط الزمني يتشكّل أمامك.",
+       "skills": ["hist.chronology"],
+       "widget": {
+        "type": "timeline",
+        "params": {
+         "items": [
+          {"id": "e1", "label": "١٩١٨ – نهاية الحكم العثماني"},
+          {"id": "e2", "label": "١٩٢٠ – بداية الانتداب الفرنسي"},
+          {"id": "e3", "label": "١٩٤٦ – الاستقلال الكامل (عيد الجلاء)"}
+         ],
+         "correctOrder": ["e1", "e2", "e3"]
+        }
+       }
+      },
+      {
+       "kind": "choice",
+       "title": "لماذا يهمّ الترتيب؟",
+       "body": "المؤرخ الجيد لا يكتفي بمعرفة الأحداث، بل يفهم كيف يقود كل حدث إلى الذي يليه.",
+       "skills": ["hist.cause_effect"],
+       "choice": {
+        "prompt": "لماذا نهتم بترتيب الأحداث التاريخية بتسلسلها الزمني الصحيح؟",
+        "options": [
+         "لنفهم كيف أدى كل حدث إلى الذي يليه",
+         "لأن الترتيب العشوائي أسهل للحفظ",
+         "لا فرق، يكفي حفظ التواريخ فقط",
+         "لأن الكتب المدرسية تطلب ذلك فقط"
+        ],
+        "correctIndex": 0,
+        "distractorPatterns": [null, "concept_misunderstanding", "concept_misunderstanding", "concept_misunderstanding"],
+        "correctFeedback": "تمامًا! فهم التسلسل الزمني يكشف العلاقة بين الأسباب والنتائج — كيف قاد كل حدث إلى الذي يليه نحو الاستقلال.",
+        "wrongFeedback": "ترتيب الأحداث ليس حفظًا فقط: فهم التسلسل الصحيح يوضح كيف أدى كل حدث إلى الذي يليه، وصولًا إلى النتيجة النهائية."
+       }
+      },
+      {
+       "kind": "challenge",
+       "title": "رتّب بطاقات الاستقلال",
+       "body": "أمامك أربع بطاقات من صندوق جدّك، كل واحدة تحمل حدثًا من طريق الاستقلال. رتبها من الأقدم إلى الأحدث لتكتمل القصة.",
+       "skills": ["hist.chronology", "hist.independence_facts"],
+       "widget": {
+        "type": "timeline",
+        "params": {
+         "items": [
+          {"id": "ottoman_end", "label": "١٩١٨ – انتهاء الحكم العثماني"},
+          {"id": "mandate", "label": "١٩٢٠ – بدء الانتداب الفرنسي"},
+          {"id": "revolt", "label": "١٩٢٥ – الثورة السورية الكبرى"},
+          {"id": "independence", "label": "١٩٤٦ – عيد الجلاء (الاستقلال الكامل)"}
+         ],
+         "correctOrder": ["ottoman_end", "mandate", "revolt", "independence"]
+        }
+       },
+       "successText": "أحسنت! هذا هو الترتيب الصحيح — والآن تعرف كيف نالت بلادك استقلالها خطوة بخطوة."
+      },
+      {
+       "kind": "apply",
+       "emoji": "🔥",
+       "title": "قرارك الأخير: أي حدث أشعل الشرارة؟",
+       "body": "بعد أن رتبت البطاقات، فكّر بالحدث الذي أشعل الطريق نحو الجلاء النهائي.",
+       "skills": ["hist.independence_facts"],
+       "widget": {
+        "type": "timeline",
+        "params": {
+         "items": [
+          {"id": "ottoman_end", "label": "١٩١٨ – انتهاء الحكم العثماني"},
+          {"id": "mandate", "label": "١٩٢٠ – بدء الانتداب الفرنسي"},
+          {"id": "revolt", "label": "١٩٢٥ – الثورة السورية الكبرى"},
+          {"id": "independence", "label": "١٩٤٦ – عيد الجلاء (الاستقلال الكامل)"}
+         ],
+         "correctOrder": ["ottoman_end", "mandate", "revolt", "independence"]
+        }
+       },
+       "choice": {
+        "prompt": "أي هذه الأحداث كان الانتفاضة الشعبية الكبرى ضد الانتداب؟",
+        "options": [
+         "الثورة السورية الكبرى ١٩٢٥",
+         "انتهاء الحكم العثماني ١٩١٨",
+         "بداية الانتداب الفرنسي ١٩٢٠",
+         "عيد الجلاء ١٩٤٦"
+        ],
+        "correctIndex": 0,
+        "correctFeedback": "صحيح! الثورة السورية الكبرى ١٩٢٥ كانت الانتفاضة الشعبية الكبرى التي هزّت الانتداب الفرنسي ومهّدت الطريق نحو الاستقلال.",
+        "wrongFeedback": "الثورة السورية الكبرى عام ١٩٢٥ هي الانتفاضة الشعبية الكبرى ضد الانتداب الفرنسي — خطوة مهمة في طريق الاستقلال."
+       }
+      },
+      {
+       "kind": "check",
+       "emoji": "🎯",
+       "title": "تحقق من فهمك",
+       "body": "ثلاثة أسئلة سريعة — لا جديد هنا، فقط ما اكتشفته بنفسك على الخط الزمني.",
+       "checkItems": [
+        {
+         "prompt": "في أي عام بدأ الانتداب الفرنسي على سوريا؟",
+         "options": ["١٩٢٠", "١٩١٨", "١٩٢٥", "١٩٤٦"],
+         "correctIndex": 0,
+         "skills": ["hist.independence_facts"],
+         "correctFeedback": "صحيح: بدأ الانتداب الفرنسي عام ١٩٢٠.",
+         "wrongFeedback": "تذكّر الخط الزمني الذي بنيته: الانتداب الفرنسي بدأ عام ١٩٢٠."
+        },
+        {
+         "prompt": "ماذا نسمّي اليوم الذي جلا فيه آخر جندي فرنسي عن سوريا؟",
+         "options": ["عيد الجلاء", "عيد الثورة", "عيد العلم", "عيد التحرير"],
+         "correctIndex": 0,
+         "skills": ["hist.independence_facts"],
+         "correctFeedback": "صحيح: نحتفل به باسم عيد الجلاء.",
+         "wrongFeedback": "اسم هذا اليوم الوطني هو عيد الجلاء — آخر بطاقة في خطك الزمني."
+        },
+        {
+         "prompt": "ما الحدث الذي جاء مباشرة بعد انتهاء الحكم العثماني في هذا التسلسل؟",
+         "options": ["بداية الانتداب الفرنسي", "الثورة السورية الكبرى", "عيد الجلاء", "لا شيء، كانت تلك النهاية"],
+         "correctIndex": 0,
+         "skills": ["hist.chronology"],
+         "distractorPatterns": [null, "concept_misunderstanding", "concept_misunderstanding", "concept_misunderstanding"],
+         "correctFeedback": "صحيح — بداية الانتداب الفرنسي جاءت مباشرة بعد نهاية الحكم العثماني.",
+         "wrongFeedback": "في خطك الزمني، البطاقة الثانية مباشرة بعد نهاية الحكم العثماني هي بداية الانتداب الفرنسي."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "national_symbols",
+     "title": "رموز الوطن",
+     "subtitle": "تتعرف على رموز بلادك ومعانيها",
+     "status": "soon"
+    },
+    {
+     "id": "map_of_governorates",
+     "title": "خريطة المحافظات",
+     "subtitle": "تكتشف محافظات بلادك وموقعها على الخريطة",
+     "status": "soon"
+    }
+   ]
+  }
+ ]
+}

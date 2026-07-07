@@ -21,7 +21,10 @@
           "items": null,
           "correctOrder": null,
           "buckets": null,
-          "pairs": null
+          "pairs": null,
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "يحدد موضع كسر بين عددين صحيحين بنفسه",
         "followUpPrompt": "اسأله أين يقع ٣/٤ بالنسبة إلى النصف"
@@ -47,7 +50,10 @@
           "items": null,
           "correctOrder": null,
           "buckets": null,
-          "pairs": null
+          "pairs": null,
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "Locates a fraction between two whole numbers by hand",
         "followUpPrompt": "Ask where 3/4 sits relative to one half"
@@ -99,7 +105,10 @@
             "flow"
           ],
           "buckets": null,
-          "pairs": null
+          "pairs": null,
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "يبني تسلسل دورة الماء بنفسه",
         "followUpPrompt": "اسأله ماذا يحدث لو ارتفعت حرارة البحر"
@@ -151,7 +160,10 @@
             "flow"
           ],
           "buckets": null,
-          "pairs": null
+          "pairs": null,
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "Builds the water-cycle sequence by hand",
         "followUpPrompt": "Ask what happens if the sea gets warmer"
@@ -221,7 +233,10 @@
               "label": "حرف"
             }
           ],
-          "pairs": null
+          "pairs": null,
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "يميز أقسام الكلام بالتصنيف العملي",
         "followUpPrompt": "اطلب منه جملة من عنده فيها الأقسام الثلاثة"
@@ -291,7 +306,10 @@
               "label": "Particle"
             }
           ],
-          "pairs": null
+          "pairs": null,
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "Distinguishes parts of speech by hands-on sorting",
         "followUpPrompt": "Ask for their own sentence using all three"
@@ -338,7 +356,10 @@
               "left": "brief",
               "right": "قصير ومختصر"
             }
-          ]
+          ],
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "يربط المفردة الإنجليزية بمعناها بنفسه",
         "followUpPrompt": "اطلب منه جملة قصيرة يستعمل فيها إحدى الكلمات"
@@ -385,7 +406,10 @@
               "left": "brief",
               "right": "short"
             }
-          ]
+          ],
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "Connects each English word to its meaning by hand",
         "followUpPrompt": "Ask for a short sentence using one of the words"
@@ -432,7 +456,10 @@
               "left": "خرج",
               "right": "مخرج"
             }
-          ]
+          ],
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "يكتشف كيف تتولد الكلمات من جذر واحد",
         "followUpPrompt": "اسأله عن كلمة أخرى من جذر كتب"
@@ -479,7 +506,10 @@
               "left": "خرج",
               "right": "مخرج"
             }
-          ]
+          ],
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "Discovers how words grow from a single root",
         "followUpPrompt": "Ask for another word from the root كتب"
@@ -526,7 +556,10 @@
               "left": "التجمد",
               "right": "تحول السائل إلى صلب"
             }
-          ]
+          ],
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "يميز تحولات المادة بربط كل مصطلح بتعريفه",
         "followUpPrompt": "اسأله أين يرى التكاثف في بيته"
@@ -573,7 +606,10 @@
               "left": "Freezing",
               "right": "Liquid turns into solid"
             }
-          ]
+          ],
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "Distinguishes state changes by pairing each term with its definition",
         "followUpPrompt": "Ask where they see condensation at home"
@@ -620,7 +656,10 @@
               "left": "المدرج الروماني",
               "right": "بصرى"
             }
-          ]
+          ],
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "يربط المعالم التراثية بأماكنها على خريطة بلده الذهنية",
         "followUpPrompt": "اسأله أي معلم يود زيارته ولماذا"
@@ -667,10 +706,239 @@
               "left": "The Roman Theatre",
               "right": "Bosra"
             }
-          ]
+          ],
+          "coefficient": null,
+          "constant": null,
+          "views": null
         },
         "expectedLearningAction": "Anchors heritage landmarks to their places on a mental map",
         "followUpPrompt": "Ask which landmark they would visit and why"
+      }
+    },
+    {
+      "tool": "balance_scale",
+      "subject": "math",
+      "concept": "linear_equations",
+      "language": "ar",
+      "payload": {
+        "type": "balance_scale",
+        "version": 1,
+        "title": "وازن الميزان وأوجد المجهول",
+        "instructions": "حرّك x حتى يتساوى طرفا الميزان، ثم تحقق.",
+        "data": {
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "target": 10,
+          "tolerance": 0,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": null,
+          "coefficient": 1,
+          "constant": 3,
+          "views": null
+        },
+        "expectedLearningAction": "يكتشف أن المعادلة ميزان يجب أن يبقى متوازنًا",
+        "followUpPrompt": "اسأله ماذا يحدث لو أضفنا نفس العدد لطرفي الميزان"
+      }
+    },
+    {
+      "tool": "balance_scale",
+      "subject": "math",
+      "concept": "linear_equations",
+      "language": "en",
+      "payload": {
+        "type": "balance_scale",
+        "version": 1,
+        "title": "Balance the scale and find x",
+        "instructions": "Move x until both sides of the scale are equal, then check.",
+        "data": {
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "target": 10,
+          "tolerance": 0,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": null,
+          "coefficient": 1,
+          "constant": 3,
+          "views": null
+        },
+        "expectedLearningAction": "Discovers that an equation is a balance that must stay level",
+        "followUpPrompt": "Ask what happens if we add the same number to both sides"
+      }
+    },
+    {
+      "tool": "balance_scale",
+      "subject": "math",
+      "concept": "equality",
+      "language": "ar",
+      "payload": {
+        "type": "balance_scale",
+        "version": 1,
+        "title": "كم يساوي x هنا؟",
+        "instructions": "حرّك x حتى يستقر الميزان أفقيًا، ثم تحقق.",
+        "data": {
+          "min": 0,
+          "max": 10,
+          "step": 1,
+          "target": 9,
+          "tolerance": 0,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": null,
+          "coefficient": 2,
+          "constant": -1,
+          "views": null
+        },
+        "expectedLearningAction": "يحل معادلة بمعامل غير واحد ويشاهد النتيجة فورًا",
+        "followUpPrompt": "اسأله كيف يتحقق من الحل بدون الميزان"
+      }
+    },
+    {
+      "tool": "balance_scale",
+      "subject": "math",
+      "concept": "equality",
+      "language": "en",
+      "payload": {
+        "type": "balance_scale",
+        "version": 1,
+        "title": "What must x equal here?",
+        "instructions": "Move x until the scale settles level, then check.",
+        "data": {
+          "min": 0,
+          "max": 10,
+          "step": 1,
+          "target": 9,
+          "tolerance": 0,
+          "unit": null,
+          "items": null,
+          "correctOrder": null,
+          "buckets": null,
+          "pairs": null,
+          "coefficient": 2,
+          "constant": -1,
+          "views": null
+        },
+        "expectedLearningAction": "Solves an equation with a non-one coefficient and sees the result instantly",
+        "followUpPrompt": "Ask how they would check the solution without the scale"
+      }
+    },
+    {
+      "tool": "timeline",
+      "subject": "social_studies",
+      "concept": "historical_sequences",
+      "language": "ar",
+      "payload": {
+        "type": "timeline",
+        "version": 1,
+        "title": "رتّب طريق الاستقلال",
+        "instructions": "المس الأحداث بترتيبها الزمني الصحيح من الأقدم إلى الأحدث.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": [
+            {
+              "id": "ottoman_end",
+              "label": "١٩١٨ – انتهاء الحكم العثماني",
+              "bucketId": null
+            },
+            {
+              "id": "mandate",
+              "label": "١٩٢٠ – بدء الانتداب الفرنسي",
+              "bucketId": null
+            },
+            {
+              "id": "revolt",
+              "label": "١٩٢٥ – الثورة السورية الكبرى",
+              "bucketId": null
+            },
+            {
+              "id": "independence",
+              "label": "١٩٤٦ – عيد الجلاء (الاستقلال الكامل)",
+              "bucketId": null
+            }
+          ],
+          "correctOrder": [
+            "ottoman_end",
+            "mandate",
+            "revolt",
+            "independence"
+          ],
+          "buckets": null,
+          "pairs": null,
+          "coefficient": null,
+          "constant": null,
+          "views": null
+        },
+        "expectedLearningAction": "يبني تسلسل طريق الاستقلال بنفسه",
+        "followUpPrompt": "اسأله لماذا كانت الثورة الكبرى خطوة مهمة نحو الاستقلال"
+      }
+    },
+    {
+      "tool": "timeline",
+      "subject": "social_studies",
+      "concept": "historical_sequences",
+      "language": "en",
+      "payload": {
+        "type": "timeline",
+        "version": 1,
+        "title": "Order the path to independence",
+        "instructions": "Tap the events in the correct chronological order, earliest first.",
+        "data": {
+          "min": null,
+          "max": null,
+          "step": null,
+          "target": null,
+          "tolerance": null,
+          "unit": null,
+          "items": [
+            {
+              "id": "ottoman_end",
+              "label": "1918 – End of Ottoman rule",
+              "bucketId": null
+            },
+            {
+              "id": "mandate",
+              "label": "1920 – French Mandate begins",
+              "bucketId": null
+            },
+            {
+              "id": "revolt",
+              "label": "1925 – The Great Syrian Revolt",
+              "bucketId": null
+            },
+            {
+              "id": "independence",
+              "label": "1946 – Evacuation Day (full independence)",
+              "bucketId": null
+            }
+          ],
+          "correctOrder": [
+            "ottoman_end",
+            "mandate",
+            "revolt",
+            "independence"
+          ],
+          "buckets": null,
+          "pairs": null,
+          "coefficient": null,
+          "constant": null,
+          "views": null
+        },
+        "expectedLearningAction": "Builds the path-to-independence sequence by hand",
+        "followUpPrompt": "Ask why the Great Revolt was an important step toward independence"
       }
     }
   ]

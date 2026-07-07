@@ -99,10 +99,41 @@ class Api {
               body: jsonEncode({'pathId': pathId, 'experienceId': experienceId}))
           .timeout(const Duration(seconds: 20)))) as Map<String, dynamic>;
 
+  /// Server-side verification for a lesson-experience widget's attempt — the
+  /// same ToolDescriptor.verifyResult the tutor trusts, reused so an authored
+  /// lesson challenge is never graded by client code alone. Returns
+  /// {verdict, errorPattern?}: verdict is 'correct' | 'partially_correct' |
+  /// 'incorrect' | 'explored' | 'invalid' | 'unverifiable'; errorPattern is
+  /// the tool's diagnosis of a wrong answer when it has one. When [evidence]
+  /// (skill/representation/position context) is supplied, the server also
+  /// records the graded attempt as an evidence row.
+  static Future<Map<String, dynamic>> verifyTool(
+    String toolId,
+    Map<String, dynamic> data,
+    Map<String, dynamic> answer, {
+    Map<String, dynamic>? evidence,
+  }) async =>
+      (await post('/api/v1/tools/$toolId/verify', {
+        'data': data,
+        'answer': answer,
+        if (evidence != null) 'evidence': evidence,
+      })) as Map<String, dynamic>;
+
+  /// The learner's evidence log on the server (append-only, ids are
+  /// client-generated — see LearnEvidenceStore).
+  static Future<Map<String, dynamic>> learnEvidence() async =>
+      (await get('/api/v1/learn/evidence')) as Map<String, dynamic>;
+
+  /// Idempotent batch append of evidence events (deduped by event id).
+  static Future<Map<String, dynamic>> postLearnEvidence(
+          List<Map<String, dynamic>> events) async =>
+      (await post('/api/v1/learn/evidence', {'events': events}))
+          as Map<String, dynamic>;
+
   static Future<Map<String, dynamic>> createGame(Map<String, dynamic> body) async =>
       (await post('/api/v1/games', body)) as Map<String, dynamic>;
 
-  /// Ask OpenMind: question + optional learning context → structured reply.
+  /// Ask Hudhud: question + optional learning context → structured reply.
   static Future<Map<String, dynamic>> askTutor(Map<String, dynamic> body) async =>
       (await post('/api/v1/tutor/messages', body)) as Map<String, dynamic>;
 

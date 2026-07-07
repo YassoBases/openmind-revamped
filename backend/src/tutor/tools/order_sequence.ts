@@ -1,4 +1,10 @@
-import { CorrectOrderField, ItemsField, type ToolDescriptor } from './types.js';
+import {
+  CorrectOrderField,
+  ItemsField,
+  validateOrderShape,
+  verifyOrderPermutation,
+  type ToolDescriptor,
+} from './types.js';
 
 /**
  * order_sequence — arrange 3-8 items into the correct order. Reusable as-is
@@ -24,31 +30,8 @@ export const orderSequenceTool = {
     items: ItemsField,
     correctOrder: CorrectOrderField,
   },
-  validate: (d) => {
-    const items = d.items ?? [];
-    const order = d.correctOrder ?? [];
-    if (items.length < 3 || items.length > 8) return false;
-    const ids = new Set(items.map((i) => i.id));
-    if (ids.size !== items.length) return false;
-    if (order.length !== items.length || new Set(order).size !== order.length) return false;
-    if (!order.every((id) => ids.has(id))) return false;
-    return true;
-  },
-  verifyResult: (d, answer) => {
-    const picked = answer.order;
-    if (picked == null) return 'unverifiable';
-    const correct = d.correctOrder ?? [];
-    const ids = new Set((d.items ?? []).map((i) => i.id));
-    // A full submission is a permutation of this instance's items.
-    if (picked.length !== correct.length) return 'invalid';
-    if (new Set(picked).size !== picked.length) return 'invalid';
-    if (!picked.every((id) => ids.has(id))) return 'invalid';
-    // Mirrors orderOutcome in block_logic.dart.
-    let n = 0;
-    for (let i = 0; i < picked.length; i++) if (picked[i] === correct[i]) n++;
-    if (n === correct.length) return 'correct';
-    return n > 0 ? 'partially_correct' : 'incorrect';
-  },
+  validate: validateOrderShape,
+  verifyResult: verifyOrderPermutation,
   promptSpec:
     '* "order_sequence" (version 1) — the student arranges 3-8 items into the correct order. data: items[{id, label, bucketId:null}], correctOrder = ALL item ids in the right order. Use for process stages, historical timelines, algorithm/solution steps, sentence or word ordering.',
   goldens: [

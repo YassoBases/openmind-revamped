@@ -207,14 +207,26 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
               borderRadius: BorderRadius.circular(AppRadii.button),
             ),
           ),
-          child: Text(
-            pair.left,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: matched ? AppColors.mutedGreen : null,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (matched) ...[
+                const Icon(Icons.check_rounded, size: 14, color: AppColors.mutedGreen),
+                const SizedBox(width: 4),
+              ],
+              Flexible(
+                child: Text(
+                  pair.left,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: matched ? AppColors.mutedGreen : null,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -236,13 +248,13 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
             backgroundColor: matched
                 ? AppColors.mutedGreen.withValues(alpha: 0.12)
                 : flashing
-                    ? AppColors.mutedRed.withValues(alpha: 0.18)
+                    ? AppColors.retryYellowSoft
                     : null,
             side: BorderSide(
               color: matched
                   ? AppColors.mutedGreen
                   : flashing
-                      ? AppColors.mutedRed
+                      ? AppColors.retryYellow
                       : cs.outlineVariant,
               width: matched || flashing ? 1.8 : 1,
             ),
@@ -251,14 +263,29 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
               borderRadius: BorderRadius.circular(AppRadii.button),
             ),
           ),
-          child: Text(
-            pair.right,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: matched ? AppColors.mutedGreen : null,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (matched) ...[
+                const Icon(Icons.check_rounded, size: 14, color: AppColors.mutedGreen),
+                const SizedBox(width: 4),
+              ] else if (flashing) ...[
+                const Icon(Icons.close_rounded, size: 14, color: AppColors.retryYellowInk),
+                const SizedBox(width: 4),
+              ],
+              Flexible(
+                child: Text(
+                  pair.right,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: matched ? AppColors.mutedGreen : null,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

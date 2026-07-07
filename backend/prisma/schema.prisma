@@ -33,6 +33,7 @@ model Student {
   playSessions        PlaySession[]
   tutorMessages       TutorMessage[]
   learnProgress       LearnProgress[]
+  learnEvidence       LearnEvidence[]
 }
 
 // Middle-school learning progress (grades 7-9) — a separate domain from
@@ -47,6 +48,35 @@ model LearnProgress {
 
   @@unique([studentId, pathId, experienceId])
   @@index([studentId, completedAt])
+}
+
+// One learner submission — the append-only evidence log behind per-skill
+// readiness and error-pattern diagnostics. `id` is client-generated (not a
+// cuid) so the log is idempotent across the local cap, batch upsert, and sync.
+// A separate domain from LearnProgress: evidence never overwrites completion.
+model LearnEvidence {
+  id             String   @id
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id])
+  skillId        String
+  representation String
+  context        String?
+  source         String // learn_step | checkpoint | tutor_block | tool_verify
+  kind           String // exploration | prediction | construction | transfer | recall | explanation
+  outcome        String // correct | partially_correct | incorrect | explored
+  verification   String // server_verified | client_reported
+  attempt        Int      @default(1)
+  hints          Int      @default(0)
+  recovered      Boolean  @default(false)
+  errorPattern   String?
+  toolId         String?
+  pathId         String?
+  experienceId   String?
+  stepIndex      Int?
+  ms             Int?
+  createdAt      DateTime @default(now())
+
+  @@index([studentId, skillId, createdAt])
 }
 
 model Game {

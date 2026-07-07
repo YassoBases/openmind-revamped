@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import '../../app_localizations.dart';
 import '../../core/session.dart';
 import '../../core/stage.dart';
+import '../../widgets/mascot.dart';
 import 'tutor_chat.dart';
 import 'tutor_models.dart';
 
-/// The "Ask OpenMind" tab: a question about any school subject goes to the
+/// The "Ask Hudhud" tab: a question about any school subject goes to the
 /// backend tutor endpoint and comes back as a structured, pedagogy-first
-/// reply — sometimes carrying an interactive Ask → See → Try block. The
-/// active thread is the real backend conversation, restored across launches.
+/// reply — sometimes carrying an interactive Ask → See → Try block. Hudhud
+/// fronts the conversation; the active thread is the real backend
+/// conversation, restored across launches.
 class AskScreen extends StatefulWidget {
   const AskScreen({super.key});
 
@@ -55,6 +57,8 @@ class _AskScreenState extends State<AskScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Mascot(size: 44, accent: cs.primary, expression: MascotExpression.idle),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

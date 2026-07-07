@@ -9,10 +9,12 @@
  */
 import type { z } from 'zod';
 import type { LearningStage } from '../../learning/stage.js';
+import { balanceScaleTool } from './balance_scale.js';
 import { matchPairsTool } from './match_pairs.js';
 import { numberLineTool } from './number_line.js';
 import { orderSequenceTool } from './order_sequence.js';
 import { sortBucketsTool } from './sort_buckets.js';
+import { timelineTool } from './timeline.js';
 import { SUBJECTS, type GoldenPayload, type Subject, type ToolDataView, type ToolDescriptor } from './types.js';
 
 /** Registry order is also mock golden-matching priority (v1 tools first). */
@@ -21,6 +23,8 @@ export const TOOL_REGISTRY: readonly ToolDescriptor[] = [
   orderSequenceTool,
   sortBucketsTool,
   matchPairsTool,
+  balanceScaleTool,
+  timelineTool,
 ];
 
 /** Wire ids as a literal tuple — contract.ts builds its z.enum from this. */
@@ -29,6 +33,8 @@ export const INTERACTIVE_BLOCK_TYPES = [
   orderSequenceTool.id,
   sortBucketsTool.id,
   matchPairsTool.id,
+  balanceScaleTool.id,
+  timelineTool.id,
 ] as const;
 
 const byId = new Map(TOOL_REGISTRY.map((t) => [t.id, t]));

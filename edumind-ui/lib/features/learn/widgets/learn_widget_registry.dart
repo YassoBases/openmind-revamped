@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../learn_models.dart';
+import 'balance_scale_widget.dart';
+import 'timeline_widget.dart';
 import 'triangle_planner.dart';
 
 /// What a manipulative reports upward so the step engine can gate progress.
@@ -30,6 +32,10 @@ typedef LearnWidgetBuilder = Widget Function(
 final Map<String, LearnWidgetBuilder> kLearnWidgetBuilders = {
   'triangle_area': (spec, onStatus) =>
       TrianglePlanner(spec: spec, onStatus: onStatus),
+  'balance_scale': (spec, onStatus) =>
+      BalanceScaleWidget(spec: spec, onStatus: onStatus),
+  'timeline': (spec, onStatus) =>
+      TimelineWidget(spec: spec, onStatus: onStatus),
 };
 
 /// Resolves a widget spec, falling back to a visible error card so a typo in

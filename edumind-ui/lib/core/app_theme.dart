@@ -10,7 +10,8 @@ import 'package:flutter/material.dart';
 ///
 /// Hierarchy: ink-blue = structure & primary action, orange = accent /
 /// selection / progress, ivory & cream = warm surfaces, soft blue = calm
-/// selection surface, muted green/red = success/error (never neon).
+/// selection surface, muted green/amber = success/warning (never neon,
+/// never alarm-red — a wrong answer is a teaching moment, not an error).
 class AppColors {
   // Surfaces
   static const ivory = Color(0xFFFDFBF6); // app background
@@ -32,8 +33,24 @@ class AppColors {
   // Feedback (calm, not Duolingo-neon)
   static const mutedGreen = Color(0xFF3E7C59); // success
   static const mutedGreenSoft = Color(0xFFE1EDE6);
-  static const mutedRed = Color(0xFF9E4B47); // error
-  static const mutedRedSoft = Color(0xFFF3E1E0);
+  // Warning / try-again — a muted ochre, deliberately not red: "try again"
+  // reads as a nudge, not an alarm. Distinct hue from `orange` (the CTA
+  // accent) so the two never get confused in the same view.
+  static const mutedAmber = Color(0xFF8A6D1F);
+  static const mutedAmberSoft = Color(0xFFF2E8D0);
+
+  // Middle-school (grades 7-9) retry/incorrect feedback — a soft learning
+  // yellow, deliberately not red/purple/amber-ochre/orange: a wrong answer is
+  // a teaching moment, not an alarm, and orange stays reserved for
+  // progress/discovery there. Same three-tier shape as orange/orangeSoft/
+  // orangeInk: [retryYellow] borders/icons, [retryYellowSoft] container fill,
+  // [retryYellowInk] body text (darkest, for contrast on the soft fill). See
+  // core/middle_palette.dart for the rest of that screen family's tokens
+  // (this trio lives here too since it's shared by components — like the
+  // tutor blocks and chat — that already depend on AppColors).
+  static const retryYellow = Color(0xFFE8C978);
+  static const retryYellowSoft = Color(0xFFFFF4D6);
+  static const retryYellowInk = Color(0xFF7A5A16);
 }
 
 /// Corner radii — reconciles the two prior systems (Palette 24/16/20 and
@@ -65,10 +82,10 @@ ThemeData buildAppTheme() {
     onSecondaryContainer: AppColors.orangeInk,
     tertiary: AppColors.blue,
     onTertiary: AppColors.white,
-    error: AppColors.mutedRed,
+    error: AppColors.mutedAmber,
     onError: AppColors.white,
-    errorContainer: AppColors.mutedRedSoft,
-    onErrorContainer: AppColors.mutedRed,
+    errorContainer: AppColors.mutedAmberSoft,
+    onErrorContainer: AppColors.mutedAmber,
     surface: AppColors.ivory,
     onSurface: AppColors.blueInk,
     onSurfaceVariant: AppColors.body,

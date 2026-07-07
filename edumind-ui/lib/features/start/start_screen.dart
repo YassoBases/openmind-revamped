@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_localizations.dart';
+import '../../core/middle_palette.dart';
 import '../../core/palette.dart';
 import '../../core/session.dart';
 import '../context/context_sheet.dart';
@@ -115,6 +116,7 @@ class _StartScreenState extends State<StartScreen> {
     final lens = Session.instance.learningContext;
 
     return Scaffold(
+      backgroundColor: MiddlePalette.cream,
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -164,7 +166,6 @@ class _StartScreenState extends State<StartScreen> {
     final action = _action!;
     final path = action.position.path;
     final experience = action.position.experience;
-    final accent = hexToColor(path.colorHex);
 
     final cta = switch (action.kind) {
       StartActionKind.resume => l.translate('start_resume_exp'),
@@ -186,7 +187,7 @@ class _StartScreenState extends State<StartScreen> {
         : null;
 
     return Material(
-      color: accent.withValues(alpha: 0.06),
+      color: MiddlePalette.card,
       borderRadius: BorderRadius.circular(Palette.radiusCard),
       child: InkWell(
         borderRadius: BorderRadius.circular(Palette.radiusCard),
@@ -194,15 +195,29 @@ class _StartScreenState extends State<StartScreen> {
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            border: Border.all(color: accent.withValues(alpha: 0.5), width: 1.4),
+            border: Border.all(color: MiddlePalette.outline),
             borderRadius: BorderRadius.circular(Palette.radiusCard),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                l.translate('start_now_label'),
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: accent),
+              // "Your learning moment now" is a progress/discovery signal —
+              // the fixed orange, not this path's own identity color, so it
+              // reads the same regardless of which path is current.
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: MiddlePalette.discovery.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  l.translate('start_now_label'),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: MiddlePalette.discovery,
+                  ),
+                ),
               ),
               const SizedBox(height: 10),
               Row(
@@ -243,7 +258,7 @@ class _StartScreenState extends State<StartScreen> {
               FilledButton.icon(
                 onPressed: _openAction,
                 style: FilledButton.styleFrom(
-                  backgroundColor: accent,
+                  backgroundColor: MiddlePalette.primaryAction,
                   minimumSize: const Size(double.infinity, 52),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(Palette.radiusButton),

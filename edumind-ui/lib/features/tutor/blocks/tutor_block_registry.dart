@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../tutor_models.dart';
+import 'balance_scale_block.dart';
 import 'match_pairs_block.dart';
 import 'number_line_block.dart';
 import 'order_sequence_block.dart';
 import 'sort_buckets_block.dart';
+import 'timeline_block.dart';
 
 /// Fires once when the learner finishes acting on a block: the structured
 /// [InteractiveResult] plus the human-readable summary that becomes the
@@ -37,6 +39,10 @@ Widget? buildTutorBlock({
     'sort_buckets' => SortBucketsBlock(
         payload: payload, enabled: enabled, answered: answered, onResult: onResult),
     'match_pairs' => MatchPairsBlock(
+        payload: payload, enabled: enabled, answered: answered, onResult: onResult),
+    'balance_scale' => BalanceScaleBlock(
+        payload: payload, enabled: enabled, answered: answered, onResult: onResult),
+    'timeline' => TimelineBlock(
         payload: payload, enabled: enabled, answered: answered, onResult: onResult),
     _ => null,
   };

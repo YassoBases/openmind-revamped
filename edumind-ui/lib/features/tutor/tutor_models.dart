@@ -87,13 +87,15 @@ class InteractivePayload {
     this.correctOrder = const [],
     this.buckets = const [],
     this.pairs = const [],
+    this.coefficient,
+    this.constant,
   });
 
   final String type;
   final String title;
   final String instructions;
 
-  // number_line
+  // number_line + balance_scale
   final num? min;
   final num? max;
   final num? step;
@@ -108,6 +110,10 @@ class InteractivePayload {
 
   // match_pairs
   final List<InteractivePair> pairs;
+
+  // balance_scale
+  final num? coefficient;
+  final num? constant;
 
   static InteractivePayload? fromMap(dynamic raw) {
     if (raw is! Map) return null;
@@ -158,6 +164,8 @@ class InteractivePayload {
               right: x['right'] as String,
             ),
         ],
+        coefficient: d['coefficient'] as num?,
+        constant: d['constant'] as num?,
       );
       // The tool's own render-safety check (blocks/block_descriptors.dart) —
       // the client-side twin of the server's semantic gate.
@@ -276,6 +284,8 @@ class TutorContext {
     this.state,
     this.attempts = const [],
     this.completedExperiences = const [],
+    this.skills = const [],
+    this.readiness = const [],
   });
 
   final String source; // 'ask' | 'experience'
@@ -291,6 +301,16 @@ class TutorContext {
   final List<String> attempts;
   final List<String> completedExperiences;
 
+  /// Micro-skill ids the current step evidences — what Hudhud should ground a
+  /// hint in.
+  final List<String> skills;
+
+  /// A compact readiness slice for this experience's skills (+ prereqs), each
+  /// {skill, rep, level, recentErrorPatterns}. Lets Hudhud respond to the
+  /// diagnosed pattern and start from the weakest prerequisite, never a
+  /// generic hint. Kept small (≤ ~8 entries).
+  final List<Map<String, dynamic>> readiness;
+
   Map<String, dynamic> toMap() => {
         'source': source,
         if (subject != null) 'subject': subject,
@@ -304,5 +324,7 @@ class TutorContext {
         if (state != null) 'state': state,
         if (attempts.isNotEmpty) 'attempts': attempts,
         if (completedExperiences.isNotEmpty) 'completedExperiences': completedExperiences,
+        if (skills.isNotEmpty) 'skills': skills,
+        if (readiness.isNotEmpty) 'readiness': readiness,
       };
 }

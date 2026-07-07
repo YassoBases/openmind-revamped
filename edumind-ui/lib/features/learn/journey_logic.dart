@@ -7,6 +7,7 @@
 library;
 
 import 'learn_models.dart';
+import 'readiness_logic.dart';
 
 enum JourneyNodeState { completed, current, locked, soon }
 
@@ -106,6 +107,61 @@ StartAction? startAction(
     position: next,
     step: 0,
   );
+}
+
+/// The path's current (open, uncompleted) experience — the station the
+/// learner is on — or null when the path is finished or not yet started here.
+LearnExperience? currentExperience(LearnPath path, Set<String> completed) {
+  final states = journeyNodeStates(path, completed);
+  final idx = states.indexOf(JourneyNodeState.current);
+  return idx < 0 ? null : path.experiences[idx];
+}
+
+/// The learner's next meaningful micro-skill goal for [experience]: among the
+/// skills its steps evidence, the one with the lowest readiness (unseen
+/// counts as lowest). When that skill has a prerequisite the learner is even
+/// less ready for, the prerequisite is surfaced instead — readiness-based
+/// progression never points past an unmet foundation. Null when the
+/// experience carries no skill tags. Pure and unit-testable.
+LearnSkill? nextGoal(
+  LearnExperience experience,
+  LearnCatalog catalog,
+  Map<String, Readiness> skillReadiness,
+) {
+  final ids = <String>[];
+  void add(String id) {
+    if (!ids.contains(id)) ids.add(id);
+  }
+
+  for (final step in experience.steps) {
+    step.skills.forEach(add);
+    for (final item in step.checkItems) {
+      item.skills.forEach(add);
+    }
+  }
+  if (ids.isEmpty) return null;
+
+  // Unseen skills sort first (sentinel below any real 0..1 score); ties keep
+  // first-appearance order so the goal follows the lesson's own arc.
+  double scoreOf(String id) {
+    final r = skillReadiness[id];
+    if (r == null || r.level == ReadinessLevel.unseen) return -1;
+    return r.score;
+  }
+
+  var weakest = ids.first;
+  for (final id in ids.skip(1)) {
+    if (scoreOf(id) < scoreOf(weakest)) weakest = id;
+  }
+
+  final skill = catalog.skills[weakest];
+  if (skill == null) return null;
+  // Ground the goal in the weakest unmet prerequisite when there is one.
+  for (final prereq in skill.prereqs) {
+    final p = catalog.skills[prereq];
+    if (p != null && scoreOf(prereq) < scoreOf(weakest)) return p;
+  }
+  return skill;
 }
 
 /// (done, ready) counts for a path — the map header's progress numbers.

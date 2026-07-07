@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_localizations.dart';
 import 'core/api_client.dart';
+import 'core/app_theme.dart';
 import 'core/session.dart';
 import 'features/demos/demos_screen.dart';
 import 'languageswitchertile.dart';
@@ -113,11 +114,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: (_ok! ? Colors.green : cs.error).withValues(alpha: 0.12),
+                color: (_ok! ? AppColors.mutedGreen : cs.error).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _ok! ? Colors.green : cs.error),
+                border: Border.all(color: _ok! ? AppColors.mutedGreen : cs.error),
               ),
-              child: Text(_status!),
+              child: Row(
+                children: [
+                  Icon(
+                    _ok! ? Icons.check_circle_rounded : Icons.refresh_rounded,
+                    size: 18,
+                    color: _ok! ? AppColors.mutedGreen : cs.error,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(_status!)),
+                ],
+              ),
             ),
           ],
           const SizedBox(height: 26),
