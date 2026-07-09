@@ -56,6 +56,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   LearningStage? _stageChoice;
   int? _grade;
   final Set<String> _interests = {};
+
+  /// Middle-school-only: the real-life learning lens (market, building,
+  /// water_energy, roads_transport, technology) — seeds `learningContext` so
+  /// lesson stories are personalized from the first session. Primary-stage
+  /// learners use [_interests] instead; the two never mix.
+  String? _lensChoice;
   int? _style;
   int _accent = 0; // sensible default so the learner is never blocked
   bool _saving = false;
@@ -75,7 +81,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   bool get _canAdvance => switch (_step) {
     1 => _name.text.trim().isNotEmpty,
     2 => _grade != null,
-    3 => _interests.isNotEmpty,
+    3 => _stageChoice == LearningStage.middleInteractiveLearning
+        ? _lensChoice != null
+        : _interests.isNotEmpty,
     4 => _style != null,
     _ => true,
   };
@@ -106,7 +114,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', _name.text.trim());
     await prefs.setInt('user_grade', _grade!);
-    await prefs.setStringList('user_interests_v2', _interests.toList());
+    if (_lensChoice != null) {
+      await prefs.setString('user_learning_context', _lensChoice!);
+    } else {
+      await prefs.setStringList('user_interests_v2', _interests.toList());
+    }
     if (_style != null) await prefs.setInt('user_learning_style', _style!);
     await Future.wait([
       ProfileBridge.finishSetup(
@@ -158,11 +170,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         children: [
                           IconButton(
                             onPressed: _back,
-                            icon: const Icon(
-                              Icons.arrow_back,
-                              size: 20,
-                              color: OnbColors.blue,
-                            ),
+                            // BackButtonIcon (not a raw Icons.arrow_back) so
+                            // the glyph mirrors correctly in RTL — Arabic is
+                            // this product's primary language.
+                            icon: const BackButtonIcon(),
+                            iconSize: 20,
+                            color: OnbColors.blue,
                             tooltip: l.translate('onb_back'),
                             visualDensity: VisualDensity.compact,
                           ),
@@ -394,6 +407,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         _stageChoice = stage;
         // a grade from the other stage can't survive a stage switch
         if (_grade != null && stageForGrade(_grade!) != stage) _grade = null;
+        // interests and the lens are stage-exclusive — clear whichever no
+        // longer applies so a stale pick can't sneak into the wrong stage.
+        if (stage == LearningStage.middleInteractiveLearning) {
+          _interests.clear();
+        } else {
+          _lensChoice = null;
+        }
       }),
       semanticLabel: l.translate(key),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -425,6 +445,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   // ------------------------------------------------------------ screen 4
   Widget _interestsStep(AppLocalizations l) {
+    if (_stageChoice == LearningStage.middleInteractiveLearning) {
+      return _lensStep(l);
+    }
     return _stepShell(
       l,
       titleKey: 'onb_interests_title',
@@ -485,6 +508,53 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Middle-school variant of screen 4: a single-select real-life learning
+  /// lens (reuses the same ids/emoji/labels as the in-app «عدستي» sheet —
+  /// core/stage.dart's kLearningContexts and AppLocalizations' ctx_* keys —
+  /// so this is the same one system, just picked earlier). Sets
+  /// learningContext from the first session; the sheet stays how it's
+  /// changed later.
+  Widget _lensStep(AppLocalizations l) {
+    return _stepShell(
+      l,
+      titleKey: 'onb_lens_title',
+      subtitleKey: 'onb_lens_sub',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final ctx in kLearningContexts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: OnbSelectCard(
+                selected: _lensChoice == ctx.id,
+                onTap: () => setState(() => _lensChoice = ctx.id),
+                semanticLabel: l.translate('ctx_${ctx.id}'),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    Text(ctx.emoji, style: const TextStyle(fontSize: 22)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        l.translate('ctx_${ctx.id}'),
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: _lensChoice == ctx.id
+                              ? OnbColors.blue
+                              : OnbColors.blueInk,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

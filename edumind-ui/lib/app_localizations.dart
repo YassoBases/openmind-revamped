@@ -141,10 +141,16 @@ class AppLocalizations {
       'learn_hint_explore': 'Try it — drag or adjust to explore',
       'learn_hint_decision': 'Choose your answer',
       'learn_hint_check': 'Answer each question',
+      // 3-level hint ladder (observation → next-step → stronger scaffold)
+      'learn_hint_ask': 'Hint',
+      'learn_hint_more': 'Another hint',
       'learn_done_title': 'Mission accomplished!',
       'learn_done_body': 'You made the decisions and discovered the idea in',
+      'learn_stars_earned': '{n} stars earned this station',
       'learn_back_to_path': 'Back to the journey',
       'ask_hudhud_stuck': 'Stuck? Ask Hudhud',
+      // path-end summary (all ready stations complete)
+      'path_complete_title': 'Look what you discovered!',
       // check step (تحقق من الفهم)
       'learn_check_item': 'Question {n} of {m}',
       'learn_check_next': 'Next',
@@ -229,6 +235,8 @@ class AppLocalizations {
       'onb_g9': 'Grade 9',
       'onb_interests_title': 'What things do you love?',
       'onb_interests_sub': 'Pick two',
+      'onb_lens_title': 'Which world fits you best?',
+      'onb_lens_sub': 'Your lessons will use real examples from it — you can change it anytime',
       'onb_int_science': 'Science & inventions',
       'onb_int_tech': 'Tech & future',
       'onb_int_sport': 'Sports & motion',
@@ -491,10 +499,16 @@ class AppLocalizations {
       'learn_hint_explore': 'جرّب — اسحب أو عدّل لتستكشف',
       'learn_hint_decision': 'اختر إجابتك',
       'learn_hint_check': 'أجب عن كل سؤال',
+      // سلّم التلميحات الثلاثي (ملاحظة ← الخطوة التالية ← دعم أقوى)
+      'learn_hint_ask': 'تلميح',
+      'learn_hint_more': 'تلميح آخر',
       'learn_done_title': 'أنجزت المهمة!',
       'learn_done_body': 'اتخذت القرارات واكتشفت الفكرة بنفسك في',
+      'learn_stars_earned': 'ربحت {n} نجوم في هذه المحطة',
       'learn_back_to_path': 'العودة إلى الرحلة',
       'ask_hudhud_stuck': 'علقان؟ اسأل هدهد',
+      // ملخص نهاية الرحلة (اكتمال كل المحطات الجاهزة)
+      'path_complete_title': 'شوف شو اكتشفت!',
       // check step (تحقق من الفهم)
       'learn_check_item': 'سؤال {n} من {m}',
       'learn_check_next': 'التالي',
@@ -578,6 +592,8 @@ class AppLocalizations {
       'onb_g9': 'التاسع',
       'onb_interests_title': 'شو الأشياء اللي بتحبها؟',
       'onb_interests_sub': 'اختار شيئين',
+      'onb_lens_title': 'أي عالم يناسبك أكتر؟',
+      'onb_lens_sub': 'دروسك رح تستخدم أمثلة حقيقية منه — تقدر تغيّره بأي وقت',
       'onb_int_science': 'علوم واختراعات',
       'onb_int_tech': 'تقنية ومستقبل',
       'onb_int_sport': 'رياضة وحركة',

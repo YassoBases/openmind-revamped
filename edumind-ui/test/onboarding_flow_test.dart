@@ -8,6 +8,7 @@ import 'package:edumind/app_localizations.dart';
 import 'package:edumind/core/session.dart';
 import 'package:edumind/core/stage.dart';
 import 'package:edumind/features/onboarding/onboarding_flow.dart';
+import 'package:edumind/features/onboarding/onboarding_widgets.dart';
 import 'package:edumind/language_provider.dart';
 
 /// Drives the redesigned 5-step onboarding end-to-end (offline) and checks
@@ -42,6 +43,7 @@ void main() {
     WidgetTester tester, {
     required String stageLabel,
     required String gradeLabel,
+    bool middle = false,
   }) async {
     await tester.pump(); // async localization delegate load
     // 1 — welcome (mascot ticker runs here — timed pump, not pumpAndSettle)
@@ -63,15 +65,20 @@ void main() {
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
 
-    // 4 — interests (max two)
-    await tester.tap(find.text('Science & inventions'));
-    await tester.tap(find.text('Nature & environment'));
+    // 4 — primary picks up to two companion interests; middle school picks
+    // one real-life learning lens instead (see OnboardingFlow._lensStep).
+    if (middle) {
+      await tester.tap(find.text('Market & trade'));
+    } else {
+      await tester.tap(find.text('Science & inventions'));
+      await tester.tap(find.text('Nature & environment'));
+    }
     await tester.pump();
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
 
     // 5 — starting preference + accent (default accent already selected)
-    await tester.tap(find.text('Let me try it myself'));
+    await tester.tap(find.text(middle ? 'From a real situation' : 'Let me try it myself'));
     await tester.pump();
     await tester.tap(find.text('Start my journey'));
     // completion beat (1.3s) + offline registration failing fast (swallowed);
@@ -110,13 +117,15 @@ void main() {
     var done = false;
 
     await tester.pumpWidget(app(() => done = true));
-    await drive(tester, stageLabel: 'Middle school', gradeLabel: 'Grade 7');
+    await drive(tester, stageLabel: 'Middle school', gradeLabel: 'Grade 7', middle: true);
 
     expect(done, isTrue);
     expect(Session.instance.grade, 7);
     expect(Session.instance.stage, LearningStage.middleInteractiveLearning);
     // archetypes are a primary-stage concept — never set for middle school
     expect(Session.instance.profile!.containsKey('interest'), isFalse);
+    // the chosen learning lens seeds learningContext from the first session
+    expect(Session.instance.learningContext, 'market');
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
@@ -153,6 +162,48 @@ void main() {
       find.ancestor(of: find.text('2 of 2'), matching: find.byType(AnimatedOpacity)),
     );
     expect(counterOpacity.opacity, 0);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('middle-school lens choice survives back navigation', (tester) async {
+    phoneSurface(tester);
+    SharedPreferences.setMockInitialValues({});
+    await Session.load();
+    await Session.instance.reset();
+
+    await tester.pumpWidget(app(() {}));
+    await tester.pump(); // async localization delegate load
+    await tester.tap(find.text('Start'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.enterText(find.byType(TextField), 'Sara');
+    await tester.pump();
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Middle school'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Grade 8'));
+    await tester.pump();
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+
+    // pick a lens, step back to grade, then forward again — the pick
+    // must still be there (OnboardingFlow._back never clears state).
+    await tester.tap(find.text('Building & construction'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+
+    final card = tester.widget<OnbSelectCard>(
+      find.ancestor(
+        of: find.text('Building & construction'),
+        matching: find.byType(OnbSelectCard),
+      ),
+    );
+    expect(card.selected, isTrue);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

@@ -54,8 +54,11 @@ class ProfileBridge {
         5;
 
     // Elementary game archetypes are a primary-stage concept; middle-school
-    // learners pick a context lens later (in-app sheet), never here.
+    // learners pick a real-life learning lens instead (`user_learning_context`,
+    // seeded during onboarding — see OnboardingFlow._lensStep). The in-app
+    // «عدستي» sheet (context_sheet.dart) remains how either is changed later.
     String? interest;
+    String? learningContext;
     if (stageForGrade(grade) == LearningStage.primaryGames) {
       for (final id in prefs.getStringList('user_interests_v2') ?? const []) {
         interest = _interestIdArchetype[id];
@@ -70,6 +73,8 @@ class ProfileBridge {
           }
         }
       }
+    } else {
+      learningContext = prefs.getString('user_learning_context');
     }
 
     final profile = <String, dynamic>{
@@ -79,6 +84,7 @@ class ProfileBridge {
       'language': language,
       'color': colorHex,
       if (interest != null) 'interest': interest,
+      if (learningContext != null) 'learningContext': learningContext,
       'dailyGoal': 3,
     };
 

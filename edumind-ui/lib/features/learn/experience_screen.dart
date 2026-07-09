@@ -10,6 +10,7 @@ import '../tutor/tutor_models.dart';
 import 'learn_evidence_store.dart';
 import 'learn_models.dart';
 import 'learn_progress_store.dart';
+import 'lesson_scoring.dart';
 import 'readiness_logic.dart';
 import 'support_actions.dart';
 import 'widgets/learn_widget_registry.dart';
@@ -47,6 +48,11 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   late int _step;
   bool _done = false;
 
+  /// Small per-step stars earned so far this station (see lesson_scoring.dart
+  /// and _completion) — a learning signal, never a currency; not persisted
+  /// beyond this screen.
+  int _stars = 0;
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +75,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   // never read as low readiness on its own (see EvidenceEvent.ms).
   DateTime _stepStartedAt = DateTime.now();
   int _stepHints = 0; // Hudhud opens during this step
+  int _hintRung = 0; // in-place hint-ladder rungs revealed this step (0-3)
   bool _exploreEmitted = false; // explore-interaction is emitted once
   bool _challengeEmitted = false; // challenge target-met is emitted once
   final Set<int> _checkEmitted = {}; // check items already recorded
@@ -152,8 +159,10 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
 
   Future<void> _next() async {
     await _recordCheckIfAny();
+    final earned = _starsForCurrentStep();
     if (_step < widget.experience.steps.length - 1) {
       setState(() {
+        _stars += earned;
         _step++;
         _widgetStatus = const LearnWidgetStatus();
         _picked = null;
@@ -161,6 +170,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         _checkPicked = List<int?>.filled(_current.checkItems.length, null);
         _stepStartedAt = DateTime.now();
         _stepHints = 0;
+        _hintRung = 0;
         _exploreEmitted = false;
         _challengeEmitted = false;
         _checkEmitted.clear();
@@ -177,7 +187,33 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     final store = await LearnProgressStore.load();
     await store.clearResume(widget.path.id, widget.experience.id);
     await store.markCompleted(widget.path.id, widget.experience.id);
-    if (mounted) setState(() => _done = true);
+    if (mounted) setState(() { _stars += earned; _done = true; });
+  }
+
+  /// Stars for the step being left, read directly off this step's own
+  /// interaction state (never the evidence store) — see lesson_scoring.dart.
+  int _starsForCurrentStep() {
+    final step = _current;
+    return switch (step.kind) {
+      LearnStepKind.scene => kSceneStars,
+      LearnStepKind.explore =>
+        starsFor(correct: _widgetStatus.interacted, hintRung: _hintRung),
+      LearnStepKind.challenge =>
+        starsFor(correct: _widgetStatus.targetMet, hintRung: _hintRung),
+      LearnStepKind.choice || LearnStepKind.apply => step.choice == null
+          ? kSceneStars
+          : starsFor(
+              correct: _picked == step.choice!.correctIndex,
+              hintRung: _hintRung,
+            ),
+      LearnStepKind.check => starsForCheck(
+          correct: [
+            for (var i = 0; i < step.checkItems.length; i++)
+              if (_checkPicked[i] == step.checkItems[i].correctIndex) i,
+          ].length,
+          total: step.checkItems.length,
+        ),
+    };
   }
 
   /// Records the leaving step's check score (last write wins on replay).
@@ -224,7 +260,9 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         outcome: outcome,
         verification: 'client_reported',
         attempt: attempt,
-        hints: _stepHints,
+        // Both help paths count: full Ask Hudhud opens and in-place
+        // hint-ladder rungs — either means the outcome wasn't unaided.
+        hints: _stepHints + _hintRung,
         recovered: recovered,
         errorPattern: errorPattern,
         pathId: widget.path.id,
@@ -592,7 +630,81 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
           const SizedBox(height: 14),
           _checkBlock(step),
         ],
+        _hintLadder(step),
       ],
+    );
+  }
+
+  /// The 3-level hint ladder — observation → next-step → stronger scaffold —
+  /// revealed one rung at a time so a learner who only needs a nudge doesn't
+  /// see the whole scaffold. Authored per step (learn_models.LearnStep.hints);
+  /// a step with none renders nothing. Once every rung is open, the existing
+  /// «اسأل هدهد» entry in the app bar is the natural next move — this never
+  /// adds a second help entry point.
+  Widget _hintLadder(LearnStep step) {
+    if (step.hints.isEmpty) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < _hintRung && i < step.hints.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: MiddlePalette.softBlue,
+                  borderRadius: BorderRadius.circular(Palette.radiusButton),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.lightbulb_rounded,
+                        size: 17, color: MiddlePalette.discovery),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        step.hints[i],
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          height: 1.6,
+                          fontWeight: FontWeight.w600,
+                          color: MiddlePalette.blueInk,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (_hintRung < step.hints.length)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _hintRung++),
+                icon: const Icon(Icons.lightbulb_outline_rounded,
+                    size: 17, color: MiddlePalette.primaryAction),
+                label: Text(
+                  l.translate(_hintRung == 0 ? 'learn_hint_ask' : 'learn_hint_more'),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: MiddlePalette.primaryAction,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  visualDensity: VisualDensity.compact,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -918,6 +1030,45 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
+        const SizedBox(height: 16),
+        // Small stars, not a coin count — a quick "how did that go" read.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.star_rounded, color: MiddlePalette.discovery, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              l.translateWith('learn_stars_earned', {'n': '$_stars'}),
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: MiddlePalette.discovery,
+              ),
+            ),
+          ],
+        ),
+        // The value added — what this station was actually good for — not
+        // only the score, per the authored valueNote (see learn_models.dart).
+        if (widget.experience.valueNote case final note?) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: MiddlePalette.softBlue,
+              borderRadius: BorderRadius.circular(Palette.radiusCard),
+            ),
+            child: Text(
+              note,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13.5,
+                height: 1.7,
+                fontWeight: FontWeight.w600,
+                color: MiddlePalette.blueInk,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),

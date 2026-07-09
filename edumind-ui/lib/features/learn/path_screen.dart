@@ -4,6 +4,7 @@ import '../../app_localizations.dart';
 import '../../core/middle_palette.dart';
 import '../../core/palette.dart';
 import '../../core/session.dart';
+import '../../widgets/mascot.dart';
 import 'checkpoint_logic.dart';
 import 'experience_screen.dart';
 import 'journey_logic.dart';
@@ -157,6 +158,10 @@ class _PathScreenState extends State<PathScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
                 children: [
                   _header(l, path, accent, done, ready, goal),
+                  if (ready > 0 && done == ready) ...[
+                    const SizedBox(height: 12),
+                    _pathCompleteCard(path, catalog, l),
+                  ],
                   if (_dueCheckpoint case final cp?) ...[
                     const SizedBox(height: 12),
                     _checkpointCard(cp, l),
@@ -239,6 +244,104 @@ class _PathScreenState extends State<PathScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Hudhud's path-end summary: shown once every ready station is complete —
+  /// names the skills that reached real readiness on this path, plus one
+  /// authored line on how they help in life (planning, design, technology,
+  /// engineering, or everyday problem solving). Additive to this same trail
+  /// screen — never a separate "path complete" route.
+  Widget _pathCompleteCard(LearnPath path, LearnCatalog? catalog, AppLocalizations l) {
+    final skills = <LearnSkill>[];
+    if (catalog != null) {
+      final ids = <String>{};
+      for (final exp in path.experiences) {
+        for (final step in exp.steps) {
+          ids.addAll(step.skills);
+          for (final item in step.checkItems) {
+            ids.addAll(item.skills.isNotEmpty ? item.skills : step.skills);
+          }
+          final choice = step.choice;
+          if (choice != null) {
+            ids.addAll(choice.skills.isNotEmpty ? choice.skills : step.skills);
+          }
+        }
+      }
+      for (final id in ids) {
+        final level = _readiness[id]?.level;
+        if (level != ReadinessLevel.developing && level != ReadinessLevel.secure) {
+          continue;
+        }
+        final skill = catalog.skills[id];
+        if (skill != null) skills.add(skill);
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: MiddlePalette.card,
+        border: Border.all(color: MiddlePalette.outline),
+        borderRadius: BorderRadius.circular(Palette.radiusCard),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Mascot(
+                size: 44,
+                accent: MiddlePalette.blueInk,
+                expression: MascotExpression.celebrating,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l.translate('path_complete_title'),
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    color: MiddlePalette.blueInk,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (skills.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final s in skills)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: MiddlePalette.softBlue,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      s.title,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: MiddlePalette.blueInk,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          if (path.lifeConnection case final note?) ...[
+            const SizedBox(height: 10),
+            Text(
+              note,
+              style: const TextStyle(fontSize: 13.5, height: 1.7, color: MiddlePalette.body),
+            ),
+          ],
+        ],
       ),
     );
   }

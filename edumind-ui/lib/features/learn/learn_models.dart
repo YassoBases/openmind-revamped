@@ -112,6 +112,7 @@ class LearnPath {
     required this.colorHex,
     required this.experiences,
     this.checkpoints = const [],
+    this.lifeConnection,
   });
 
   final String id;
@@ -120,6 +121,12 @@ class LearnPath {
   final String emoji;
   final String colorHex;
   final List<LearnExperience> experiences;
+
+  /// One authored sentence naming how this path's discovered skills help in
+  /// real life — planning, design, technology, engineering, or everyday
+  /// problem solving. Shown by Hudhud once every ready station is complete
+  /// (see PathScreen). Optional; a path without one just lists the skills.
+  final String? lifeConnection;
 
   /// Diagnostic checkpoints after clusters of skills. Assembled at runtime from
   /// already-authored items (rendered through a fresh lens) plus generated
@@ -138,6 +145,7 @@ class LearnPath {
         checkpoints: ((m['checkpoints'] as List?) ?? const [])
             .map((c) => LearnCheckpoint.fromMap((c as Map).cast<String, dynamic>()))
             .toList(),
+        lifeConnection: m['lifeConnection'] as String?,
       );
 }
 
@@ -167,6 +175,7 @@ class LearnExperience {
     required this.subtitle,
     required this.ready,
     required this.steps,
+    this.valueNote,
   });
 
   final String id;
@@ -174,6 +183,12 @@ class LearnExperience {
   final String subtitle;
   final bool ready;
   final List<LearnStep> steps;
+
+  /// One authored sentence naming what this station's skill is good for in
+  /// real life — shown at station completion alongside the stars earned, so
+  /// the takeaway is the value added, not only a number. Optional; a station
+  /// without one simply shows the stars.
+  final String? valueNote;
 
   static LearnExperience fromMap(Map<String, dynamic> m) => LearnExperience(
         id: m['id'] as String,
@@ -183,6 +198,7 @@ class LearnExperience {
         steps: ((m['steps'] as List?) ?? const [])
             .map((s) => LearnStep.fromMap(s as Map<String, dynamic>))
             .toList(),
+        valueNote: m['valueNote'] as String?,
       );
 }
 
@@ -235,6 +251,7 @@ class LearnStep {
     this.variants = const {},
     this.skills = const [],
     this.rep,
+    this.hints = const [],
   });
 
   final LearnStepKind kind;
@@ -274,6 +291,16 @@ class LearnStep {
   /// Shown when a challenge target is reached.
   final String? successText;
 
+  /// The 3-level hint ladder for this step, authored in escalating order:
+  /// [0] observation (point at what's on screen), [1] next-step (name the
+  /// move without doing it), [2] a stronger scaffold — never the final
+  /// answer. Empty when unauthored (the step shows no ladder; Ask Hudhud
+  /// remains the only help). Deliberately outside the lens system: unlike
+  /// the narrative, hint WORDING can stay identical across every context —
+  /// only what it's pointing at ever needs to change, which the learner
+  /// already sees on screen.
+  final List<String> hints;
+
   /// Context-lens id → narrative overrides (see [LearnStepVariant]).
   final Map<String, LearnStepVariant> variants;
 
@@ -310,6 +337,7 @@ class LearnStep {
         skills:
             ((m['skills'] as List?) ?? const []).map((s) => s as String).toList(),
         rep: m['rep'] as String?,
+        hints: ((m['hints'] as List?) ?? const []).map((h) => h as String).toList(),
       );
 }
 
