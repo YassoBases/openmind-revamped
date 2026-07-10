@@ -19,6 +19,7 @@ const read = (p) => readFileSync(p, 'utf8');
 
 const libs = {
   gamefeel: read(join(shellsDir, 'src', 'lib', 'gamefeel.js')),
+  interact: read(join(shellsDir, 'src', 'lib', 'interact.js')),
   mascot: read(join(shellsDir, 'src', 'lib', 'mascot.js')),
   educore: read(join(shellsDir, 'src', 'lib', 'educore.js')),
 };
@@ -85,13 +86,21 @@ describe('scene contract', () => {
     }
   });
 
-  it('AdaptiveEngine drives item selection, fed by correctness only', () => {
+  it('AdaptiveEngine drives item selection, fed by first-try correctness only', () => {
     expect(libs.educore).toContain('class AdaptiveEngine');
     expect(libs.educore).toMatch(/engine\.pickItems/);
-    expect(libs.educore).toMatch(/engine\.recordAnswer\(correct\)/);
-    // combo and hints must never feed the engine
+    expect(libs.educore).toMatch(/engine\.recordAnswer\(firstTry\)/);
+    // combo, hints and retries must never feed the engine
     expect(libs.educore).not.toMatch(/recordAnswer\([^)]*combo/);
     expect(libs.educore).not.toMatch(/recordAnswer\([^)]*hint/);
+    expect(libs.educore).not.toMatch(/recordAnswer\(solved\)|recordAnswer\(recovered\)/);
+  });
+
+  it('draw_connect builds on the shared Interact drag primitive', () => {
+    expect(libs.interact).toMatch(/attachDrag/);
+    expect(games.draw_connect).toMatch(/Interact\.attachDrag\(/);
+    // the bespoke per-game pointer state machine is gone
+    expect(games.draw_connect).not.toMatch(/this\.input\.on\('pointerdown'/);
   });
 });
 
@@ -117,6 +126,20 @@ describe('juice density (GameFeel)', () => {
 });
 
 describe('design system', () => {
+  it('renders the warm OpenMind palette — no dark game-studio backgrounds', () => {
+    // warm cream base + deep-teal ink live in the engine and template
+    expect(libs.educore).toMatch(/0xfdf2e2/i);
+    expect(libs.educore).toMatch(/0x19725e/i);
+    expect(libs.educore).toMatch(/0x079a90/i);
+    expect(template).toContain('#FDF2E2');
+    // the old near-black base is gone from every surface (mascot pupils and
+    // similar character-art details are the only allowed dark inks)
+    expect(template).not.toMatch(/#131F24/i);
+    expect(libs.educore).not.toMatch(/131f24/i);
+    expect(libs.gamefeel).not.toMatch(/131f24/i);
+    for (const g of GAMES) expect(games[g]).not.toMatch(/131f24/i);
+  });
+
   it('candy buttons are the only button primitive (≥3 uses per game incl. core)', () => {
     expect(template).not.toMatch(/<button/i);
     expect(allOurCode).not.toMatch(/add\.dom\(/);
@@ -194,10 +217,35 @@ describe('bridge + lifecycle guarantees', () => {
     expect(libs.educore).toMatch(/zone\.once\('pointerdown'/);
   });
 
-  it('gentle language: lost-a-heart and take-a-break, never WRONG/GAME OVER', () => {
-    expect(libs.educore).toMatch(/Lost a heart/);
+  it('no hearts, no lives, no point loss — supportive retry instead', () => {
+    // the hearts mechanic is gone from the code entirely (comments may still
+    // explain its absence, so match code identifiers and copy, not prose)
+    expect(allOurCode).not.toMatch(/session\.hearts|ADAPT\.hearts|drawHeart|heartIcons|Lost a heart|lostHeart/);
+    // wrong answers earn a retry with the next hint auto-offered
+    expect(libs.educore).toMatch(/supportiveRetry/);
+    expect(libs.educore).toMatch(/autoHint/);
+    expect(libs.educore).toMatch(/maxAttempts/);
+  });
+
+  it('gentle language: try-again and take-a-break, never WRONG/GAME OVER', () => {
+    expect(libs.educore).toMatch(/Good try — look again!/);
     expect(libs.educore).toMatch(/Take a break/);
     expect(allOurCode).not.toMatch(/GAME OVER/i);
+  });
+
+  it('the 8-event learning contract is emitted through reportLearning', () => {
+    expect(libs.educore).toMatch(/reportLearning\(name, extra\)/);
+    for (const ev of [
+      'experience_started', 'object_interacted', 'attempt_submitted',
+      'hint_requested', 'hint_shown', 'misconception_detected',
+      'level_completed', 'experience_completed',
+    ]) {
+      expect(allOurCode, `missing learning event ${ev}`).toContain(`'${ev}'`);
+    }
+    // every game emits the object-level interaction signal itself
+    for (const g of GAMES) {
+      expect(games[g]).toMatch(/object_interacted/);
+    }
   });
 
   it('receiveSpec hot-load + generation-failure handling exist (progressive start)', () => {

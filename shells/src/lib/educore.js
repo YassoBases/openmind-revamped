@@ -3,11 +3,13 @@
  *
  * Owns: spec intake (full + progressive-start stubs via receiveSpec),
  * i18n + RTL + Arabic-Indic numerals + gender-aware Arabic strings,
- * the AdaptiveEngine (correctness only — combos and hints NEVER feed it),
- * the Teach → Practice level loop, the two-stage hint system (nudge, narrow;
- * never reveal), hearts ("lost a heart", never harsh; "take a break",
- * never a fail screen), XP rules, the host bridge (dual-channel), the shared
- * IntroScene / EndScene, and the EduMindDebug test surface.
+ * the AdaptiveEngine (first-try correctness only — combos and hints NEVER
+ * feed it), the Teach → Practice level loop, the two-stage hint system
+ * (nudge, narrow; never reveal), the supportive retry loop (no hearts, no
+ * lives, no point loss — a wrong answer earns another go with a hint, and
+ * "take a break" is strain-triggered, never a fail screen), XP rules, the
+ * host bridge (dual-channel) including the 8-event learning contract, the
+ * shared IntroScene / EndScene, and the EduMindDebug test surface.
  *
  * Scene contract: every shell registers exactly IntroScene, GameScene, EndScene.
  */
@@ -17,19 +19,32 @@
   const W = 720;
   const H = 1280;
 
+  // The warm OpenMind palette — light, calm backgrounds; teal for
+  // interactive elements; deep teal instead of heavy black; orange and green
+  // for success and progress; berry pink very sparingly, decoration only.
   const PALETTE = {
-    green: 0x58cc02,
-    greenShadow: 0x46a302,
-    blue: 0x1cb0f6,
-    yellow: 0xffc800,
-    heart: 0xff4b4b,
-    purple: 0xce82ff,
-    dark: 0x131f24,
-    soft: 0xf7f7f7,
-    grey: 0xafafaf,
+    cream: 0xfdf2e2, // Warm Cream — backgrounds
+    sand: 0xfae9d0, // Soft Sand — cards and panels
+    teal: 0x079a90, // Main Teal — interactive elements
+    deepTeal: 0x19725e, // Deep Teal — ink and scrims, never heavy black
+    orange: 0xef9722, // Bright Orange — progress, XP, celebration
+    peach: 0xfadbb0, // Soft Peach — highlights, hint bubbles
+    leaf: 0x84a253, // Leaf Green — success
+    deepGreen: 0x4d8c58, // Deep Green — positive CTAs
+    sky: 0xceebf0, // Soft Sky Blue — calm info accents
+    berry: 0xd93b5e, // Berry Pink — decoration only, sparingly
+    brown: 0xb5702f, // Warm Brown — paths, secondary text
+    // Legacy role aliases (kept so role names stay meaningful at call sites):
+    green: 0x4d8c58,
+    greenShadow: 0x3a6b43,
+    blue: 0x079a90,
+    yellow: 0xef9722,
+    dark: 0x19725e,
+    soft: 0xfdf2e2,
+    grey: 0xb5702f,
   };
 
-  const XP = { noHint: 10, oneHint: 7, twoHints: 5, level: 50, mastery: 200 };
+  const XP = { noHint: 10, oneHint: 7, twoHints: 5, retry: 5, level: 50, mastery: 200 };
 
   const ADAPT = {
     start: { easy: 1.5, normal: 2.5, hard: 3.5 },
@@ -43,7 +58,7 @@
     masteryRunScore: 0.8,
     frustration: 3,
     frustrationScore: 0.4,
-    hearts: 3,
+    strain: 3, // consecutive not-first-try items before a gentle break
   };
 
   // ------------------------------------------------------------------ i18n
@@ -72,7 +87,14 @@
       en: ['Not quite —', 'Almost!', 'Good try —'],
       ar: { m: 'قريب من الصواب —', f: 'قريبة من الصواب —', n: 'محاولة جيدة —' },
     },
-    lostHeart: { en: 'Lost a heart', ar: { m: 'فقدتَ قلبًا', f: 'فقدتِ قلبًا', n: 'ذهب قلب' } },
+    tryAgain: {
+      en: ['Good try — look again!', 'Almost! Have another go.'],
+      ar: { m: 'محاولة جيدة — دقّق مرة أخرى!', f: 'محاولة جيدة — دقّقي مرة أخرى!', n: 'محاولة جيدة — لننظر مرة أخرى!' },
+    },
+    solvedIt: {
+      en: 'You worked it out!',
+      ar: { m: 'توصلتَ إليها!', f: 'توصلتِ إليها!', n: 'توصلت إليها!' },
+    },
     takeABreak: { en: 'Take a break', ar: 'خذ استراحة' },
     breakBody: {
       en: "You're working hard, {name}. Breathe with me for a moment — then we'll try something a little easier.",
@@ -189,7 +211,8 @@
         fontFamily: this.isRTL ? 'Tajawal, sans-serif' : 'Nunito, sans-serif',
         fontSize: px + 'px',
         fontStyle: o.weight || '700',
-        color: o.color || '#FFFFFF',
+        color: o.color || '#19725E', // deep-teal ink on the warm palette
+
         align: o.align || (this.isRTL ? 'right' : 'left'),
         rtl: this.isRTL,
       };
@@ -203,7 +226,7 @@
     },
 
     get accentInt() {
-      return GameFeel.hexToInt(this.spec.student.color || '#58CC02');
+      return GameFeel.hexToInt(this.spec.student.color || '#079A90');
     },
 
     // ------------------------------------------------------------- bridge
@@ -236,6 +259,23 @@
       reportSummary(p) { this.send('reportSummary', p); },
       reportComplete(p) { this.send('reportComplete', p); },
       reportEvent(name, p) { this.send('reportEvent', Object.assign({ name }, p || {})); },
+    },
+
+    /**
+     * Learning-evidence event contract. Every event carries the same
+     * envelope so the host can record concept/level/template/wrapper
+     * dimensions uniformly. Events: experience_started, object_interacted,
+     * attempt_submitted, hint_requested, hint_shown, misconception_detected,
+     * level_completed, experience_completed.
+     */
+    reportLearning(name, extra) {
+      const meta = this.spec && this.spec.meta ? this.spec.meta : {};
+      this.bridge.reportEvent(name, Object.assign({
+        conceptId: meta.conceptId || null,
+        learningLevel: null, // recognize/understand/apply/challenge — future specs
+        templateId: meta.gameType || null,
+        wrapperId: meta.wrapper || meta.theme || null,
+      }, extra || {}));
     },
 
     // ---------------------------------------------------------- debug API
@@ -309,7 +349,7 @@
       }
       if (!spec) {
         document.body.innerHTML =
-          '<div style="color:#F7F7F7;font-family:sans-serif;padding:40px;text-align:center">' +
+          '<div style="color:#19725E;font-family:sans-serif;padding:40px;text-align:center">' +
           '<h2>EduMind shell</h2><p>No GameSpec injected. Open this shell through the preview harness, the backend, or the app.</p></div>';
         return;
       }
@@ -342,7 +382,7 @@
         this.game = new Phaser.Game({
           type: Phaser.AUTO,
           parent: 'game-container',
-          backgroundColor: '#131F24',
+          backgroundColor: '#FDF2E2',
           scale: {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -373,11 +413,12 @@
       this.session = {
         xp: 0,
         correct: 0,
+        recovered: 0, // solved after a supportive retry
         presented: 0,
         combo: 0,
         maxCombo: 0,
-        hearts: ADAPT.hearts,
-        items: [], // {id, levelIndex, correct, hintsUsed, concepts, difficulty}
+        strain: 0, // consecutive not-first-try items (break trigger)
+        items: [], // {id, levelIndex, correct, recovered, attempts, hintsUsed, concepts, difficulty}
         levelScores: [],
         startedAt: Date.now(),
         mastery: false,
@@ -473,6 +514,11 @@
       this.feel = GameFeel.attach(this);
       this.uiDepth = 800;
       EduCore.newSession();
+      EduCore.reportLearning('experience_started', {
+        topic: EduCore.spec.meta.topic || null,
+        language: EduCore.spec.meta.language,
+        sessionLength: EduCore.spec.meta.sessionLength || null,
+      });
       this.buildStage();
       this.buildHud();
       this.beginSession().catch((err) => {
@@ -491,26 +537,17 @@
       // XP pill
       this.hudXpBg = this.add.graphics();
       const pillX = edgeX(86) - 66, pillY = 18;
-      this.hudXpBg.fillStyle(0x000000, 0.35);
+      this.hudXpBg.fillStyle(PALETTE.deepTeal, 0.14);
       this.hudXpBg.fillRoundedRect(pillX, pillY, 132, 44, 22); // radius must be ≤ h/2 in Phaser 4
       this.hudXpText = this.add.text(edgeX(86), 40, '0 ' + EduCore.t('xp'),
-        EduCore.textStyle(24, { weight: '800', color: '#FFC800', align: 'center' })).setOrigin(0.5);
-
-      // Hearts
-      this.heartIcons = [];
-      for (let i = 0; i < ADAPT.hearts; i++) {
-        const hx = edgeX(W - 60 - i * 44);
-        const heart = this.add.graphics({ x: hx, y: 40 });
-        this.drawHeart(heart, true);
-        this.heartIcons.push(heart);
-      }
+        EduCore.textStyle(24, { weight: '800', color: '#EF9722', align: 'center' })).setOrigin(0.5);
 
       // Combo flame text (visual juice ONLY)
       this.comboText = this.add.text(W / 2, 40, '',
-        EduCore.textStyle(26, { weight: '800', color: '#FFC800', align: 'center', stroke: '#131F24' }))
+        EduCore.textStyle(26, { weight: '800', color: '#EF9722', align: 'center', stroke: '#FDF2E2' }))
         .setOrigin(0.5).setAlpha(0);
 
-      this.hud.add([this.hudXpBg, this.hudXpText, this.comboText, ...this.heartIcons]);
+      this.hud.add([this.hudXpBg, this.hudXpText, this.comboText]);
 
       // Nahla the bee — the rewards partner — hovers by the XP pill and
       // reacts to every XP gain, combo, streak and level complete.
@@ -525,18 +562,9 @@
       }
     }
 
-    drawHeart(g, full) {
-      g.clear();
-      g.fillStyle(full ? PALETTE.heart : 0x3a4a52, 1);
-      g.fillCircle(-7, -4, 9);
-      g.fillCircle(7, -4, 9);
-      g.fillTriangle(-15, 1, 15, 1, 0, 17);
-    }
-
     refreshHud() {
       const s = EduCore.session;
       this.hudXpText.setText(EduCore.fmtNum(s.xp) + ' ' + EduCore.t('xp'));
-      this.heartIcons.forEach((g, i) => this.drawHeart(g, i < s.hearts));
     }
 
     // ------------------------------------------------------------ session
@@ -590,6 +618,9 @@
       before.xp += XP.level;
       this.refreshHud();
       EduCore.bridge.reportLevel({ index: levelIndex, title, ratio, xp: before.xp });
+      if (levelIndex > 0) {
+        EduCore.reportLearning('level_completed', { index: levelIndex, ratio, xp: before.xp });
+      }
       await this.levelEnd(levelIndex, ratio);
     }
 
@@ -604,14 +635,14 @@
 
       return new Promise((resolve) => {
         const c = this.add.container(0, 0).setDepth(this.uiDepth + 50);
-        const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x131f24, 0.55);
-        const panel = GameFeel.cardPanel(this, W / 2, H / 2 - 40, 560, 250, { color: 0x1f2f38 });
+        const dim = this.add.rectangle(W / 2, H / 2, W, H, PALETTE.deepTeal, 0.45);
+        const panel = GameFeel.cardPanel(this, W / 2, H / 2 - 40, 560, 250, { color: PALETTE.sand });
         const small = this.add.text(W / 2, H / 2 - 110, label,
-          EduCore.textStyle(26, { weight: '800', color: '#1CB0F6', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(26, { weight: '800', color: '#079A90', align: 'center' })).setOrigin(0.5);
         const big = this.add.text(W / 2, H / 2 - 40, title,
-          EduCore.textStyle(38, { weight: '800', color: '#FFFFFF', align: 'center', wrap: 500 })).setOrigin(0.5);
+          EduCore.textStyle(38, { weight: '800', color: '#19725E', align: 'center', wrap: 500 })).setOrigin(0.5);
         const tap = this.add.text(W / 2, H / 2 + 62, EduCore.t('tapToContinue'),
-          EduCore.textStyle(24, { weight: '700', color: '#AFAFAF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(24, { weight: '700', color: '#B5702F', align: 'center' })).setOrigin(0.5);
         c.add([dim, panel, small, big, tap]);
         c.setAlpha(0);
 
@@ -642,13 +673,13 @@
         if (this.companion) this.companion.celebrate();
 
         const c = this.add.container(0, 0).setDepth(this.uiDepth + 50);
-        const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x131f24, 0.45);
+        const dim = this.add.rectangle(W / 2, H / 2, W, H, PALETTE.deepTeal, 0.55);
         const txt = this.add.text(W / 2, H / 2 - 60, EduCore.t('levelClear'),
-          EduCore.textStyle(46, { weight: '800', color: '#FFC800', align: 'center', stroke: '#131F24' })).setOrigin(0.5);
+          EduCore.textStyle(46, { weight: '800', color: '#EF9722', align: 'center', stroke: '#FDF2E2' })).setOrigin(0.5);
         const sub = this.add.text(W / 2, H / 2 + 6, '+' + EduCore.fmtNum(XP.level) + ' ' + EduCore.t('xp'),
-          EduCore.textStyle(30, { weight: '800', color: '#58CC02', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(30, { weight: '800', color: '#FDF2E2', align: 'center' })).setOrigin(0.5);
         const tap = this.add.text(W / 2, H / 2 + 90, EduCore.t('tapToContinue'),
-          EduCore.textStyle(24, { color: '#F7F7F7', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(24, { color: '#CEEBF0', align: 'center' })).setOrigin(0.5);
         c.add([dim, txt, sub, tap]);
         c.setAlpha(0);
         txt.setScale(0.5);
@@ -681,11 +712,11 @@
       const style = this.teachStyle || {};
       return new Promise((resolve) => {
         const c = this.add.container(0, 0).setDepth(this.uiDepth + 40);
-        const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x131f24, 0.5).setInteractive();
+        const dim = this.add.rectangle(W / 2, H / 2, W, H, PALETTE.deepTeal, 0.4).setInteractive();
         const panelH = 430;
         const py = H - panelH / 2 - 36;
         const panel = GameFeel.cardPanel(this, W / 2, py, 656, panelH, {
-          color: style.panelColor == null ? 0x21333d : style.panelColor,
+          color: style.panelColor == null ? PALETTE.sand : style.panelColor,
           stroke: EduCore.accentInt, strokeWidth: 3,
         });
 
@@ -697,14 +728,14 @@
 
         const titleTxt = this.add.text(W / 2, py - panelH / 2 + 46,
           (style.speaker || EduCore.t('teachTitle')) + '  ' + EduCore.fmtNum(index + 1) + '/' + EduCore.fmtNum(totalCards),
-          EduCore.textStyle(24, { weight: '800', color: '#1CB0F6', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(24, { weight: '800', color: '#079A90', align: 'center' })).setOrigin(0.5);
 
         const bodyTxt = this.add.text(W / 2, py - panelH / 2 + 88, '',
-          EduCore.textStyle(28, { color: '#F7F7F7', align: EduCore.isRTL ? 'right' : 'left', wrap: 580, lineSpacing: 9 }))
+          EduCore.textStyle(28, { color: '#19725E', align: EduCore.isRTL ? 'right' : 'left', wrap: 580, lineSpacing: 9 }))
           .setOrigin(0.5, 0);
 
         const tap = this.add.text(W / 2, py + panelH / 2 - 40, EduCore.t('tapToContinue'),
-          EduCore.textStyle(24, { color: '#AFAFAF', align: 'center' })).setOrigin(0.5).setAlpha(0);
+          EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5).setAlpha(0);
 
         c.add([dim, panel, titleTxt, bodyTxt, tap, mascot]);
         c.setAlpha(0);
@@ -736,9 +767,10 @@
       const maxRow = 600;
       const made = [];
       let totalW = 0;
+      const chipInk = '#' + GameFeel.contrastOn(EduCore.accentInt).toString(16).padStart(6, '0');
       for (const term of card.emphasis.slice(0, 3)) {
         const chip = this.add.text(0, 0, term, EduCore.textStyle(24, {
-          weight: '800', color: '#131F24', align: 'center',
+          weight: '800', color: chipInk, align: 'center',
         })).setOrigin(0.5);
         const w = chip.width + 34;
         if (totalW + w > maxRow) { chip.destroy(); break; }
@@ -766,37 +798,71 @@
       const items = EduCore.engine.pickItems(level.items, ADAPT.perLevel);
       for (const item of items) {
         await this.runItem(item, levelIndex);
-        if (EduCore.session.hearts <= 0) await this.takeABreak();
+        if (EduCore.session.strain >= ADAPT.strain) {
+          EduCore.session.strain = 0;
+          await this.takeABreak();
+        }
       }
     }
 
     /**
-     * One full item: present (game-specific), two-stage hints, answer,
-     * explanation both ways, XP, hearts, engine update, bridge events.
+     * One full item: present (game-specific), two-stage hints, and the
+     * supportive retry loop — a wrong answer never costs anything; the
+     * learner simply tries again with the next hint auto-offered, and after
+     * the last attempt the answer is revealed with its explanation. Scoring,
+     * mastery and the AdaptiveEngine all read FIRST-TRY correctness so
+     * retries make the experience kinder without inflating progress.
      */
     async runItem(item, levelIndex) {
       EduCore.setState('question');
       const session = EduCore.session;
       session.presented++;
       let hintsUsed = 0;
+      const startedAt = Date.now();
 
       const hintApi = this.buildHintButton(item, () => hintsUsed, (n) => { hintsUsed = n; });
-      const result = await this.presentItem(item, hintApi);
+      // One retry per available hint, then a supported reveal (hints are 1-2).
+      const maxAttempts = 1 + Math.min(2, item.hints.length);
+      let attempt = 0;
+      let result = { correct: false };
+      while (attempt < maxAttempts) {
+        attempt++;
+        hintApi.attempt = attempt;
+        hintApi.lastAttempt = attempt === maxAttempts; // games reveal only now
+        EduCore.setState('question');
+        result = await this.presentItem(item, hintApi);
+        EduCore.reportLearning('attempt_submitted', {
+          itemId: item.id,
+          attempt,
+          outcome: result.correct ? 'correct' : 'incorrect',
+          hintsUsed,
+          ms: Date.now() - startedAt,
+        });
+        if (result.correct || result.final) break;
+        session.combo = 0; // a miss breaks the combo even when recovered later
+        if (attempt >= maxAttempts) break;
+        await this.supportiveRetry(item, hintApi);
+      }
       hintApi.destroy();
 
-      const correct = !!result.correct;
+      const solved = !!result.correct;
+      const firstTry = solved && attempt === 1;
+      const recovered = solved && attempt > 1;
       session.items.push({
         id: item.id,
         levelIndex,
-        correct,
+        correct: firstTry,
+        recovered,
+        attempts: attempt,
         hintsUsed,
         concepts: item.concepts,
         difficulty: item.difficulty,
         prompt: item.prompt,
       });
 
-      if (correct) {
+      if (firstTry) {
         session.correct++;
+        session.strain = 0;
         session.combo++;
         session.maxCombo = Math.max(session.maxCombo, session.combo);
         const gained = hintsUsed === 0 ? XP.noHint : hintsUsed === 1 ? XP.oneHint : XP.twoHints;
@@ -805,22 +871,36 @@
         // Rewards belong to the bee; the guide stays focused on the journey.
         if (this.buddy) this.buddy.react(session.combo >= 3 ? 'combo' : 'correct');
         if (this.companion && session.combo >= 2) this.companion.celebrate();
-        this.feel.popText(W / 2, H * 0.42, '+' + EduCore.fmtNum(gained) + ' ' + EduCore.t('xp'), { color: '#FFC800' });
+        this.feel.popText(W / 2, H * 0.42, '+' + EduCore.fmtNum(gained) + ' ' + EduCore.t('xp'), { color: '#EF9722' });
         if (session.combo >= 2) this.showCombo(session.combo);
+      } else if (recovered) {
+        // Working it out on a retry is a real win — celebrated, smaller.
+        session.recovered++;
+        session.strain++;
+        session.xp += XP.retry;
+        GameFeel.audio.correctChain(1);
+        if (this.buddy) this.buddy.react('correct');
+        this.feel.popText(W / 2, H * 0.42,
+          EduCore.t('solvedIt') + '  +' + EduCore.fmtNum(XP.retry) + ' ' + EduCore.t('xp'),
+          { color: '#EF9722', size: 28 });
       } else {
-        session.combo = 0;
-        session.hearts = Math.max(0, session.hearts - 1);
+        session.strain++;
         GameFeel.audio.wrongTone();
         // Gentle moments belong to the hoopoe; the bee never goes sad.
         if (this.guide) this.guide.react('wrong');
-        this.feel.popText(W / 2, H * 0.42, EduCore.t('lostHeart'), { color: '#FF9DA6', size: 28 });
-        const heartIcon = this.heartIcons[session.hearts];
-        if (heartIcon) this.feel.squash(heartIcon, 0.4, 240);
+        this.feel.popText(W / 2, H * 0.42, EduCore.t('encourage'), { color: '#B5702F', size: 28 });
+        EduCore.reportLearning('misconception_detected', {
+          itemId: item.id,
+          signal: 'unresolved_after_retries',
+          attempts: attempt,
+          concepts: item.concepts,
+        });
       }
       this.refreshHud();
 
-      // Engine sees correctness ONLY (hints and combo are excluded by design).
-      EduCore.engine.recordAnswer(correct);
+      // Engine sees FIRST-TRY correctness ONLY (hints, combo and retries are
+      // excluded by design — kindness must not steer difficulty upward).
+      EduCore.engine.recordAnswer(firstTry);
 
       EduCore.bridge.reportScore({
         xp: session.xp,
@@ -828,11 +908,21 @@
         presented: session.presented,
         combo: session.combo,
         itemId: item.id,
-        wasCorrect: correct,
+        wasCorrect: firstTry,
+        recovered,
+        attempts: attempt,
         hintsUsed,
       });
 
-      await this.showExplanation(item, correct);
+      await this.showExplanation(item, solved);
+    }
+
+    /** Between attempts: warm feedback + the next hint rung, auto-offered. */
+    supportiveRetry(item, hintApi) {
+      GameFeel.audio.wrongTone();
+      if (this.guide) this.guide.react('wrong');
+      this.feel.popText(W / 2, H * 0.42, EduCore.t('tryAgain'), { color: '#B5702F', size: 28 });
+      return hintApi.autoHint();
     }
 
     showCombo(combo) {
@@ -841,30 +931,36 @@
       this.tweens.add({ targets: this.comboText, scale: 1, duration: 300, ease: 'Back.easeOut' });
       this.tweens.add({ targets: this.comboText, alpha: 0, delay: 1100, duration: 300 });
       if (combo >= 4) {
-        this.feel.sparkle(W / 2, 80, 0xffc800, 8);
+        this.feel.sparkle(W / 2, 80, 0xef9722, 8);
       }
     }
 
     /** Two-stage hint button. Hint 1 nudges; hint 2 narrows via game callback.
-     *  Games set this.hintPos / this.hintBubbleY to place it in their layout. */
+     *  Games set this.hintPos / this.hintBubbleY to place it in their layout.
+     *  The retry loop can auto-offer the next rung between attempts; because
+     *  a re-presented item registers a FRESH onNarrow callback, narrowing
+     *  requested between attempts is deferred until that registration. */
     buildHintButton(item, getUsed, setUsed) {
       const rtl = EduCore.isRTL;
+      const scene = this;
       const pos = this.hintPos || { x: rtl ? 70 : W - 70, y: H - 64 };
       const btn = GameFeel.candyButton(this, pos.x, pos.y, 96, 64, '💡', {
-        color: PALETTE.blue, fontSize: 30,
+        color: PALETTE.teal, fontSize: 30,
       });
       btn.setDepth(this.uiDepth + 10);
+      const maxHints = Math.min(2, item.hints.length);
       let narrowCb = null;
+      let narrowWanted = false;
       let bubble = null;
 
       const showBubble = (text) => {
         if (bubble) bubble.destroy();
         bubble = this.add.container(0, 0).setDepth(this.uiDepth + 30);
         const tx = this.add.text(W / 2, this.hintBubbleY == null ? H - 158 : this.hintBubbleY, text,
-          EduCore.textStyle(25, { color: '#131F24', align: 'center', wrap: 520 })).setOrigin(0.5);
+          EduCore.textStyle(25, { color: '#19725E', align: 'center', wrap: 520 })).setOrigin(0.5);
         const pad = 20;
         const bg = this.add.graphics();
-        bg.fillStyle(0xfff7d6, 0.98);
+        bg.fillStyle(PALETTE.peach, 0.98);
         bg.fillRoundedRect(W / 2 - tx.width / 2 - pad, tx.y - tx.height / 2 - pad * 0.6,
           tx.width + pad * 2, tx.height + pad * 1.2, 18);
         bubble.add([bg, tx]);
@@ -880,20 +976,39 @@
         });
       };
 
-      btn.onTap = () => {
+      const applyHint = (auto) => {
         const used = getUsed();
-        if (used >= Math.min(2, item.hints.length)) return;
+        if (used >= maxHints) return false;
         if (this.guide) this.guide.react('hint'); // crest fans — an idea strikes!
         EduCore.bridge.reportEvent('hint_used', { itemId: item.id, hint: used + 1 });
+        if (!auto) {
+          EduCore.reportLearning('hint_requested', { itemId: item.id, rung: used + 1 });
+        }
+        EduCore.reportLearning('hint_shown', { itemId: item.id, rung: used + 1, auto: !!auto });
         showBubble(item.hints[used]);
-        if (used + 1 === 2 && narrowCb) narrowCb(); // game-specific narrowing
+        if (used + 1 === 2) {
+          narrowWanted = true;
+          if (narrowCb) narrowCb(); // game-specific narrowing
+        }
         setUsed(used + 1);
-        if (used + 1 >= Math.min(2, item.hints.length)) btn.setEnabled(false);
+        if (used + 1 >= maxHints) btn.setEnabled(false);
+        return true;
       };
+
+      btn.onTap = () => applyHint(false);
 
       return {
         button: btn,
-        onNarrow(cb) { narrowCb = cb; },
+        attempt: 1,
+        onNarrow(cb) {
+          narrowCb = cb;
+          if (narrowWanted) cb(); // narrowing owed from an auto-hint between attempts
+        },
+        /** Auto-offer the next rung (retry support); resolves after a beat. */
+        autoHint() {
+          applyHint(true);
+          return new Promise((resolve) => scene.time.delayedCall(1100, resolve));
+        },
         destroy: () => {
           if (bubble) bubble.destroy();
           btn.destroy();
@@ -906,25 +1021,25 @@
       EduCore.setState('feedback');
       return new Promise((resolve) => {
         const head = correct ? EduCore.t('correct') : EduCore.t('wrong');
-        const frameColor = correct ? PALETTE.green : 0x3a5a6e;
+        const frameColor = correct ? PALETTE.leaf : PALETTE.sky;
         const c = this.add.container(0, 0).setDepth(this.uiDepth + 40);
         const panelH = 320;
         const py = H - panelH / 2 - 28;
-        const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x131f24, 0.42).setInteractive();
+        const dim = this.add.rectangle(W / 2, H / 2, W, H, PALETTE.deepTeal, 0.35).setInteractive();
         const panel = GameFeel.cardPanel(this, W / 2, py, 660, panelH, {
-          color: 0x1f2f38, stroke: frameColor, strokeWidth: 5,
+          color: PALETTE.sand, stroke: frameColor, strokeWidth: 5,
         });
         const headTxt = this.add.text(W / 2, py - panelH / 2 + 44, (correct ? '✓ ' : '') + head,
-          EduCore.textStyle(32, { weight: '800', color: correct ? '#7CE24A' : '#9AD6FF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(32, { weight: '800', color: correct ? '#4D8C58' : '#079A90', align: 'center' })).setOrigin(0.5);
         const body = this.add.text(W / 2, py - panelH / 2 + 86, item.explanation,
-          EduCore.textStyle(26, { color: '#F7F7F7', align: 'center', wrap: 590, lineSpacing: 8 })).setOrigin(0.5, 0);
+          EduCore.textStyle(26, { color: '#19725E', align: 'center', wrap: 590, lineSpacing: 8 })).setOrigin(0.5, 0);
         const tap = this.add.text(W / 2, py + panelH / 2 - 36, EduCore.t('tapToContinue'),
-          EduCore.textStyle(24, { color: '#AFAFAF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5);
         c.add([dim, panel, headTxt, body, tap]);
         c.setY(60).setAlpha(0);
         this.tweens.add({ targets: c, y: 0, alpha: 1, duration: 280, ease: 'Back.easeOut' });
         this.tweens.add({ targets: tap, alpha: 0.4, duration: 600, yoyo: true, repeat: -1 });
-        if (correct) this.feel.sparkle(W / 2, py - panelH / 2, 0x9be24a, 8);
+        if (correct) this.feel.sparkle(W / 2, py - panelH / 2, 0x84a253, 8);
 
         dim.once('pointerdown', () => {
           this.tweens.add({
@@ -935,19 +1050,21 @@
       });
     }
 
-    // ------------------------------------------------ hearts / break room
+    // ---------------------------------------------- supportive break room
+    /** Strain-triggered (never hearts, never a fail screen): breathe, then
+     *  continue with genuinely easier picks. Nothing is lost or refilled. */
     takeABreak() {
       EduCore.setState('break');
       EduCore.bridge.reportEvent('take_a_break');
       return new Promise((resolve) => {
         const c = this.add.container(0, 0).setDepth(this.uiDepth + 60);
-        const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x131f24, 0.82).setInteractive();
+        const dim = this.add.rectangle(W / 2, H / 2, W, H, PALETTE.deepTeal, 0.92).setInteractive();
         const mascot = new Hoopoe(this, W / 2, H * 0.3, { accent: EduCore.accentInt, scale: 1.3 });
         mascot.setExpression('happy');
         const title = this.add.text(W / 2, H * 0.46, EduCore.t('takeABreak'),
-          EduCore.textStyle(42, { weight: '800', color: '#FFFFFF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(42, { weight: '800', color: '#FDF2E2', align: 'center' })).setOrigin(0.5);
         const body = this.add.text(W / 2, H * 0.55, EduCore.t('breakBody', { name: EduCore.spec.student.name }),
-          EduCore.textStyle(27, { color: '#CFE3EE', align: 'center', wrap: 560, lineSpacing: 8 })).setOrigin(0.5);
+          EduCore.textStyle(27, { color: '#CEEBF0', align: 'center', wrap: 560, lineSpacing: 8 })).setOrigin(0.5);
         // Breathing circle — inhale… exhale…
         const circle = this.add.graphics({ x: W / 2, y: H * 0.7 });
         circle.fillStyle(EduCore.accentInt, 0.35);
@@ -957,7 +1074,6 @@
           color: PALETTE.green, arabic: EduCore.isRTL,
           onTap: () => {
             breathe.stop();
-            EduCore.session.hearts = ADAPT.hearts;
             EduCore.engine.rampDown(); // genuinely easier next picks
             this.refreshHud();
             this.tweens.add({
@@ -975,7 +1091,7 @@
     async gentleRampDown() {
       EduCore.engine.rampDown();
       const msg = EduCore.t('encourage', { name: EduCore.spec.student.name });
-      this.feel.popText(W / 2, H * 0.3, msg, { color: '#9AD6FF', size: 26 });
+      this.feel.popText(W / 2, H * 0.3, msg, { color: '#079A90', size: 26 });
       if (this.mascot) this.mascot.react('correct');
     }
 
@@ -986,7 +1102,7 @@
       EduCore.bridge.reportEvent('waiting_for_spec');
       return new Promise((resolve, reject) => {
         const c = this.add.container(0, 0).setDepth(this.uiDepth + 60);
-        const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x131f24, 0.88).setInteractive();
+        const dim = this.add.rectangle(W / 2, H / 2, W, H, PALETTE.deepTeal, 0.94).setInteractive();
         // The scout is out scouting — Hudhud paces while questions are found.
         const mascot = new Hoopoe(this, W / 2, H * 0.32, { accent: EduCore.accentInt, scale: 1.35 });
         mascot.setExpression('thinking');
@@ -996,11 +1112,11 @@
           duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
         });
         const title = this.add.text(W / 2, H * 0.5, EduCore.t('waitingTitle'),
-          EduCore.textStyle(36, { weight: '800', color: '#FFFFFF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(36, { weight: '800', color: '#FDF2E2', align: 'center' })).setOrigin(0.5);
         const sub = this.add.text(W / 2, H * 0.565, EduCore.t('waitingBody'),
-          EduCore.textStyle(25, { color: '#AFC9D8', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(25, { color: '#CEEBF0', align: 'center' })).setOrigin(0.5);
         const tip = this.add.text(W / 2, H * 0.7, '',
-          EduCore.textStyle(25, { color: '#FFE9A6', align: 'center', wrap: 540, lineSpacing: 7 })).setOrigin(0.5);
+          EduCore.textStyle(25, { color: '#FADBB0', align: 'center', wrap: 540, lineSpacing: 7 })).setOrigin(0.5);
 
         const tips = STRINGS.tips[EduCore.lang] || STRINGS.tips.en;
         let ti = 0;
@@ -1015,7 +1131,7 @@
 
         const dots = [];
         for (let i = 0; i < 3; i++) {
-          const d = this.add.circle(W / 2 - 30 + i * 30, H * 0.6, 7, PALETTE.blue, 0.9);
+          const d = this.add.circle(W / 2 - 30 + i * 30, H * 0.6, 7, PALETTE.sky, 0.9);
           this.tweens.add({ targets: d, y: d.y - 12, duration: 380, yoyo: true, repeat: -1, delay: i * 130, ease: 'Sine.easeInOut' });
           dots.push(d);
         }
@@ -1041,14 +1157,14 @@
     showGenerationFailed() {
       EduCore.setState('failed');
       const c = this.add.container(0, 0).setDepth(this.uiDepth + 70);
-      const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x131f24, 0.92).setInteractive();
+      const dim = this.add.rectangle(W / 2, H / 2, W, H, PALETTE.deepTeal, 0.96).setInteractive();
       const mascot = new Hoopoe(this, W / 2, H * 0.32, { accent: EduCore.accentInt, scale: 1.35 });
       mascot.setExpression('sad');
       this.time.delayedCall(1200, () => mascot.active && mascot.setExpression('idle'));
       const title = this.add.text(W / 2, H * 0.5, EduCore.t('failedTitle'),
-        EduCore.textStyle(34, { weight: '800', color: '#FFFFFF', align: 'center', wrap: 560 })).setOrigin(0.5);
+        EduCore.textStyle(34, { weight: '800', color: '#FDF2E2', align: 'center', wrap: 560 })).setOrigin(0.5);
       const body = this.add.text(W / 2, H * 0.57, EduCore.t('failedBody'),
-        EduCore.textStyle(26, { color: '#AFC9D8', align: 'center', wrap: 540 })).setOrigin(0.5);
+        EduCore.textStyle(26, { color: '#CEEBF0', align: 'center', wrap: 540 })).setOrigin(0.5);
       const btn = GameFeel.candyButton(this, W / 2, H * 0.72, 340, 86, EduCore.t('retry'), {
         color: PALETTE.blue, arabic: EduCore.isRTL,
         onTap: () => EduCore.bridge.reportEvent('retry_requested'),
@@ -1078,6 +1194,7 @@
         language: EduCore.spec.meta.language,
         xp: s.xp,
         correct: s.correct,
+        recovered: s.recovered,
         presented: s.presented,
         accuracy: s.presented ? s.correct / s.presented : 0,
         maxCombo: s.maxCombo,
@@ -1088,6 +1205,13 @@
         concepts,
       };
       EduCore.lastSummary = summary;
+      EduCore.reportLearning('experience_completed', {
+        xp: s.xp,
+        accuracy: summary.accuracy,
+        mastery: s.mastery,
+        recovered: s.recovered,
+        durationMs: summary.durationMs,
+      });
       EduCore.bridge.reportSummary(summary);
       this.scene.start('EndScene');
     }
@@ -1099,9 +1223,9 @@
     levelTransition(levelIndex) {
       // Default: quick camera wipe via fade — games override with style.
       return new Promise((resolve) => {
-        this.cameras.main.fadeOut(140, 19, 31, 36);
+        this.cameras.main.fadeOut(140, 253, 242, 226);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-          this.cameras.main.fadeIn(180, 19, 31, 36);
+          this.cameras.main.fadeIn(180, 253, 242, 226);
           resolve();
         });
       });
@@ -1121,7 +1245,10 @@
         const spec = EduCore.spec;
 
         if (gameDef.buildMenuBackdrop) gameDef.buildMenuBackdrop(this);
-        else this.add.rectangle(W / 2, H / 2, W, H, PALETTE.dark);
+        else this.add.rectangle(W / 2, H / 2, W, H, PALETTE.cream);
+        // Soft cream wash over any backdrop so the deep-teal menu text stays
+        // readable on every theme (light boards, fields and skies alike).
+        this.add.rectangle(W / 2, H / 2, W, H, PALETTE.cream, 0.55);
 
         // Floating accent motes — ambient life on the menu.
         for (let i = 0; i < 7; i++) {
@@ -1152,19 +1279,19 @@
         });
 
         const hi = this.add.text(W / 2, H * 0.455, EduCore.t('hi', { name: spec.student.name }),
-          EduCore.textStyle(30, { weight: '800', color: '#9AD6FF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(30, { weight: '800', color: '#079A90', align: 'center' })).setOrigin(0.5);
 
         const title = this.add.text(W / 2, H * 0.535, spec.meta.topic,
-          EduCore.textStyle(52, { weight: '800', color: '#FFFFFF', align: 'center', wrap: 620 })).setOrigin(0.5);
+          EduCore.textStyle(52, { weight: '800', color: '#19725E', align: 'center', wrap: 620 })).setOrigin(0.5);
 
         const sub = this.add.text(W / 2, H * 0.62, spec.meta.subject,
-          EduCore.textStyle(24, { color: '#AFAFAF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5);
 
         const playBtn = GameFeel.candyButton(this, W / 2, H * 0.76, 380, 104, EduCore.t('play'), {
           color: EduCore.accentInt, arabic: EduCore.isRTL, fontSize: 38,
           onTap: () => {
             GameFeel.audio.sting(spec.meta.theme);
-            this.cameras.main.fadeOut(220, 19, 31, 36);
+            this.cameras.main.fadeOut(220, 253, 242, 226);
             this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameScene'));
           },
         });
@@ -1203,7 +1330,7 @@
         const spec = EduCore.spec;
         const sum = EduCore.lastSummary || { xp: 0, accuracy: 0, concepts: {}, mastery: false, items: [] };
 
-        this.add.rectangle(W / 2, H / 2, W, H, PALETTE.dark);
+        this.add.rectangle(W / 2, H / 2, W, H, PALETTE.cream);
         // gentle aurora ribbons (ambient)
         const ribbon = this.add.graphics();
         ribbon.fillStyle(EduCore.accentInt, 0.08);
@@ -1222,15 +1349,15 @@
         });
 
         const title = this.add.text(W / 2, 300, EduCore.t('summaryTitle'),
-          EduCore.textStyle(44, { weight: '800', color: '#FFFFFF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(44, { weight: '800', color: '#19725E', align: 'center' })).setOrigin(0.5);
 
         if (sum.mastery) {
           const badge = this.add.container(W / 2, 366);
           const bg = this.add.graphics();
-          bg.fillStyle(PALETTE.yellow, 1);
+          bg.fillStyle(PALETTE.orange, 1);
           bg.fillRoundedRect(-120, -26, 240, 52, 26);
           const t = this.add.text(0, 0, '★ ' + EduCore.t('summaryMastery') + ' ★',
-            EduCore.textStyle(26, { weight: '800', color: '#7A5C00', align: 'center' })).setOrigin(0.5);
+            EduCore.textStyle(26, { weight: '800', color: '#FFFFFF', align: 'center' })).setOrigin(0.5);
           badge.add([bg, t]);
           badge.setScale(0);
           this.tweens.add({ targets: badge, scale: 1, duration: 500, ease: 'Back.easeOut', delay: 500 });
@@ -1239,7 +1366,7 @@
 
         // XP count-up
         const xpText = this.add.text(W / 2, 446, '0 ' + EduCore.t('xp'),
-          EduCore.textStyle(40, { weight: '800', color: '#FFC800', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(40, { weight: '800', color: '#EF9722', align: 'center' })).setOrigin(0.5);
         this.tweens.addCounter({
           from: 0, to: sum.xp, duration: 1100, ease: 'Cubic.easeOut',
           onUpdate: (tw) => xpText.setText(EduCore.fmtNum(Math.round(tw.getValue())) + ' ' + EduCore.t('xp')),
@@ -1255,37 +1382,37 @@
           onUpdate: (tw) => {
             const v = tw.getValue();
             ring.clear();
-            ring.lineStyle(10, 0x2a3c46, 1);
+            ring.lineStyle(10, PALETTE.sand, 1);
             ring.strokeCircle(0, 0, 46);
-            ring.lineStyle(10, PALETTE.green, 1);
+            ring.lineStyle(10, PALETTE.leaf, 1);
             ring.beginPath();
             ring.arc(0, 0, 46, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * v) / 100, false);
             ring.strokePath();
           },
         });
         const pctText = this.add.text(ringX, ringY, EduCore.fmtNum(pct) + (EduCore.isRTL ? '٪' : '%'),
-          EduCore.textStyle(24, { weight: '800', color: '#FFFFFF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(24, { weight: '800', color: '#19725E', align: 'center' })).setOrigin(0.5);
         this.tweens.add({ targets: pctText, alpha: { from: 0, to: 1 }, duration: 400, delay: 300 });
         const accLabel = this.add.text(ringX, ringY + 72, EduCore.t('accuracy'),
-          EduCore.textStyle(24, { color: '#AFAFAF', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5);
 
         // Concept breakdown panel
         const concepts = Object.entries(sum.concepts || {}).slice(0, 5);
         const panelTop = 560;
-        GameFeel.cardPanel(this, W / 2, panelTop + 130, 640, 280, { color: 0x1d2d36 });
+        GameFeel.cardPanel(this, W / 2, panelTop + 130, 640, 280, { color: PALETTE.sand });
         this.add.text(W / 2, panelTop + 24, EduCore.t('conceptsTitle'),
-          EduCore.textStyle(26, { weight: '800', color: '#1CB0F6', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(26, { weight: '800', color: '#079A90', align: 'center' })).setOrigin(0.5);
         concepts.forEach(([name, st], i) => {
           const y = panelTop + 66 + i * 38;
           const ok = st.correct / st.total >= 0.5;
           const lx = EduCore.isRTL ? W / 2 + 280 : W / 2 - 280;
           const icon = this.add.text(lx, y, ok ? '✓' : '○',
-            EduCore.textStyle(24, { weight: '800', color: ok ? '#58CC02' : '#FFC800', align: 'center' })).setOrigin(0.5);
+            EduCore.textStyle(24, { weight: '800', color: ok ? '#4D8C58' : '#EF9722', align: 'center' })).setOrigin(0.5);
           const nm = this.add.text(EduCore.isRTL ? lx - 30 : lx + 30, y, name,
-            EduCore.textStyle(24, { color: '#F7F7F7' })).setOrigin(EduCore.isRTL ? 1 : 0, 0.5);
+            EduCore.textStyle(24, { color: '#19725E' })).setOrigin(EduCore.isRTL ? 1 : 0, 0.5);
           const score = this.add.text(EduCore.isRTL ? W / 2 - 280 : W / 2 + 280, y,
             EduCore.fmtNum(st.correct) + '/' + EduCore.fmtNum(st.total),
-            EduCore.textStyle(24, { color: '#AFAFAF', align: 'center' })).setOrigin(0.5);
+            EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5);
           [icon, nm, score].forEach((o) => {
             o.setAlpha(0);
             this.tweens.add({ targets: o, alpha: 1, duration: 240, delay: 600 + i * 110 });
@@ -1300,16 +1427,16 @@
           ? EduCore.t('hintNote', { concept: hinted[0][0] })
           : EduCore.t('noHintNote');
         this.add.text(W / 2, panelTop + 296, note,
-          EduCore.textStyle(24, { color: '#FFE9A6', align: 'center', wrap: 600 })).setOrigin(0.5);
+          EduCore.textStyle(24, { color: '#B5702F', align: 'center', wrap: 600 })).setOrigin(0.5);
 
         // Narrative outro (quest flavor) or next topics
         const nextY = panelTop + 354;
         if (spec.narrative && spec.narrative.outro && spec.meta.gameType === 'quest_path') {
           this.add.text(W / 2, nextY, spec.narrative.outro,
-            EduCore.textStyle(24, { color: '#CDE7CB', align: 'center', wrap: 620, lineSpacing: 6 })).setOrigin(0.5, 0);
+            EduCore.textStyle(24, { color: '#4D8C58', align: 'center', wrap: 620, lineSpacing: 6 })).setOrigin(0.5, 0);
         } else if (spec.summaryHints && spec.summaryHints.nextTopics) {
           this.add.text(W / 2, nextY, EduCore.t('nextTopics') + ': ' + spec.summaryHints.nextTopics.join('  •  '),
-            EduCore.textStyle(24, { color: '#CFCBE7', align: 'center', wrap: 620, lineSpacing: 6 })).setOrigin(0.5, 0);
+            EduCore.textStyle(24, { color: '#079A90', align: 'center', wrap: 620, lineSpacing: 6 })).setOrigin(0.5, 0);
         }
 
         const againBtn = GameFeel.candyButton(this, W / 2 - 150, H - 110, 270, 88, EduCore.t('playAgain'), {

@@ -43,6 +43,7 @@ const template = read(join(here, 'src', 'template.html'));
 const phaser = read(findModule('phaser/dist/phaser.min.js'));
 const phaserVersion = JSON.parse(read(findModule('phaser/package.json'))).version;
 const gamefeel = read(join(here, 'src', 'lib', 'gamefeel.js'));
+const interact = read(join(here, 'src', 'lib', 'interact.js'));
 const mascot = read(join(here, 'src', 'lib', 'mascot.js'));
 const educore = read(join(here, 'src', 'lib', 'educore.js'));
 
@@ -83,6 +84,7 @@ for (const game of GAMES) {
   html = inject(html, 'FONTS_CSS', fontsCss);
   html = inject(html, 'PHASER_JS', `${kenneyNote}\n${phaser}`);
   html = inject(html, 'GAMEFEEL_JS', gamefeel);
+  html = inject(html, 'INTERACT_JS', interact);
   html = inject(html, 'MASCOT_JS', mascot);
   html = inject(html, 'EDUCORE_JS', educore);
   html = inject(html, 'GAME_JS', gameJs);

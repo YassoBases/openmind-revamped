@@ -16,22 +16,23 @@
   const H = 1280;
   const WORLD_H = 700; // top world view; dialog + options below
 
+  // Light, calm worlds on the warm OpenMind palette — no dark skies, no neon.
   const THEMES = {
     fantasy: {
-      skyTop: 0x2c1e4a, skyBottom: 0x4a3a72, ground: 0x2e5d34, path: 0x8a6d4b,
-      propColor: 0x1d4023, accent: 0xffc857, ambient: 'fireflies',
+      skyTop: 0xceebf0, skyBottom: 0xfdf2e2, ground: 0x84a253, path: 0xb5702f,
+      propColor: 0x4d8c58, accent: 0xef9722, ambient: 'fireflies',
     },
     sci_fi: {
-      skyTop: 0x050b1e, skyBottom: 0x14274d, ground: 0x222d4d, path: 0x3e4f86,
-      propColor: 0x101a33, accent: 0x6ef3ff, ambient: 'stars',
+      skyTop: 0xb9e2e8, skyBottom: 0xe9f6f8, ground: 0x57a79f, path: 0xfae9d0,
+      propColor: 0x19725e, accent: 0x079a90, ambient: 'stars',
     },
     detective: {
-      skyTop: 0x10141c, skyBottom: 0x232c3c, ground: 0x1c232e, path: 0x39434f,
-      propColor: 0x0c1016, accent: 0xffb020, ambient: 'rain',
+      skyTop: 0xfadbb0, skyBottom: 0xfdf2e2, ground: 0x9c6128, path: 0xfae9d0,
+      propColor: 0xb5702f, accent: 0xef9722, ambient: 'rain',
     },
     anime: {
-      skyTop: 0xffd9e8, skyBottom: 0xffeef5, ground: 0x9fd98a, path: 0xe8d2b0,
-      propColor: 0x7bb86a, accent: 0xff8fb3, ambient: 'petals',
+      skyTop: 0xf3c9d3, skyBottom: 0xfdf2e2, ground: 0x9fd98a, path: 0xead3ae,
+      propColor: 0x4d8c58, accent: 0xd93b5e, ambient: 'petals',
     },
   };
 
@@ -97,14 +98,14 @@
 
       // Dialog panel (persistent, reused).
       this.dialogPanel = GameFeel.cardPanel(this, W / 2, 800, 664, 186, {
-        color: 0x1f2f38, stroke: 0x2e4452, strokeWidth: 3,
+        color: 0xfae9d0, stroke: 0xdccdb7, strokeWidth: 3,
       }).setDepth(10);
       this.dialogText = this.add.text(EduCore.isRTL ? W / 2 + 300 : W / 2 - 300, 724, '',
-        EduCore.textStyle(26, { color: '#F7F7F7', wrap: 530, lineSpacing: 6 }))
+        EduCore.textStyle(26, { color: '#19725E', wrap: 530, lineSpacing: 6 }))
         .setOrigin(EduCore.isRTL ? 1 : 0, 0).setDepth(11);
 
       this.optionButtons = [];
-      this.teachStyle = { panelColor: 0x21333d };
+      this.teachStyle = { panelColor: 0xfae9d0 };
     }
 
     buildHero(theme) {
@@ -139,10 +140,10 @@
         g.fillTriangle(0, -58, 12, -74, 18, -54);
       }
       const legL = this.add.graphics({ x: -9, y: 24 });
-      legL.fillStyle(0x35404a, 1);
+      legL.fillStyle(0x19725e, 1);
       legL.fillRoundedRect(-5, 0, 10, 22, 4);
       const legR = this.add.graphics({ x: 9, y: 24 });
-      legR.fillStyle(0x35404a, 1);
+      legR.fillStyle(0x19725e, 1);
       legR.fillRoundedRect(-5, 0, 10, 22, 4);
       c.add([legL, legR, g]);
       c.legL = legL;
@@ -172,7 +173,7 @@
         this.sky.fillRect(0, (WORLD_H / 8) * i, W, WORLD_H / 8 + 1);
       }
       // bottom UI zone backdrop
-      this.sky.fillStyle(0x16242c, 1);
+      this.sky.fillStyle(0xfdf2e2, 1);
       this.sky.fillRect(0, WORLD_H, W, H - WORLD_H);
 
       // ground + path
@@ -223,7 +224,7 @@
           g.fillRect(418 + i * 40, WORLD_H - 454, 26, 26);
         }
       } else if (name === 'boss') {
-        // ominous chamber: pillars + the boss silhouette
+        // dramatic chamber (calm dusk, not darkness): pillars + the boss
         g.fillRect(40, WORLD_H - 420, 60, 332);
         g.fillRect(W - 100, WORLD_H - 420, 60, 332);
         this.boss = this.buildBoss();
@@ -248,7 +249,7 @@
     buildBoss() {
       const c = this.add.container(W / 2 + 120, WORLD_H - 250);
       const g = this.add.graphics();
-      g.fillStyle(0x0d1217, 1);
+      g.fillStyle(0x114a3d, 1); // deep-teal silhouette, not black
       g.fillRoundedRect(-110, -130, 220, 260, 70);
       g.fillTriangle(-95, -110, -130, -190, -50, -130); // horns
       g.fillTriangle(95, -110, 130, -190, 50, -130);
@@ -265,7 +266,7 @@
       this.ambientLayer.removeAll(true);
       if (kind === 'fireflies') {
         for (let i = 0; i < 6; i++) {
-          const fly = this.add.circle(Math.random() * W, 120 + Math.random() * 420, 3, 0xffe27a, 0.9);
+          const fly = this.add.circle(Math.random() * W, 120 + Math.random() * 420, 3, 0xef9722, 0.9);
           this.ambientLayer.add(fly);
           this.tweens.add({
             targets: fly,
@@ -277,20 +278,21 @@
           });
         }
       } else if (kind === 'stars') {
+        // drifting sparks read on a light sky where white stars would vanish
         for (let i = 0; i < 12; i++) {
-          const s = this.add.circle(Math.random() * W, Math.random() * 380, 1.5 + Math.random() * 1.5, 0xffffff, 0.8);
+          const s = this.add.circle(Math.random() * W, Math.random() * 380, 1.5 + Math.random() * 1.5, 0x079a90, 0.55);
           this.ambientLayer.add(s);
           this.tweens.add({
-            targets: s, alpha: 0.15, duration: 600 + Math.random() * 1400,
+            targets: s, alpha: 0.12, duration: 600 + Math.random() * 1400,
             yoyo: true, repeat: -1, delay: Math.random() * 1000,
           });
         }
-        const shipLight = this.add.circle(W - 120, 90, 4, 0xff5e5e, 1);
+        const shipLight = this.add.circle(W - 120, 90, 4, 0xd93b5e, 1);
         this.ambientLayer.add(shipLight);
         this.tweens.add({ targets: shipLight, alpha: 0.1, duration: 500, yoyo: true, repeat: -1 });
       } else if (kind === 'rain') {
         for (let i = 0; i < 9; i++) {
-          const drop = this.add.rectangle(Math.random() * W, -20, 2, 26, 0x9ad6ff, 0.4);
+          const drop = this.add.rectangle(Math.random() * W, -20, 2, 26, 0x079a90, 0.35);
           this.ambientLayer.add(drop);
           this.tweens.add({
             targets: drop, y: WORLD_H + 30, duration: 750 + Math.random() * 500,
@@ -298,9 +300,9 @@
             onRepeat: () => { drop.x = Math.random() * W; },
           });
         }
-        // flickering neon sign
+        // flickering café sign (warm, not neon)
         const neon = this.add.text(EduCore.isRTL ? 96 : W - 130, 110, '★',
-          EduCore.textStyle(44, { color: '#FFB020', align: 'center' })).setOrigin(0.5);
+          EduCore.textStyle(44, { color: '#EF9722', align: 'center' })).setOrigin(0.5);
         this.ambientLayer.add(neon);
         this.tweens.add({ targets: neon, alpha: { from: 1, to: 0.3 }, duration: 120, yoyo: true, repeat: -1, repeatDelay: 1700 });
       } else if (kind === 'petals') {
@@ -362,12 +364,12 @@
     bossIntro() {
       return new Promise((resolve) => {
         EduCore.bridge.reportEvent('boss_intro');
-        this.feel.flash(0xffb020, 90); // lightning (amber, ≤100ms)
+        this.feel.flash(0xef9722, 90); // lightning (warm amber, ≤100ms)
         this.feel.shake(0.006, 200);
         this.feel.zoomPunch(1.07, 420);
         GameFeel.audio.drama();
         const warn = this.add.text(W / 2, 320, EduCore.t('bossWarning'),
-          EduCore.textStyle(48, { weight: '800', color: '#FFB020', align: 'center', stroke: '#131F24' }))
+          EduCore.textStyle(48, { weight: '800', color: '#EF9722', align: 'center', stroke: '#FDF2E2' }))
           .setOrigin(0.5).setDepth(50).setScale(0.4).setAlpha(0);
         this.tweens.add({ targets: warn, alpha: 1, scale: 1, duration: 420, ease: 'Back.easeOut' });
         this.time.delayedCall(1500, () => {
@@ -385,7 +387,7 @@
         this.feel.typewriter(this.dialogText, text, { cps: 40, skipOn: zone }).then(() => {
           zone.removeAllListeners();
           const cont = this.add.text(W / 2, 916, EduCore.t('tapToContinue'),
-            EduCore.textStyle(24, { color: '#AFAFAF', align: 'center' })).setOrigin(0.5).setDepth(12);
+            EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5).setDepth(12);
           this.tweens.add({ targets: cont, alpha: 0.4, duration: 550, yoyo: true, repeat: -1 });
           zone.once('pointerdown', () => {
             cont.destroy();
@@ -419,7 +421,7 @@
 
       // Choice 1: both answers are right — teaches the tap + celebration.
       const first = await this.askOptions(T.q1, T.q1opts, [0, 1]);
-      this.feel.burst(this.hero.x, this.hero.y - 40, 0x9be24a, 10);
+      this.feel.burst(this.hero.x, this.hero.y - 40, 0x84a253, 10);
       GameFeel.audio.correctChain(1);
       this.guide.react('correct');
       await this.walkForward();
@@ -443,10 +445,16 @@
     // -------------------------------------------------------------- items
     async presentItem(item, hintApi) {
       this.showGates();
-      this.dialogText.setText('');
-      const zone = this.add.zone(W / 2, 800, 664, 190).setInteractive().setDepth(12);
-      await this.feel.typewriter(this.dialogText, item.prompt, { cps: 44, skipOn: zone });
-      zone.destroy();
+      // On a supportive retry the prompt is already familiar — show it
+      // instantly instead of re-typing it.
+      if (hintApi.attempt > 1) {
+        this.dialogText.setText(item.prompt);
+      } else {
+        this.dialogText.setText('');
+        const zone = this.add.zone(W / 2, 800, 664, 190).setInteractive().setDepth(12);
+        await this.feel.typewriter(this.dialogText, item.prompt, { cps: 44, skipOn: zone });
+        zone.destroy();
+      }
 
       const chosen = await this.askItemOptions(item, hintApi);
       const correct = chosen === item.correctIndex;
@@ -470,13 +478,16 @@
         labels.forEach((label, i) => {
           const y = 952 + i * 80;
           const btn = GameFeel.candyButton(this, W / 2, y, 620, 68, label, {
-            color: 0x2e4a5a, arabic: EduCore.isRTL, fontSize: EduCore.isRTL ? 28 : 25, wrap: true,
+            color: 0x079a90, arabic: EduCore.isRTL, fontSize: EduCore.isRTL ? 28 : 25, wrap: true,
             onTap: () => {
               finish(i);
             },
           });
           btn.setDepth(20);
-          btn.on('pointerdown', () => this.feel.wiggle(btn, 1.2));
+          btn.on('pointerdown', () => {
+            this.feel.wiggle(btn, 1.2);
+            EduCore.reportLearning('object_interacted', { kind: 'option', itemId: item.id, index: i });
+          });
           buttons.push(btn);
         });
         this.optionButtons = buttons;
@@ -502,12 +513,15 @@
           const correctBtn = buttons[item.correctIndex];
           if (i === item.correctIndex) {
             this.feel.squash(pickBtn, 0.12, 200);
-            this.feel.sparkle(pickBtn.x, pickBtn.y, 0x9be24a, 8);
+            this.feel.sparkle(pickBtn.x, pickBtn.y, 0x84a253, 8);
           } else {
             this.feel.wiggle(pickBtn, 3);
             this.tweens.add({ targets: pickBtn, alpha: 0.35, duration: 250 });
-            this.feel.breathe(correctBtn, 0.03);
-            this.feel.sparkle(correctBtn.x, correctBtn.y, 0x9be24a, 6);
+            if (hintApi.lastAttempt) {
+              // no more retries — let the right answer land before the explanation
+              this.feel.breathe(correctBtn, 0.03);
+              this.feel.sparkle(correctBtn.x, correctBtn.y, 0x84a253, 6);
+            }
           }
           this.time.delayedCall(620, () => {
             buttons.forEach((b) => b.destroy());
@@ -528,7 +542,7 @@
         zone.destroy();
         const buttons = labels.map((label, i) => {
           const btn = GameFeel.candyButton(this, W / 2, 968 + i * 96, 560, 78, label, {
-            color: 0x2e4a5a, arabic: EduCore.isRTL, fontSize: EduCore.isRTL ? 29 : 26,
+            color: 0x079a90, arabic: EduCore.isRTL, fontSize: EduCore.isRTL ? 29 : 26,
             onTap: () => {
               buttons.forEach((b) => b.setEnabled(false));
               this.time.delayedCall(250, () => {

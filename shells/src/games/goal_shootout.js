@@ -14,22 +14,23 @@
   const W = 720;
   const H = 1280;
 
+  // Daylight venues on the warm OpenMind palette — light skies, calm greens.
   const THEMES = {
     football: {
-      sky: 0x0e3a1c, field: 0x1c6b35, stripe: 0x238042, frame: 0xf2f6f8,
-      ball: 'football', keeper: 0xffd23e,
+      sky: 0xceebf0, field: 0x84a253, stripe: 0x90ac64, frame: 0xf2f6f8,
+      ball: 'football', keeper: 0xef9722,
     },
     basketball: {
-      sky: 0x231a12, field: 0x8a5a2e, stripe: 0x9c6936, frame: 0xff7c39,
-      ball: 'basketball', keeper: 0x6ecbff,
+      sky: 0xfadbb0, field: 0xb5702f, stripe: 0xbd7e42, frame: 0xef9722,
+      ball: 'basketball', keeper: 0x079a90,
     },
     hockey: {
-      sky: 0x10202e, field: 0xdfeefa, stripe: 0xcfe4f4, frame: 0xe04848,
-      ball: 'puck', keeper: 0x8fd0ff,
+      sky: 0xceebf0, field: 0xf4fafc, stripe: 0xe2eff4, frame: 0xd93b5e,
+      ball: 'puck', keeper: 0x079a90,
     },
     archery: {
-      sky: 0x223018, field: 0x4d7036, stripe: 0x577d3e, frame: 0xd8c9a8,
-      ball: 'arrow', keeper: 0xc9b896,
+      sky: 0xceebf0, field: 0x84a253, stripe: 0x90ac64, frame: 0xb5702f,
+      ball: 'arrow', keeper: 0xfae9d0,
     },
   };
 
@@ -94,10 +95,10 @@
 
       // prompt panel (hidden until it has something to say)
       this.promptPanel = GameFeel.cardPanel(this, W / 2, 305, 664, 130, {
-        color: 0x16242c, alpha: 0.92, stroke: 0x2e4452, strokeWidth: 3,
+        color: 0xfae9d0, alpha: 0.95, stroke: 0xdccdb7, strokeWidth: 3,
       }).setDepth(8).setAlpha(0);
       this.promptText = this.add.text(W / 2, 305, '',
-        EduCore.textStyle(28, { color: '#FFFFFF', align: 'center', wrap: 600, lineSpacing: 6 }))
+        EduCore.textStyle(28, { color: '#19725E', align: 'center', wrap: 600, lineSpacing: 6 }))
         .setOrigin(0.5).setDepth(9);
       this.setPrompt = (text) => {
         this.promptText.setText(text);
@@ -113,7 +114,7 @@
       GameFeel.audio.crowdStart();
       this.events.once('shutdown', () => GameFeel.audio.crowdStop());
 
-      this.teachStyle = { panelColor: 0x1d3a28 }; // chalkboard-ish coach talk
+      this.teachStyle = { panelColor: 0xe9f0da }; // grassy-light coach talk
     }
 
     buildCrowd() {
@@ -155,12 +156,12 @@
       this.scoreVal = 0;
       const c = this.add.container(W / 2, 196).setDepth(3);
       const bg = this.add.graphics();
-      bg.fillStyle(0x0c151b, 0.96);
+      bg.fillStyle(0x19725e, 0.96);
       bg.fillRoundedRect(-130, -30, 260, 60, 16);
-      bg.lineStyle(3, 0x2e4452, 1);
+      bg.lineStyle(3, 0x4c9181, 1);
       bg.strokeRoundedRect(-130, -30, 260, 60, 16);
       this.scoreText = this.add.text(0, 0, '0', EduCore.textStyle(32, {
-        weight: '800', color: '#7CE24A', align: 'center',
+        weight: '800', color: '#FDF2E2', align: 'center',
       })).setOrigin(0.5);
       // shimmer sweep
       const shine = this.add.rectangle(-130, 0, 26, 60, 0xffffff, 0.1);
@@ -197,7 +198,7 @@
         g.fillCircle(-32, 6, 9);
         g.fillCircle(32, 6, 9);
         // legs
-        g.fillStyle(0x35404a, 1);
+        g.fillStyle(0x19725e, 1);
         g.fillRoundedRect(-18, 34, 14, 22, 5);
         g.fillRoundedRect(4, 34, 14, 22, 5);
       }
@@ -217,7 +218,7 @@
       if (kind === 'football') {
         g.fillStyle(0xffffff, 1);
         g.fillCircle(0, 0, 30);
-        g.fillStyle(0x131f24, 1);
+        g.fillStyle(0x19725e, 1);
         g.fillCircle(0, 0, 10);
         for (let i = 0; i < 5; i++) {
           const a = (i / 5) * Math.PI * 2;
@@ -232,11 +233,11 @@
         g.beginPath(); g.moveTo(0, -30); g.lineTo(0, 30); g.strokePath();
         g.beginPath(); g.arc(-30, 0, 30, -Math.PI / 3, Math.PI / 3); g.strokePath();
       } else if (kind === 'puck') {
-        g.fillStyle(0x131f24, 1);
+        g.fillStyle(0x19725e, 1);
         g.fillEllipse(0, 6, 56, 22);
         g.fillRect(-28, -8, 56, 14);
         g.fillEllipse(0, -8, 56, 22);
-        g.fillStyle(0x2e3c46, 1);
+        g.fillStyle(0x30806e, 1);
         g.fillEllipse(0, -8, 44, 14);
       } else { // arrow
         g.fillStyle(0x8a6d4b, 1);
@@ -265,7 +266,7 @@
 
       if (themeKey === 'football' || themeKey === 'hockey') {
         // goal mouth + net grid
-        g.fillStyle(0x0c151b, 0.35);
+        g.fillStyle(0x19725e, 0.25);
         g.fillRect(-120, -70, 240, 124);
         g.lineStyle(3, 0xffffff, 0.25);
         for (let nx = -120; nx <= 120; nx += 24) {
@@ -289,19 +290,19 @@
           g.beginPath(); g.moveTo(k * 13, 40); g.lineTo(k * 9, 70); g.strokePath();
         }
       } else { // archery
-        const rings = [[0xf2f6f8, 56], [0x1cb0f6, 44], [0xe04848, 30], [0xffc800, 16]];
+        const rings = [[0xf2f6f8, 56], [0x079a90, 44], [0xd93b5e, 30], [0xef9722, 16]];
         rings.forEach(([col, r]) => {
           g.fillStyle(col, 1);
           g.fillCircle(0, -10, r);
         });
       }
 
-      // label card (candy style, neutral)
+      // label card (candy style, teal = tappable)
       const cardW = 286, cardH = 76;
       const card = this.add.graphics();
-      card.fillStyle(GameFeel.darken(0x2e4a5a, 0.3), 1);
+      card.fillStyle(GameFeel.darken(0x079a90, 0.3), 1);
       card.fillRoundedRect(-cardW / 2, 66 + 5, cardW, cardH, 16);
-      card.fillStyle(0x2e4a5a, 1);
+      card.fillStyle(0x079a90, 1);
       card.fillRoundedRect(-cardW / 2, 66, cardW, cardH, 16);
       const txt = this.add.text(0, 66 + cardH / 2, label,
         EduCore.textStyle(EduCore.isRTL ? 28 : 24, {
@@ -422,7 +423,7 @@
       this.feel.squash(this.scoreboard, 0.14, 240);
       this.netRipple(goal);
       this.feel.confetti(goal.x, goal.y - 40, null, 12);
-      this.feel.burst(goal.x, goal.y, 0x9be24a, 8);
+      this.feel.burst(goal.x, goal.y, 0x84a253, 8);
       GameFeel.audio.cheer();
       this.feel.shake(0.0035, 130);
     }
@@ -435,9 +436,14 @@
     // -------------------------------------------------------------- items
     async presentItem(item, hintApi) {
       this.clearGoals();
-      this.promptText.setText('');
       this.tweens.add({ targets: this.promptPanel, alpha: 1, duration: 200 });
-      await this.feel.typewriter(this.promptText, item.prompt, { cps: 46 });
+      // On a supportive retry the prompt is already familiar — no re-typing.
+      if (hintApi.attempt > 1) {
+        this.promptText.setText(item.prompt);
+      } else {
+        this.promptText.setText('');
+        await this.feel.typewriter(this.promptText, item.prompt, { cps: 46 });
+      }
 
       const chosen = await new Promise((resolve) => {
         let settled = false;
@@ -446,6 +452,7 @@
             onTap: (idx) => {
               if (settled) return;
               settled = true;
+              EduCore.reportLearning('object_interacted', { kind: 'goal', itemId: item.id, index: idx });
               this.goals.forEach((gl) => (gl.disabled = true));
               resolve(idx);
             },
@@ -490,9 +497,11 @@
           ease: 'Cubic.easeOut',
           onComplete: () => this.resetBall(),
         });
-        // the right goal glows so learning lands
-        const right = this.goals[item.correctIndex];
-        this.feel.sparkle(right.x, right.y, 0x9be24a, 7);
+        if (hintApi.lastAttempt) {
+          // no more retries — the right goal glows so learning lands
+          const right = this.goals[item.correctIndex];
+          this.feel.sparkle(right.x, right.y, 0x84a253, 7);
+        }
       }
 
       await new Promise((r) => this.time.delayedCall(800, r));
@@ -563,10 +572,10 @@
         const c = this.add.container(0, 0).setDepth(60);
         const py = 1010;
         const panel = GameFeel.cardPanel(this, W / 2, py, 640, 190, {
-          color: 0x1f2f38, stroke: EduCore.accentInt, strokeWidth: 3,
+          color: 0xfae9d0, stroke: EduCore.accentInt, strokeWidth: 3,
         });
         const tx = this.add.text(W / 2, py - 60, '',
-          EduCore.textStyle(26, { color: '#F7F7F7', align: EduCore.isRTL ? 'right' : 'left', wrap: 560, lineSpacing: 7 }))
+          EduCore.textStyle(26, { color: '#19725E', align: EduCore.isRTL ? 'right' : 'left', wrap: 560, lineSpacing: 7 }))
           .setOrigin(0.5, 0);
         c.add([panel, tx]);
         this.guide.react('hint');
@@ -574,7 +583,7 @@
         this.feel.typewriter(tx, text, { cps: 42, skipOn: zone }).then(() => {
           zone.removeAllListeners();
           const cont = this.add.text(W / 2, py + 70, EduCore.t('tapToContinue'),
-            EduCore.textStyle(24, { color: '#AFAFAF', align: 'center' })).setOrigin(0.5).setDepth(61);
+            EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5).setDepth(61);
           this.tweens.add({ targets: cont, alpha: 0.4, duration: 550, yoyo: true, repeat: -1 });
           zone.once('pointerdown', () => {
             this.guide.setExpression('idle');

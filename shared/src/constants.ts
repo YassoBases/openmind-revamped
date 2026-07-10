@@ -47,18 +47,24 @@ export const INTEREST_ARCHETYPES = [
 ] as const;
 export type InterestArchetype = (typeof INTEREST_ARCHETYPES)[number];
 
-/** Duolingo-inspired design palette (also defined in shells + Flutter). */
+/**
+ * The warm OpenMind palette (also defined in shells + Flutter). Light, calm
+ * backgrounds; Main Teal for interactive elements; Deep Teal instead of
+ * heavy black; orange/green for success and progress; Berry Pink sparingly,
+ * decoration only.
+ */
 export const PALETTE = {
-  primaryGreen: '#58CC02',
-  primaryGreenShadow: '#46A302',
-  actionBlue: '#1CB0F6',
-  actionBlueShadow: '#1899D6',
-  streakYellow: '#FFC800',
-  heartRed: '#FF4B4B',
-  purple: '#CE82FF',
-  baseDark: '#131F24',
-  softWhite: '#F7F7F7',
-  midGrey: '#AFAFAF',
+  warmCream: '#FDF2E2',
+  softSand: '#FAE9D0',
+  mainTeal: '#079A90',
+  deepTeal: '#19725E',
+  brightOrange: '#EF9722',
+  softPeach: '#FADBB0',
+  leafGreen: '#84A253',
+  deepGreen: '#4D8C58',
+  softSkyBlue: '#CEEBF0',
+  berryPink: '#D93B5E',
+  warmBrown: '#B5702F',
 } as const;
 
 /** XP rules. Hint usage scales XP but NEVER feeds the AdaptiveEngine. */
@@ -122,7 +128,9 @@ export const ADAPTIVE_RULES = {
   masteryConsecutiveScore: 0.8,
   frustrationConsecutiveLevels: 3,
   frustrationScore: 0.4,
-  hearts: 3,
+  /** Consecutive not-first-try items before the supportive break (no hearts,
+   *  no lives — a wrong answer costs nothing and earns a retry). */
+  strainBeforeBreak: 3,
 } as const;
 
 /** Session length → level structure. Level 0 is ALWAYS the intro tutorial. */

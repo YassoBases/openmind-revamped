@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 
-/// The dark "game studio" palette — the composer and game player deliberately
-/// keep a bright-on-dark Duolingo register, distinct from the warm app system
-/// in core/app_theme.dart (AppColors). Everything OUTSIDE the game-creation and
+/// The warm OpenMind game palette — the composer and game player flows keep
+/// their own register (deep-teal chrome instead of the old heavy black, per
+/// the approved warm palette), distinct from the warm app system in
+/// core/app_theme.dart (AppColors). Everything OUTSIDE the game-creation and
 /// game-player flows should use AppColors / the theme, not these constants.
 /// Also still the home of hexToColor/colorToHex and the game/emoji constants.
 class Palette {
-  static const green = Color(0xFF58CC02);
-  static const greenShadow = Color(0xFF46A302);
-  static const blue = Color(0xFF1CB0F6);
-  static const blueShadow = Color(0xFF1899D6);
-  static const yellow = Color(0xFFFFC800);
-  static const heart = Color(0xFFFF4B4B);
-  static const purple = Color(0xFFCE82FF);
-  static const dark = Color(0xFF131F24);
-  static const card = Color(0xFF1F2F38);
-  static const cardBorder = Color(0xFF2E4452);
-  static const soft = Color(0xFFF7F7F7);
-  static const grey = Color(0xFFAFAFAF);
+  static const green = Color(0xFF4D8C58); // Deep Green — positive CTAs
+  static const greenShadow = Color(0xFF3A6B43);
+  static const blue = Color(0xFF079A90); // Main Teal — interactive elements
+  static const blueShadow = Color(0xFF19725E);
+  static const yellow = Color(0xFFEF9722); // Bright Orange — progress/XP
+  static const heart = Color(0xFFD93B5E); // Berry Pink — decoration, sparingly
+  static const purple = Color(0xFFB5702F); // Warm Brown
+  static const dark = Color(0xFF19725E); // Deep Teal — never heavy black
+  static const card = Color(0xFF30806E);
+  static const cardBorder = Color(0xFF4C9181);
+  static const soft = Color(0xFFFDF2E2); // Warm Cream
+  static const grey = Color(0xFFCEEBF0); // Soft Sky — secondary text on teal
 
   /// radii: card 24, button 16, input 20, pill 999 — no sharp rectangles
   static const radiusCard = 24.0;

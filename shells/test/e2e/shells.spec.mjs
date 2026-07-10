@@ -57,11 +57,11 @@ for (const run of RUNS) {
     await expectAlive(page, 'menu');
 
     if (run.rtl) {
-      // RTL HUD swap: after entering the game, hearts sit on the LEFT
+      // RTL HUD swap: after entering the game, the XP pill sits on the RIGHT
       await driveUntil(page, ['tutorial', 'teach', 'question'], { timeoutMs: 60000 });
-      const heartsX = await page.evaluate(() =>
-        EduCore.game.scene.getScene('GameScene').heartIcons.map((h) => h.x));
-      expect(Math.max(...heartsX)).toBeLessThan(360);
+      const xpX = await page.evaluate(() =>
+        EduCore.game.scene.getScene('GameScene').hudXpText.x);
+      expect(xpX).toBeGreaterThan(360);
       await page.screenshot({ path: 'test-results/rtl-sanity.png' });
     }
 
@@ -74,11 +74,13 @@ for (const run of RUNS) {
 
     await expectAlive(page, 'teach');
 
-    // first practice item: answer WRONG → heart lost, gentle feedback, explanation
+    // first practice item: keep answering WRONG → supportive retries with
+    // auto-hints (no hearts, nothing lost), then a supported reveal resolves
+    // the item as not-first-try-correct
     await driveUntil(page, 'question', { timeoutMs: 60000 });
     await expectAlive(page, 'question');
     let answered = false;
-    const wrongDeadline = Date.now() + 60000;
+    const wrongDeadline = Date.now() + 120000; // retries make items longer on slow GL
     while (!answered && Date.now() < wrongDeadline) {
       const before = (await bridgeEvents(page)).filter((e) => e.type === 'reportScore').length;
       await stepOnce(page, { answer: 'wrong' });
@@ -93,6 +95,7 @@ for (const run of RUNS) {
         } else {
           expect(last.wasCorrect).toBe(false);
           expect(last.combo).toBe(0);
+          expect(last.attempts).toBeGreaterThan(1); // the retries really ran
         }
       }
     }
@@ -114,6 +117,18 @@ for (const run of RUNS) {
     expect(summary.presented).toBeGreaterThan(0);
     expect(summary.items.length).toBe(summary.presented);
     expect(summary.xp).toBeGreaterThan(0);
+
+    // the 8-event learning contract rides reportEvent with the shared envelope
+    const learningNames = new Set(
+      events.filter((e) => e.type === 'reportEvent').map((e) => e.payload.name));
+    for (const ev of ['experience_started', 'attempt_submitted', 'level_completed', 'experience_completed']) {
+      expect(learningNames.has(ev), `missing learning event ${ev}`).toBe(true);
+    }
+    const attemptEv = events.find(
+      (e) => e.type === 'reportEvent' && e.payload.name === 'attempt_submitted').payload;
+    expect(attemptEv.templateId).toBe(run.game);
+    expect(attemptEv.wrapperId).toBeTruthy(); // theme doubles as the wrapper id today
+    expect(attemptEv.attempt).toBeGreaterThanOrEqual(1);
 
     // DONE fires reportComplete
     const done = (await debugState(page)).tappables.find((t) => t.id === 'done');

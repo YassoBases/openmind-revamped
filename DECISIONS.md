@@ -1,5 +1,54 @@
 # DECISIONS.md — OpenMind Game Studio v4
 
+## v4.2 — Warm palette + supportive retry + learning-event contract (primary learning-system Phase 1)
+
+Product decisions (approved): remove hearts globally, adopt the warm OpenMind
+palette globally, and prepare the engine seams for the Number City learning
+world (which will enter as a dedicated trail-home entry, not via the composer).
+
+- **Hearts are gone from the engine — replaced by a supportive retry loop.**
+  A wrong answer costs nothing: the learner retries the same item with the
+  next hint rung auto-offered (one retry per available hint, so 2–3 attempts),
+  then gets a supported reveal + explanation and moves on. Scoring, mastery,
+  combos and the AdaptiveEngine all read **first-try correctness only** —
+  kindness must not inflate progress or steer difficulty upward. Solving on a
+  retry is celebrated as "recovered" (+5 XP, bee reacts, no combo).
+  `take a break` survives, now **strain-triggered** (3 consecutive
+  not-first-try items) and refills nothing because nothing is lost.
+  draw_connect keeps its draw-until-complete semantics (`final: true` tells
+  the engine loop not to re-present). MCQ shells reveal the correct option
+  only on the **last** attempt, so retries stay honest work.
+- **The warm OpenMind palette replaced the dark game-studio palette
+  everywhere**: Warm Cream `#FDF2E2` backgrounds, Soft Sand `#FAE9D0` cards,
+  Main Teal `#079A90` interactive elements, Deep Teal `#19725E` ink and
+  scrims (never heavy black), Bright Orange `#EF9722` + greens for
+  success/progress, Berry Pink `#D93B5E` decoration only. Every per-game
+  theme was re-tuned to light calm worlds (fantasy dawn, daylight venues,
+  light boards; chalkboard keeps a board identity at a calm mid green).
+  IntroScene lays a cream wash over any game backdrop so the deep-teal menu
+  ink stays readable on every theme. Mirrored in `shared/constants.ts`
+  PALETTE, backend thumbnails, and Flutter `Palette` (game flows keep their
+  own register, now deep-teal chrome; `kColorChoices` — the child's personal
+  accent — intentionally unchanged). Mascot character-art darks (pupils,
+  tires, notes) stay: they're drawings, not surfaces. Default accent
+  fallback moved `#58CC02` → `#079A90`.
+- **The 8-event learning contract rides the existing bridge**:
+  `experience_started`, `object_interacted`, `attempt_submitted`,
+  `hint_requested`, `hint_shown` (auto-offered hints mark `auto: true`),
+  `misconception_detected` (placeholder signal: unresolved after retries),
+  `level_completed`, `experience_completed` — all via
+  `EduCore.reportLearning`, each carrying `{conceptId, learningLevel,
+  templateId, wrapperId}` (null/theme-derived today; real values arrive with
+  the Number City spec). `reportScore` gained `attempts`/`recovered`;
+  `reportSummary` gained `recovered`. Legacy `hint_used` kept for hosts.
+- **`shells/src/lib/interact.js`** — draw_connect's pointer machinery
+  extracted into shared primitives (`attachDrag`, `nearest`, `makeTappable`,
+  44px floor) so the coming Number City mechanics (tap-scene, drag-collect,
+  sequence, build-complete) reuse one tested state machine. draw_connect now
+  runs on it; behavior unchanged.
+- Playwright note: sessions are longer under the retry loop; on weak/software
+  -GL machines run the behavioral suite with `--workers=1`.
+
 ## v4.1 — Audience retarget + character duo (post-v4 product pivot)
 
 - **Audience moved from grades 7–12 to elementary school (grades 1–6).** Young

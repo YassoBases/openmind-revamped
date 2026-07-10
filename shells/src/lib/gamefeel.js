@@ -50,12 +50,12 @@
     if (r > 200 && g < 90 && b < 90) return 0xffb020; // amber
     return c;
   }
-  /** Readable text color (white/dark) for a given background. */
+  /** Readable text color (white / deep-teal ink) for a given background. */
   function contrastOn(color) {
     const c = typeof color === 'string' ? hexToInt(color) : color;
     const { r, g, b } = intToRgb(c);
     const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    return lum > 190 ? 0x131f24 : 0xffffff;
+    return lum > 190 ? 0x19725e : 0xffffff; // deep teal, never heavy black
   }
 
   // ---------------------------------------------------------------- audio
@@ -318,8 +318,8 @@
           fontFamily: 'Nunito, Tajawal, sans-serif',
           fontSize: '34px',
           fontStyle: '800',
-          color: '#FFC800',
-          stroke: '#131F24',
+          color: '#EF9722',
+          stroke: '#FDF2E2',
           strokeThickness: 6,
         }).setOrigin(0.5).setDepth(950).setVisible(false);
         this.popupPool.push(t);
@@ -357,12 +357,12 @@
     }
 
     sparkle(x, y, color, count) {
-      this.sparkleEmitter.setParticleTint(color == null ? 0xffe27a : color);
+      this.sparkleEmitter.setParticleTint(color == null ? 0xef9722 : color);
       this.sparkleEmitter.explode(Math.min(count || 8, PARTICLE_CAP_PER_POOL), x, y);
     }
 
     confetti(x, y, colors, count) {
-      const palette = colors && colors.length ? colors : [0x58cc02, 0x1cb0f6, 0xffc800, 0xce82ff];
+      const palette = colors && colors.length ? colors : [0x84a253, 0x079a90, 0xef9722, 0xd93b5e];
       this.confettiEmitter.setParticleTint(palette[Math.floor(Math.random() * palette.length)]);
       this.confettiEmitter.explode(Math.min(count || 12, PARTICLE_CAP_PER_POOL), x, y);
     }
@@ -372,7 +372,7 @@
       const w = this.scene.scale.width;
       this.confetti(w * 0.2, 80, colors, 12);
       this.scene.time.delayedCall(160, () => this.confetti(w * 0.8, 80, colors, 12));
-      this.scene.time.delayedCall(320, () => this.sparkle(w / 2, 320, 0xffe27a, 10));
+      this.scene.time.delayedCall(320, () => this.sparkle(w / 2, 320, 0xef9722, 10));
       Audio.celebration();
     }
 
@@ -381,7 +381,7 @@
       const o = opts || {};
       const t = this.popupPool.find((p) => !p.visible) || this.popupPool[0];
       t.setText(str);
-      t.setColor(o.color || '#FFC800');
+      t.setColor(o.color || '#EF9722');
       t.setFontSize(o.size || 34);
       t.setPosition(x, y);
       t.setAlpha(0);
@@ -525,7 +525,7 @@
     const o = opts || {};
     const width = Math.max(w, TOUCH_MIN);
     const height = Math.max(h, TOUCH_MIN);
-    const colorInt = typeof o.color === 'string' ? hexToInt(o.color) : (o.color == null ? 0x58cc02 : o.color);
+    const colorInt = typeof o.color === 'string' ? hexToInt(o.color) : (o.color == null ? 0x4d8c58 : o.color);
     const radius = Math.min(o.radius == null ? 16 : o.radius, height / 2);
     const drop = 5;
 

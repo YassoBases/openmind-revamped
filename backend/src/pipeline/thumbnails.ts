@@ -22,18 +22,19 @@ const STYLE_PROMPT_VERSION = 'v1';
 const STYLE_PROMPT =
   'flat vector illustration, rounded shapes, soft gradients, friendly, no text, no people';
 
+// Mirrors the warm OpenMind theme palettes in the shells (light, calm).
 const THEME_PALETTES: Record<string, [string, string]> = {
-  fantasy: ['#4a3a72', '#8a63d2'], sci_fi: ['#14274d', '#1cb0f6'],
-  detective: ['#232c3c', '#ffb020'], anime: ['#ffd9e8', '#ff8fb3'],
-  football: ['#1c6b35', '#7ce24a'], basketball: ['#8a5a2e', '#ff8c42'],
-  hockey: ['#dfeefa', '#5aa9e0'], archery: ['#4d7036', '#d8c9a8'],
-  blueprint: ['#12365e', '#6ecbff'], notebook: ['#fdf6e3', '#e08a8a'],
-  whiteboard: ['#f4f7f9', '#58cc02'], chalkboard: ['#2a4538', '#f2f7f2'],
+  fantasy: ['#ceebf0', '#ef9722'], sci_fi: ['#b9e2e8', '#079a90'],
+  detective: ['#fadbb0', '#ef9722'], anime: ['#f3c9d3', '#d93b5e'],
+  football: ['#84a253', '#ef9722'], basketball: ['#b5702f', '#ef9722'],
+  hockey: ['#f4fafc', '#079a90'], archery: ['#84a253', '#fae9d0'],
+  blueprint: ['#ceebf0', '#079a90'], notebook: ['#fdf2e2', '#d93b5e'],
+  whiteboard: ['#f6f9fa', '#4d8c58'], chalkboard: ['#4d8c58', '#fdf2e2'],
 };
 
 /** Deterministic programmatic SVG thumbnail (data URI). */
 export function programmaticThumbnail(topic: string, theme: string): string {
-  const [bg, accent] = THEME_PALETTES[theme] ?? ['#1f2f38', '#58cc02'];
+  const [bg, accent] = THEME_PALETTES[theme] ?? ['#fae9d0', '#079a90'];
   const hash = createHash('sha256').update(`${topic}|${theme}`).digest();
   const shapes: string[] = [];
   for (let i = 0; i < 5; i++) {
@@ -72,7 +73,7 @@ export async function thumbnailFor(
   if (cached) return cached;
 
   try {
-    const [, accent] = THEME_PALETTES[theme] ?? ['#1f2f38', '#58cc02'];
+    const [, accent] = THEME_PALETTES[theme] ?? ['#fae9d0', '#079a90'];
     const res = await fetch(config.imageProviderUrl, {
       method: 'POST',
       headers: {

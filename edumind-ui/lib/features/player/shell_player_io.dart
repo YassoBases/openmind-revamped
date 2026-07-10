@@ -35,7 +35,7 @@ class _ShellPlayerState extends State<ShellPlayer> {
     super.initState();
     _web = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFF131F24))
+      ..setBackgroundColor(const Color(0xFFFDF2E2))
       ..addJavaScriptChannel('EduMind', onMessageReceived: (msg) {
         try {
           final data = jsonDecode(msg.message) as Map<String, dynamic>;

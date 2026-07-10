@@ -20,22 +20,24 @@
   const GRAB_RADIUS = 56; // px around a node that captures a touch
   const GLOW_RADIUS = 80; // approach-glow distance
 
+  // Light, calm boards on the warm OpenMind palette. The chalkboard keeps a
+  // board-green identity but at a calm mid tone — never near-black.
   const THEMES = {
     blueprint: {
-      bg: 0x12365e, gridline: 0xffffff, ink: '#EAF4FF', inkInt: 0xeaf4ff,
-      chip: 0x0d2a4a, ambient: 'shimmer',
+      bg: 0xceebf0, gridline: 0x079a90, ink: '#19725E', inkInt: 0x19725e,
+      chip: 0xddf0f4, ambient: 'shimmer',
     },
     notebook: {
-      bg: 0xfdf6e3, gridline: 0xaac4e0, ink: '#2B4A6E', inkInt: 0x2b4a6e,
-      chip: 0xf1e6c8, ambient: 'pencil',
+      bg: 0xfdf2e2, gridline: 0xa9cfd8, ink: '#19725E', inkInt: 0x19725e,
+      chip: 0xfae9d0, ambient: 'pencil',
     },
     whiteboard: {
-      bg: 0xf4f7f9, gridline: 0xd7dee4, ink: '#16242C', inkInt: 0x16242c,
+      bg: 0xf6f9fa, gridline: 0xd7dee4, ink: '#19725E', inkInt: 0x19725e,
       chip: 0xe6ecf1, ambient: 'dust',
     },
     chalkboard: {
-      bg: 0x2a4538, gridline: 0xffffff, ink: '#F2F7F2', inkInt: 0xf2f7f2,
-      chip: 0x1f3329, ambient: 'chalk',
+      bg: 0x4d8c58, gridline: 0xffffff, ink: '#FDF2E2', inkInt: 0xfdf2e2,
+      chip: 0x3f7549, ambient: 'chalk',
     },
   };
 
@@ -73,18 +75,18 @@
       this.activeLine = this.add.graphics().setDepth(4);
       this.nodeLayer = this.add.container(0, 0).setDepth(5);
 
-      // prompt panel (dark card on every theme for consistent reading;
+      // prompt panel (warm sand card on every theme for consistent reading;
       // hidden until it has something to say)
       this.promptPanel = GameFeel.cardPanel(this, W / 2, 150, 664, 132, {
-        color: 0x1f2f38, alpha: 0.97, stroke: 0x2e4452, strokeWidth: 3,
+        color: 0xfae9d0, alpha: 0.97, stroke: 0xdccdb7, strokeWidth: 3,
       }).setDepth(8).setAlpha(0);
       this.promptText = this.add.text(EduCore.isRTL ? W / 2 + 296 : W / 2 - 296, 104, '',
-        EduCore.textStyle(26, { color: '#F7F7F7', wrap: 500, lineSpacing: 6 }))
+        EduCore.textStyle(26, { color: '#19725E', wrap: 500, lineSpacing: 6 }))
         .setOrigin(EduCore.isRTL ? 1 : 0, 0).setDepth(9);
       // progress pill ("2/3")
       this.progressPill = this.add.graphics().setDepth(9);
       this.progressText = this.add.text(EduCore.isRTL ? 84 : W - 84, 150, '',
-        EduCore.textStyle(24, { weight: '800', color: '#FFC800', align: 'center' }))
+        EduCore.textStyle(24, { weight: '800', color: '#FDF2E2', align: 'center' }))
         .setOrigin(0.5).setDepth(10);
 
       this.guide = new Hoopoe(this, EduCore.isRTL ? W - 78 : 78, 1224, {
@@ -96,7 +98,7 @@
       this.completedPairs = new Set();
       this.touredOnce = false;
       this.setupPointer();
-      this.teachStyle = { panelColor: 0x21333d };
+      this.teachStyle = { panelColor: 0xfae9d0 };
     }
 
     drawBoardBackground() {
@@ -115,7 +117,7 @@
       } else if (themeKey === 'notebook') {
         g.lineStyle(2, t.gridline, 0.5);
         for (let y = 260; y <= H; y += 46) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.strokePath(); }
-        g.lineStyle(3, 0xe08a8a, 0.6);
+        g.lineStyle(3, 0xd93b5e, 0.5); // berry margin line — decoration only
         g.beginPath(); g.moveTo(64, 230); g.lineTo(64, H); g.strokePath();
         // spiral holes
         g.fillStyle(0xd9cfae, 1);
@@ -130,7 +132,7 @@
         g.fillRoundedRect(160, H - 26, 400, 18, 8);
         g.fillStyle(EduCore.accentInt, 1);
         g.fillRoundedRect(240, H - 34, 70, 12, 6);
-        g.fillStyle(0x16242c, 1);
+        g.fillStyle(0x19725e, 1);
         g.fillRoundedRect(360, H - 34, 70, 12, 6);
       } else { // chalkboard
         g.lineStyle(10, 0x8a6d4b, 1);
@@ -262,56 +264,48 @@
     }
 
     // ------------------------------------------------------------- drawing
+    /** One-finger drawing on the shared Interact drag primitive. */
     setupPointer() {
-      this.drawState = null; // {startNode, points}
-      this.drawingEnabled = false;
-
-      this.input.on('pointerdown', (pointer) => {
-        if (!this.drawingEnabled || this.drawState) return;
-        const n = this.nearestNode(pointer.x, pointer.y, GRAB_RADIUS);
-        if (!n) return;
-        this.drawState = { startNode: n, points: [{ x: n.pos.x, y: n.pos.y }] };
-        n.glow.setAlpha(0.45);
-        GameFeel.audio.tick();
+      this.drag = Interact.attachDrag(this, {
+        findTarget: (x, y) => this.nearestNode(x, y, GRAB_RADIUS),
+        onGrab: (n) => {
+          n.glow.setAlpha(0.45);
+          GameFeel.audio.tick();
+          EduCore.reportLearning('object_interacted', { kind: 'node', nodeId: n.def.id });
+        },
+        onMove: (pointer, points, start) => {
+          this.renderActiveLine(pointer, points);
+          // approach glow
+          const near = this.nearestNode(pointer.x, pointer.y, GLOW_RADIUS);
+          for (const [, n] of this.nodes) {
+            if (n === start) continue;
+            n.glow.setAlpha(n === near ? 0.4 : 0);
+          }
+        },
+        onDrop: (start, pointer, points) => {
+          const end = this.nearestNode(pointer.x, pointer.y, GRAB_RADIUS);
+          for (const [, n] of this.nodes) n.glow.setAlpha(0);
+          if (end && end !== start) {
+            this.onAttempt(start, end, points);
+          } else {
+            this.fadeActiveLine();
+          }
+        },
       });
+    }
 
-      this.input.on('pointermove', (pointer) => {
-        if (!this.drawState) return;
-        const pts = this.drawState.points;
-        const last = pts[pts.length - 1];
-        if (Math.hypot(pointer.x - last.x, pointer.y - last.y) > 7 && pts.length < 240) {
-          pts.push({ x: pointer.x, y: pointer.y });
-        }
-        this.renderActiveLine(pointer);
-        // approach glow
-        const near = this.nearestNode(pointer.x, pointer.y, GLOW_RADIUS);
-        for (const [, n] of this.nodes) {
-          if (n === this.drawState.startNode) continue;
-          n.glow.setAlpha(n === near ? 0.4 : 0);
-        }
-      });
-
-      const finish = (pointer) => {
-        if (!this.drawState) return;
-        const start = this.drawState.startNode;
-        const end = this.nearestNode(pointer.x, pointer.y, GRAB_RADIUS);
-        const state = this.drawState;
-        this.drawState = null;
-        for (const [, n] of this.nodes) n.glow.setAlpha(0);
-        if (end && end !== start) {
-          this.onAttempt(start, end, state.points);
-        } else {
-          this.fadeActiveLine();
-        }
-      };
-      this.input.on('pointerup', finish);
-      this.input.on('pointerupoutside', finish);
+    get drawingEnabled() {
+      return this.drag.enabled;
+    }
+    set drawingEnabled(v) {
+      if (v) this.drag.enable();
+      else this.drag.disable();
     }
 
     /** Smoothed polyline through sampled finger points (quadratic midpoints). */
-    renderActiveLine(pointer) {
+    renderActiveLine(pointer, points) {
       const g = this.activeLine;
-      const pts = this.drawState.points.concat([{ x: pointer.x, y: pointer.y }]);
+      const pts = points.concat([{ x: pointer.x, y: pointer.y }]);
       g.clear();
       g.lineStyle(7, EduCore.accentInt, 0.95);
       if (pts.length < 2) return;
@@ -360,7 +354,7 @@
       } else {
         // wrong: gentle shake of both endpoints + the ghost line fades
         const ghost = this.add.graphics().setDepth(4);
-        ghost.lineStyle(7, 0xff9da6, 0.8);
+        ghost.lineStyle(7, 0xb5702f, 0.7);
         ghost.beginPath();
         ghost.moveTo(start.pos.x, start.pos.y);
         ghost.lineTo(end.pos.x, end.pos.y);
@@ -404,7 +398,7 @@
       const done = this.completedPairs.size;
       this.progressText.setText(EduCore.fmtNum(done) + '/' + EduCore.fmtNum(total));
       this.progressPill.clear();
-      this.progressPill.fillStyle(0x0c151b, 0.85);
+      this.progressPill.fillStyle(0x19725e, 0.9);
       const px = EduCore.isRTL ? 84 : W - 84;
       this.progressPill.fillRoundedRect(px - 46, 128, 92, 44, 22);
       this.feel.squash(this.progressText, 0.2, 180);
@@ -505,7 +499,9 @@
       });
 
       EduCore.setTappables([]);
-      return { correct: wrongAttempts === 0 };
+      // Drawing until complete IS the supportive retry for this mechanic —
+      // `final` tells the engine loop not to re-present the item.
+      return { correct: wrongAttempts === 0, final: true };
     }
 
     /** Test surface: remaining required connections as coordinate pairs. */
@@ -595,10 +591,10 @@
         const c = this.add.container(0, 0).setDepth(60);
         const py = 1060;
         const panel = GameFeel.cardPanel(this, W / 2, py, 640, 170, {
-          color: 0x1f2f38, stroke: EduCore.accentInt, strokeWidth: 3,
+          color: 0xfae9d0, stroke: EduCore.accentInt, strokeWidth: 3,
         });
         const tx = this.add.text(W / 2, py - 52, '',
-          EduCore.textStyle(26, { color: '#F7F7F7', align: EduCore.isRTL ? 'right' : 'left', wrap: 560, lineSpacing: 7 }))
+          EduCore.textStyle(26, { color: '#19725E', align: EduCore.isRTL ? 'right' : 'left', wrap: 560, lineSpacing: 7 }))
           .setOrigin(0.5, 0);
         c.add([panel, tx]);
         this.guide.react('hint');
@@ -606,7 +602,7 @@
         this.feel.typewriter(tx, text, { cps: 42, skipOn: zone }).then(() => {
           zone.removeAllListeners();
           const cont = this.add.text(W / 2, py + 60, EduCore.t('tapToContinue'),
-            EduCore.textStyle(24, { color: '#AFAFAF', align: 'center' })).setOrigin(0.5).setDepth(61);
+            EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5).setDepth(61);
           this.tweens.add({ targets: cont, alpha: 0.4, duration: 550, yoyo: true, repeat: -1 });
           zone.once('pointerdown', () => {
             this.guide.setExpression('idle');
@@ -620,9 +616,9 @@
     /** Keep the diagram across levels (it's the same board), no slide. */
     levelTransition() {
       return new Promise((resolve) => {
-        this.cameras.main.fadeOut(120, 19, 31, 36);
+        this.cameras.main.fadeOut(120, 253, 242, 226);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-          this.cameras.main.fadeIn(160, 19, 31, 36);
+          this.cameras.main.fadeIn(160, 253, 242, 226);
           resolve();
         });
       });
@@ -641,10 +637,7 @@
       g.lineStyle(1, theme.gridline, 0.1);
       for (let x = 0; x <= W; x += 40) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.strokePath(); }
       for (let y = 0; y <= H; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.strokePath(); }
-      // light boards need a scrim so the white menu text stays readable
-      const light = themeKey === 'whiteboard' || themeKey === 'notebook';
-      g.fillStyle(0x131f24, light ? 0.62 : 0.25);
-      g.fillRect(0, 0, W, H);
+      // (IntroScene lays a cream wash over every backdrop for menu-text contrast)
     },
   });
 })();

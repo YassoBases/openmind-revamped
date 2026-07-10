@@ -40,7 +40,7 @@ class _ShellPlayerState extends State<ShellPlayer> {
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
-        ..style.background = '#131F24';
+        ..style.background = '#FDF2E2';
       _iframe = iframe;
       return iframe;
     });
