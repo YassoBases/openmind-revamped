@@ -230,3 +230,160 @@ describe('collectTextFields', () => {
     expect(fields.some((f) => f.includes('Evaporation is liquid water'))).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Learning-system contract (Number City foundations): scene item kinds,
+// the learning ladder, conceptId and wrapper.
+// ---------------------------------------------------------------------------
+
+describe('scene item kinds', () => {
+  const base = () => GameSpecSchema.parse(loadSample('quest_path_water_cycle.en.json')) as GameSpec;
+
+  const itemCommon = {
+    id: 'l1_s1',
+    prompt: 'Tap every bird!',
+    explanation: 'There were three birds in the garden.',
+    hints: ['Look near the tree.'],
+    concepts: ['counting'],
+    difficulty: 1,
+  };
+  const tapScene = () => ({
+    kind: 'tap_scene' as const,
+    ...itemCommon,
+    objects: [
+      { id: 'o1', label: '🐦', correct: true },
+      { id: 'o2', label: '🐦‍⬛', correct: true },
+      { id: 'o3', label: '🌸', correct: false },
+      { id: 'o4', label: '🪨', correct: false },
+    ],
+  });
+  const buildComplete = () => ({
+    kind: 'build_complete' as const,
+    ...itemCommon,
+    id: 'l1_b1',
+    pieces: [
+      { id: 'p1', label: '٣', gap: false },
+      { id: 'p2', label: '+', gap: false },
+      { id: 'p3', label: '٢', gap: true },
+      { id: 'p4', label: '= ٥', gap: false },
+    ],
+    options: [
+      { id: 'c1', label: '٢' },
+      { id: 'c2', label: '٤' },
+    ],
+  });
+
+  /** Swap one quest item for a scene item and let draw the issues out. */
+  function withItem(item: unknown): GameSpec {
+    const spec = base();
+    (spec.levels[1]!.items as unknown[])[0] = item;
+    return GameSpecSchema.parse(spec);
+  }
+
+  it('all four scene kinds parse structurally', () => {
+    expect(() => withItem(tapScene())).not.toThrow();
+    expect(() => withItem(buildComplete())).not.toThrow();
+    expect(() => withItem({
+      kind: 'drag_collect', ...itemCommon, containerLabel: 'The basket',
+      objects: tapScene().objects,
+    })).not.toThrow();
+    expect(() => withItem({
+      kind: 'sequence', ...itemCommon,
+      steps: [{ id: 's1', label: 'Seed' }, { id: 's2', label: 'Sprout' }, { id: 's3', label: 'Tree' }],
+    })).not.toThrow();
+  });
+
+  it('kind eligibility comes from the KINDS_BY_GAME table, not a ternary', () => {
+    // quest_path renders only mcq, so a structurally-valid tap_scene item
+    // must be rejected semantically with the stable ITEM_KIND code.
+    const r = validateGameSpec(withItem(tapScene()));
+    expect(r.issues.map((i) => i.code)).toContain('ITEM_KIND');
+    expect(r.issues.find((i) => i.code === 'ITEM_KIND')!.targetId).toBe('l1_s1');
+  });
+
+  it('scene objects need ≥1 correct and ≥1 distractor', () => {
+    const allWrong = tapScene();
+    allWrong.objects.forEach((o) => { o.correct = false; });
+    expect(validateGameSpec(withItem(allWrong)).issues.map((i) => i.code)).toContain('SCENE_NO_CORRECT');
+
+    const allRight = tapScene();
+    allRight.objects.forEach((o) => { o.correct = true; });
+    expect(validateGameSpec(withItem(allRight)).issues.map((i) => i.code)).toContain('SCENE_NO_DISTRACTOR');
+  });
+
+  it('sequence steps must be unique', () => {
+    const r = validateGameSpec(withItem({
+      kind: 'sequence', ...itemCommon,
+      steps: [{ id: 's1', label: 'Seed' }, { id: 's2', label: 'Seed' }, { id: 's3', label: 'Tree' }],
+    }));
+    expect(r.issues.map((i) => i.code)).toContain('SEQUENCE_STEPS_NOT_UNIQUE');
+  });
+
+  it('build_complete needs gaps, matching options and a distractor', () => {
+    const noGap = buildComplete();
+    noGap.pieces.forEach((p) => { p.gap = false; });
+    expect(validateGameSpec(withItem(noGap)).issues.map((i) => i.code)).toContain('BUILD_NO_GAP');
+
+    const orphanGap = buildComplete();
+    orphanGap.options = [{ id: 'c1', label: '٩' }, { id: 'c2', label: '٤' }];
+    expect(validateGameSpec(withItem(orphanGap)).issues.map((i) => i.code)).toContain('BUILD_OPTION_MISSING');
+
+    const noDistractor = buildComplete();
+    noDistractor.options = [{ id: 'c1', label: '٢' }, { id: 'c2', label: '٢' }];
+    const codes = validateGameSpec(withItem(noDistractor)).issues.map((i) => i.code);
+    expect(codes).toContain('OPTIONS_NOT_UNIQUE');
+  });
+
+  it('hints may not reveal a correct scene label verbatim', () => {
+    const leaky = tapScene();
+    leaky.objects[0]!.label = 'bluebird';
+    leaky.hints = ['Look for the bluebird by the tree.'];
+    expect(validateGameSpec(withItem(leaky)).issues.map((i) => i.code)).toContain('HINT_REVEALS_ANSWER');
+  });
+});
+
+describe('learning ladder + concept + wrapper', () => {
+  const base = () => GameSpecSchema.parse(loadSample('quest_path_water_cycle.en.json')) as GameSpec;
+
+  it('conceptId and wrapper parse on meta; unknown wrapper is rejected', () => {
+    const spec = base();
+    spec.meta.conceptId = 'add_within_10';
+    spec.meta.wrapper = 'nature';
+    expect(() => GameSpecSchema.parse(spec)).not.toThrow();
+    expect(validateGameSpec(GameSpecSchema.parse(spec)).ok).toBe(true);
+
+    const bad = { ...spec, meta: { ...spec.meta, wrapper: 'dinosaurs' } };
+    expect(GameSpecSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it('classic sessions (no learningLevel anywhere) stay valid', () => {
+    expect(validateGameSpec(base()).ok).toBe(true);
+  });
+
+  it('a partially-tagged ladder is rejected', () => {
+    const spec = base();
+    spec.levels[1]!.learningLevel = 'recognize';
+    const r = validateGameSpec(spec);
+    expect(r.issues.map((i) => i.code)).toContain('LEARNING_LEVELS_INCOMPLETE');
+  });
+
+  it('a fully-tagged ladder must be recognize→understand→apply→challenge in order', () => {
+    // the EN water-cycle demo has sessionLength 5 → exactly 4 educational levels
+    const wrongOrder = base();
+    const shuffled = ['understand', 'recognize', 'apply', 'challenge'] as const;
+    wrongOrder.levels.slice(1).forEach((l, i) => { l.learningLevel = shuffled[i]; });
+    expect(validateGameSpec(wrongOrder).issues.map((i) => i.code)).toContain('LEARNING_LEVELS_ORDER');
+
+    const rightOrder = base();
+    const canonical = ['recognize', 'understand', 'apply', 'challenge'] as const;
+    rightOrder.levels.slice(1).forEach((l, i) => { l.learningLevel = canonical[i]; });
+    expect(validateGameSpec(rightOrder).ok).toBe(true);
+  });
+
+  it('the intro level never carries a learning level', () => {
+    const spec = base();
+    spec.levels[0]!.learningLevel = 'recognize';
+    const r = validateGameSpec(spec);
+    expect(r.issues.map((i) => i.code)).toContain('INTRO_LEARNING_LEVEL');
+  });
+});

@@ -493,7 +493,15 @@
         duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
       });
       this.scheduleBlink();
-      this.on('destroy', () => { if (this.blinkTimer) this.blinkTimer.remove(); });
+      // Full cleanup: the bee is transient now (brief success celebrations),
+      // so every looping timer/tween must die with her — a leaked 60ms
+      // sparkle timer drawing on destroyed Graphics freezes the whole game.
+      this.on('destroy', () => {
+        if (this.blinkTimer) this.blinkTimer.remove();
+        if (this._sparkTimer) { this._sparkTimer.remove(); this._sparkTimer = null; }
+        if (this._glowPulse) this._glowPulse.stop();
+        for (const t of [this.flutter, this.hover, this.antSway]) if (t) t.stop();
+      });
     }
 
     scheduleBlink() {

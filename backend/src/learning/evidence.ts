@@ -32,8 +32,9 @@ export const EVIDENCE_KINDS = [
 ] as const;
 export type EvidenceKind = (typeof EVIDENCE_KINDS)[number];
 
-/** Where an evidence event was produced. */
-export const EVIDENCE_SOURCES = ['learn_step', 'checkpoint', 'tutor_block', 'tool_verify'] as const;
+/** Where an evidence event was produced. `game_item` rows are derived
+ *  server-side from primary game-session summaries (session_helper.ts). */
+export const EVIDENCE_SOURCES = ['learn_step', 'checkpoint', 'tutor_block', 'tool_verify', 'game_item'] as const;
 export type EvidenceSource = (typeof EVIDENCE_SOURCES)[number];
 
 /** The outcome wire values (same enum the interactive result uses). */

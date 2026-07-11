@@ -206,6 +206,22 @@ describe('sessions, XP, streak, review', () => {
     expect(stats.json().todaySessions).toBe(1);
   });
 
+  it('game sessions leave game_item evidence in the learning-evidence store', async () => {
+    const res = await api('GET', '/api/v1/learn/evidence');
+    expect(res.statusCode).toBe(200);
+    const rows = res.json().items.filter((r: { source: string }) => r.source === 'game_item');
+    expect(rows.length).toBe(6); // one per summary item above
+    const first = rows.find((r: { id: string }) => r.id.endsWith('_l1_i1'));
+    expect(first.skillId).toBe('game:evaporation');
+    expect(first.outcome).toBe('correct');
+    expect(first.verification).toBe('client_reported');
+    expect(first.toolId).toBe('quest_path'); // falls back to the game row's type
+    expect(first.representation).toBe('game');
+    const missed = rows.find((r: { id: string }) => r.id.endsWith('_l1_i2'));
+    expect(missed.outcome).toBe('incorrect');
+    expect(missed.hints).toBe(1);
+  });
+
   it('synthesizes a valid review spec from missed items ($0)', async () => {
     const res = await api('GET', '/api/v1/review/today');
     expect(res.statusCode).toBe(200);

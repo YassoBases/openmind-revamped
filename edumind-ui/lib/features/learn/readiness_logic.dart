@@ -78,7 +78,8 @@ class EvidenceEvent {
   /// The learner's context lens (market, water_energy, …) or null.
   final String? context;
 
-  /// learn_step | checkpoint | tutor_block | tool_verify
+  /// learn_step | checkpoint | tutor_block | tool_verify | game_item
+  /// (game_item rows are server-derived from primary game sessions)
   final String source;
 
   /// See [kEvidenceKinds].

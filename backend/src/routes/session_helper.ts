@@ -1,12 +1,13 @@
 /**
  * Shared session-recording logic: PlaySession row, XP events, streak math,
- * game stat bumps, summary enrichment. Used by POST /games/:id/sessions and
- * POST /review/sessions (review sessions have no backing game row but still
- * count toward streak and daily goal).
+ * game stat bumps, summary enrichment, and learning-evidence derivation.
+ * Used by POST /games/:id/sessions and POST /review/sessions (review
+ * sessions have no backing game row but still count toward streak and
+ * daily goal).
  */
 import { XP_RULES } from '@edumind/shared';
 import type { ContentProvider } from '../pipeline/provider.js';
-import type { GameRow, Store, StudentRow } from '../store/types.js';
+import type { GameRow, LearnEvidenceInput, Store, StudentRow } from '../store/types.js';
 
 export async function recordSession(
   deps: { store: Store; provider: ContentProvider; log: { warn: (m: string) => void } },
@@ -26,6 +27,17 @@ export async function recordSession(
     accuracy,
   });
   await store.addXpEvent(student.id, xp, game ? `game:${game.topic}` : 'review:daily');
+
+  // Game play IS learning evidence: one `game_item` row per summary item
+  // flows into the same append-only store the learn engine reads. Ids are
+  // derived from the session so replayed submissions stay idempotent.
+  // Best-effort — a telemetry failure must never fail the session.
+  try {
+    const events = gameEvidenceFromSummary(session.id, game, summary);
+    if (events.length) await store.upsertLearnEvidence(student.id, events);
+  } catch (e) {
+    log.warn(`[sessions] evidence derivation failed: ${(e as Error).message}`);
+  }
 
   // streak: one day-grain event; consecutive days grow the flame
   const today = new Date();
@@ -74,4 +86,57 @@ export async function recordSession(
     streak: { count: streakCount, extendedToday, bonusXp },
     enrichedFeedback: enriched,
   };
+}
+
+/**
+ * Derive `game_item` evidence rows from a shell's reportSummary items.
+ * The summary is client-authored, so every field is coerced and capped;
+ * items that lack an id or a concept tag carry no evidence and are skipped.
+ * Semantics mirror the shells: `correct` = first try, `recovered` = solved
+ * on a supportive retry (stored as incorrect + recovered, the same shape the
+ * learn engine uses for recovered-after-error).
+ */
+export function gameEvidenceFromSummary(
+  sessionId: string,
+  game: GameRow | null,
+  summary: Record<string, unknown>,
+): LearnEvidenceInput[] {
+  const items = Array.isArray(summary.items) ? summary.items.slice(0, 60) : [];
+  const gameType = typeof summary.gameType === 'string' ? summary.gameType : game?.gameType ?? null;
+  const kind = gameType === 'draw_connect' ? 'construction' : 'recall';
+  const now = new Date();
+  const events: LearnEvidenceInput[] = [];
+
+  for (const raw of items) {
+    if (typeof raw !== 'object' || raw == null) continue;
+    const it = raw as Record<string, unknown>;
+    const itemId = typeof it.id === 'string' ? it.id.slice(0, 24) : null;
+    const concept = Array.isArray(it.concepts) && typeof it.concepts[0] === 'string'
+      ? (it.concepts[0] as string).slice(0, 60)
+      : null;
+    if (!itemId || !concept) continue;
+    const firstTry = it.correct === true;
+    const recovered = it.recovered === true;
+    events.push({
+      id: `gi_${sessionId}_${itemId}`.slice(0, 64),
+      skillId: `game:${concept}`,
+      representation: 'game',
+      context: null,
+      source: 'game_item',
+      kind,
+      outcome: firstTry ? 'correct' : 'incorrect',
+      verification: 'client_reported',
+      attempt: Math.max(1, Math.min(99, Number(it.attempts) || 1)),
+      hints: Math.max(0, Math.min(99, Number(it.hintsUsed) || 0)),
+      recovered,
+      errorPattern: null,
+      toolId: gameType,
+      pathId: null,
+      experienceId: game?.id ?? null,
+      stepIndex: Number.isInteger(it.levelIndex) ? (it.levelIndex as number) : null,
+      ms: null,
+      createdAt: now,
+    });
+  }
+  return events;
 }

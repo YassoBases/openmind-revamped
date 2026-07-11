@@ -22,10 +22,13 @@ import {
   GRADE_MIN,
   HEX_COLOR_RE,
   INTEREST_ARCHETYPES,
+  KINDS_BY_GAME,
   LANGUAGES,
+  LEARNING_LEVELS,
   LIMITS,
   SPEC_VERSION,
   THEMES,
+  WRAPPERS,
   edgeId,
   type GameType,
 } from './constants.js';
@@ -69,13 +72,83 @@ export const ConnectItemSchema = z.object({
 });
 export type ConnectItem = z.infer<typeof ConnectItemSchema>;
 
-export const ItemSchema = z.discriminatedUnion('kind', [McqItemSchema, ConnectItemSchema]);
+// ---- scene-based learning kinds (interaction before explanation) -----------
+// Evaluation is 100% programmatic against this canonical data; wrappers only
+// re-skin presentation and can never change it.
+
+/** One object living in a scene. `correct` marks it as part of the answer. */
+export const SceneObjectSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1).max(LIMITS.sceneObjectLabel),
+  correct: z.boolean(),
+});
+export type SceneObject = z.infer<typeof SceneObjectSchema>;
+
+/** Tap every correct object in the scene (recognize/count from a scene). */
+export const TapSceneItemSchema = z.object({
+  kind: z.literal('tap_scene'),
+  ...itemCommon,
+  objects: z.array(SceneObjectSchema).min(LIMITS.sceneObjectsMin).max(LIMITS.sceneObjectsMax),
+});
+export type TapSceneItem = z.infer<typeof TapSceneItemSchema>;
+
+/** Drag every correct object into the container (collect/combine groups). */
+export const DragCollectItemSchema = z.object({
+  kind: z.literal('drag_collect'),
+  ...itemCommon,
+  containerLabel: z.string().min(1).max(LIMITS.containerLabel),
+  objects: z.array(SceneObjectSchema).min(LIMITS.sceneObjectsMin).max(LIMITS.sceneObjectsMax),
+});
+export type DragCollectItem = z.infer<typeof DragCollectItemSchema>;
+
+/** Arrange the steps into order. The ARRAY ORDER is the canonical answer —
+ *  shells must shuffle presentation (same rule match_pairs uses). */
+export const SequenceItemSchema = z.object({
+  kind: z.literal('sequence'),
+  ...itemCommon,
+  steps: z.array(z.object({
+    id: z.string().min(1),
+    label: z.string().min(1).max(LIMITS.sequenceStepLabel),
+  })).min(LIMITS.sequenceStepsMin).max(LIMITS.sequenceStepsMax),
+});
+export type SequenceItem = z.infer<typeof SequenceItemSchema>;
+
+/** Complete a structure: pieces in reading order, gap pieces are hidden and
+ *  filled from the options (each gap's own label is its correct answer;
+ *  extra options are distractors). */
+export const BuildCompleteItemSchema = z.object({
+  kind: z.literal('build_complete'),
+  ...itemCommon,
+  pieces: z.array(z.object({
+    id: z.string().min(1),
+    label: z.string().min(1).max(LIMITS.buildPieceLabel),
+    gap: z.boolean(),
+  })).min(LIMITS.buildPiecesMin).max(LIMITS.buildPiecesMax),
+  options: z.array(z.object({
+    id: z.string().min(1),
+    label: z.string().min(1).max(LIMITS.buildPieceLabel),
+  })).min(LIMITS.buildOptionsMin).max(LIMITS.buildOptionsMax),
+});
+export type BuildCompleteItem = z.infer<typeof BuildCompleteItemSchema>;
+
+export const ItemSchema = z.discriminatedUnion('kind', [
+  McqItemSchema,
+  ConnectItemSchema,
+  TapSceneItemSchema,
+  DragCollectItemSchema,
+  SequenceItemSchema,
+  BuildCompleteItemSchema,
+]);
 export type Item = z.infer<typeof ItemSchema>;
 
 export const LevelSchema = z.object({
   index: z.number().int().min(0),
   isIntro: z.boolean(),
   title: z.string().min(1).max(LIMITS.levelTitle),
+  /** Learning-ladder tag. When a session uses the ladder, its educational
+   *  levels carry exactly recognize → understand → apply → challenge in
+   *  order (enforced semantically). Absent for classic game sessions. */
+  learningLevel: z.enum(LEARNING_LEVELS).optional(),
   teaching: z.array(TeachCardSchema).max(LIMITS.teachCardsMax),
   items: z.array(ItemSchema).max(LIMITS.itemsPerLevelMax),
 });
@@ -126,6 +199,12 @@ export const MetaSchema = z.object({
   sessionLength: z.union([z.literal(3), z.literal(5), z.literal(7)]),
   /** Digit rendering for Arabic. Defaults to arabic_indic when language=ar. */
   numerals: z.enum(['western', 'arabic_indic']).optional(),
+  /** Curriculum concept this experience teaches (e.g. "add_within_10").
+   *  Rides every learning-evidence event; absent for free-topic games. */
+  conceptId: z.string().min(1).max(60).optional(),
+  /** Interest wrapper: presentation skin only — never content, difficulty,
+   *  verification or evidence (see WRAPPERS in constants). */
+  wrapper: z.enum(WRAPPERS).optional(),
 });
 export type Meta = z.infer<typeof MetaSchema>;
 
@@ -250,6 +329,14 @@ export function collectTextFields(spec: GameSpec): string[] {
     for (const item of level.items) {
       out.push(item.prompt, item.explanation, ...item.hints);
       if (item.kind === 'mcq') out.push(...item.options);
+      if (item.kind === 'tap_scene') out.push(...item.objects.map((o) => o.label));
+      if (item.kind === 'drag_collect') {
+        out.push(item.containerLabel, ...item.objects.map((o) => o.label));
+      }
+      if (item.kind === 'sequence') out.push(...item.steps.map((s) => s.label));
+      if (item.kind === 'build_complete') {
+        out.push(...item.pieces.map((pc) => pc.label), ...item.options.map((o) => o.label));
+      }
     }
   }
   if (spec.diagram) for (const n of spec.diagram.nodes) out.push(n.label);
@@ -323,11 +410,12 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
       if (ids.has(item.id)) pushIssue(issues, 'DUPLICATE_ID', `${ip}.id`, `duplicate item id "${item.id}"`, item.id);
       ids.add(item.id);
 
-      // Kind must match the game type.
-      const expectKind = meta.gameType === 'draw_connect' ? 'connect' : 'mcq';
-      if (item.kind !== expectKind) {
+      // Kind must be one this shell renders (KINDS_BY_GAME, not a ternary —
+      // the Number City shell registers its four kinds in that one table).
+      const allowedKinds = KINDS_BY_GAME[meta.gameType];
+      if (!allowedKinds.includes(item.kind)) {
         pushIssue(issues, 'ITEM_KIND', `${ip}.kind`,
-          `${meta.gameType} items must be kind "${expectKind}"`, item.id);
+          `${meta.gameType} items must be one of [${allowedKinds.join(', ')}], got "${item.kind}"`, item.id);
       }
 
       if (item.kind === 'mcq') {
@@ -335,16 +423,7 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
         if (uniq.size !== 4) {
           pushIssue(issues, 'OPTIONS_NOT_UNIQUE', `${ip}.options`, 'the 4 options must be unique', item.id);
         }
-        // Hints must never contain the correct answer verbatim.
-        const correct = item.options[item.correctIndex]?.trim().toLowerCase() ?? '';
-        if (correct.length >= 3) {
-          item.hints.forEach((h, hi) => {
-            if (h.toLowerCase().includes(correct)) {
-              pushIssue(issues, 'HINT_REVEALS_ANSWER', `${ip}.hints[${hi}]`,
-                'hint contains the correct option verbatim', item.id);
-            }
-          });
-        }
+        checkHintsDontReveal(issues, ip, item, [item.options[item.correctIndex] ?? '']);
       }
 
       if (item.kind === 'connect') {
@@ -361,6 +440,27 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
         }
       }
 
+      if (item.kind === 'tap_scene' || item.kind === 'drag_collect') {
+        validateSceneObjects(issues, ip, item.id, item.objects);
+        checkHintsDontReveal(issues, ip, item,
+          item.objects.filter((o) => o.correct).map((o) => o.label));
+      }
+
+      if (item.kind === 'sequence') {
+        const stepIds = new Set(item.steps.map((s) => s.id));
+        const stepLabels = new Set(item.steps.map((s) => s.label.trim().toLowerCase()));
+        if (stepIds.size !== item.steps.length || stepLabels.size !== item.steps.length) {
+          pushIssue(issues, 'SEQUENCE_STEPS_NOT_UNIQUE', `${ip}.steps`,
+            'sequence step ids and labels must be unique', item.id);
+        }
+      }
+
+      if (item.kind === 'build_complete') {
+        validateBuildComplete(issues, ip, item);
+        checkHintsDontReveal(issues, ip, item,
+          item.pieces.filter((pc) => pc.gap).map((pc) => pc.label));
+      }
+
       // Language purity per item.
       const textBlob = [item.prompt, item.explanation, ...item.hints,
         ...(item.kind === 'mcq' ? item.options : [])].join(' ');
@@ -369,6 +469,8 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
       }
     });
   });
+
+  validateLearningLadder(issues, spec);
 
   // Narrative rules.
   if (meta.gameType === 'quest_path') {
@@ -407,6 +509,95 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
   }
 
   return { ok: issues.length === 0, issues };
+}
+
+/** Hints must never contain a correct answer verbatim (skip answers <3
+ *  chars — a hint containing "٢" is not a reveal). Shared by every kind. */
+function checkHintsDontReveal(issues: SpecIssue[], ip: string, item: Item, answers: string[]) {
+  const needles = answers.map((a) => a.trim().toLowerCase()).filter((a) => a.length >= 3);
+  if (!needles.length) return;
+  item.hints.forEach((h, hi) => {
+    const hint = h.toLowerCase();
+    if (needles.some((n) => hint.includes(n))) {
+      pushIssue(issues, 'HINT_REVEALS_ANSWER', `${ip}.hints[${hi}]`,
+        'hint contains a correct answer verbatim', item.id);
+    }
+  });
+}
+
+/** tap_scene / drag_collect: unique object ids, ≥1 correct, ≥1 distractor. */
+function validateSceneObjects(issues: SpecIssue[], ip: string, itemId: string, objects: SceneObject[]) {
+  const objIds = new Set(objects.map((o) => o.id));
+  if (objIds.size !== objects.length) {
+    pushIssue(issues, 'DUPLICATE_ID', `${ip}.objects`, 'scene object ids must be unique', itemId);
+  }
+  if (!objects.some((o) => o.correct)) {
+    pushIssue(issues, 'SCENE_NO_CORRECT', `${ip}.objects`, 'at least one scene object must be correct', itemId);
+  }
+  if (!objects.some((o) => !o.correct)) {
+    pushIssue(issues, 'SCENE_NO_DISTRACTOR', `${ip}.objects`,
+      'at least one scene object must be a distractor — tapping everything must not win', itemId);
+  }
+}
+
+/** build_complete: ≥1 gap but never all gaps; every gap label has exactly
+ *  one matching option; ≥1 distractor option; unique ids and labels. */
+function validateBuildComplete(issues: SpecIssue[], ip: string, item: BuildCompleteItem) {
+  const gaps = item.pieces.filter((pc) => pc.gap);
+  if (gaps.length === 0) {
+    pushIssue(issues, 'BUILD_NO_GAP', `${ip}.pieces`, 'build_complete needs at least one gap piece', item.id);
+  }
+  if (gaps.length === item.pieces.length) {
+    pushIssue(issues, 'BUILD_ALL_GAPS', `${ip}.pieces`,
+      'build_complete must show some given pieces — a structure that is all gaps teaches nothing', item.id);
+  }
+  const pieceIds = new Set(item.pieces.map((pc) => pc.id));
+  const optionIds = new Set(item.options.map((o) => o.id));
+  if (pieceIds.size !== item.pieces.length || optionIds.size !== item.options.length) {
+    pushIssue(issues, 'DUPLICATE_ID', `${ip}`, 'piece and option ids must be unique', item.id);
+  }
+  const optionLabels = item.options.map((o) => o.label.trim().toLowerCase());
+  if (new Set(optionLabels).size !== optionLabels.length) {
+    pushIssue(issues, 'OPTIONS_NOT_UNIQUE', `${ip}.options`, 'option labels must be unique', item.id);
+  }
+  let matched = 0;
+  for (const gap of gaps) {
+    const hits = optionLabels.filter((l) => l === gap.label.trim().toLowerCase()).length;
+    if (hits === 0) {
+      pushIssue(issues, 'BUILD_OPTION_MISSING', `${ip}.options`,
+        `no option matches gap "${gap.label}"`, item.id);
+    } else {
+      matched++;
+    }
+  }
+  if (item.options.length <= matched) {
+    pushIssue(issues, 'BUILD_NO_DISTRACTOR', `${ip}.options`,
+      'options must include at least one distractor beyond the gap answers', item.id);
+  }
+}
+
+/** When a session uses the learning ladder, its educational levels carry
+ *  exactly recognize → understand → apply → challenge, in order. */
+function validateLearningLadder(issues: SpecIssue[], spec: GameSpec) {
+  const edu = spec.levels.filter((l) => !l.isIntro);
+  const tagged = edu.filter((l) => l.learningLevel != null);
+  const intro = spec.levels[0];
+  if (intro?.isIntro && intro.learningLevel != null) {
+    pushIssue(issues, 'INTRO_LEARNING_LEVEL', 'levels[0].learningLevel',
+      'the intro level never carries a learning level');
+  }
+  if (tagged.length === 0) return; // classic game session
+  if (tagged.length !== edu.length) {
+    pushIssue(issues, 'LEARNING_LEVELS_INCOMPLETE', 'levels',
+      'either every educational level carries a learningLevel or none does');
+    return;
+  }
+  const order = edu.map((l) => l.learningLevel);
+  const canonical = [...LEARNING_LEVELS];
+  if (order.length !== canonical.length || order.some((v, i) => v !== canonical[i])) {
+    pushIssue(issues, 'LEARNING_LEVELS_ORDER', 'levels',
+      `learning sessions carry exactly [${canonical.join(' → ')}] in order, got [${order.join(', ')}]`);
+  }
 }
 
 function validateDiagram(diagram: Diagram, issues: SpecIssue[]) {

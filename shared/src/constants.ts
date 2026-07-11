@@ -16,6 +16,43 @@ export const THEMES: Record<GameType, readonly string[]> = {
   draw_connect: ['blueprint', 'notebook', 'whiteboard', 'chalkboard'],
 } as const;
 
+/**
+ * Every interaction template (item kind) the spec contract can express.
+ * Kinds are decoupled from game types: which kinds a shell accepts is the
+ * KINDS_BY_GAME table below, so a new learning shell registers its kinds in
+ * one place instead of re-threading a kind↔type ternary everywhere.
+ */
+export const ITEM_KINDS = [
+  'mcq', // choose 1 of 4
+  'connect', // drag to draw a connection (draw_connect)
+  'tap_scene', // tap the right objects living IN a scene
+  'drag_collect', // drag the right objects into a container
+  'sequence', // arrange pictured steps into order
+  'build_complete', // fill the missing parts of a structure from options
+] as const;
+export type ItemKind = (typeof ITEM_KINDS)[number];
+
+/** Which item kinds each shell renders. The Number City learning shell will
+ *  register the four scene kinds here when it lands. */
+export const KINDS_BY_GAME: Record<GameType, readonly ItemKind[]> = {
+  quest_path: ['mcq'],
+  goal_shootout: ['mcq'],
+  draw_connect: ['connect'],
+} as const;
+
+/** The four-level learning ladder (canonical order) for learning sessions. */
+export const LEARNING_LEVELS = ['recognize', 'understand', 'apply', 'challenge'] as const;
+export type LearningLevel = (typeof LEARNING_LEVELS)[number];
+
+/**
+ * Interest wrappers: same items, verification, difficulty and evidence —
+ * only scene objects, light narrative, Hudhud phrases and the success
+ * presentation may differ. Rendered entirely from shell-side art/string
+ * tables keyed by this id; the spec's canonical data never changes with it.
+ */
+export const WRAPPERS = ['nature', 'construction'] as const;
+export type Wrapper = (typeof WRAPPERS)[number];
+
 export const LANGUAGES = ['en', 'ar'] as const;
 export type Language = (typeof LANGUAGES)[number];
 
@@ -91,6 +128,19 @@ export const LIMITS = {
   narrativeOutro: 400,
   narrativePerLevel: 220,
   studentName: 24,
+  // scene-based learning kinds (tap_scene / drag_collect / sequence / build_complete)
+  sceneObjectLabel: 24,
+  sceneObjectsMin: 4,
+  sceneObjectsMax: 10,
+  containerLabel: 36,
+  sequenceStepLabel: 36,
+  sequenceStepsMin: 3,
+  sequenceStepsMax: 6,
+  buildPieceLabel: 24,
+  buildPiecesMin: 3,
+  buildPiecesMax: 8,
+  buildOptionsMin: 2,
+  buildOptionsMax: 6,
   itemsPerLevelMin: 4,
   itemsPerLevelMax: 6,
   teachCardsMin: 1,

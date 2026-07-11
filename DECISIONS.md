@@ -1,5 +1,39 @@
 # DECISIONS.md — OpenMind Game Studio v4
 
+## v4.3 — Celebration-only bee, game evidence, learning spec contract (primary Phase 2)
+
+Approved decisions: the bee leaves the persistent HUD, and game play feeds
+the OpenMind learning-evidence store.
+
+- **Nahla is celebration-only now.** No HUD mounting, no per-answer
+  reactions, no menu cameo. She appears exactly twice: a brief non-blocking
+  fly-in on level-complete (`EduCore.beeCelebration`, ~2.2s, destroyed after)
+  and the summary screen — which is hers ALONE (the Hoopoe no longer stands
+  beside her; rewards are hers, guidance is his, and they never share a
+  moment). Static tests enforce all of it.
+- **Game play IS learning evidence.** `recordSession` derives one
+  `game_item` evidence row per summary item into the same append-only store
+  the learn engine reads (new source in `EVIDENCE_SOURCES`, mirrored in the
+  Dart twin): skillId `game:<first concept tag>`, kind recall (mcq) /
+  construction (connect), outcome = first-try correctness with `recovered`
+  carried, verification `client_reported`, ids derived from the session so
+  the log stays idempotent. Client-authored fields are coerced and capped;
+  derivation is best-effort and can never fail the session.
+- **The spec contract now speaks the learning system's language**
+  (`shared/src`): four scene item kinds — `tap_scene`, `drag_collect`,
+  `sequence` (array order = canonical answer; shells shuffle presentation),
+  `build_complete` (gap pieces answered by matching options + distractors) —
+  each with semantic rules and stable repair codes (SCENE_NO_CORRECT,
+  SCENE_NO_DISTRACTOR, SEQUENCE_STEPS_NOT_UNIQUE, BUILD_NO_GAP,
+  BUILD_ALL_GAPS, BUILD_OPTION_MISSING, BUILD_NO_DISTRACTOR) and the
+  hint-reveal check generalized across kinds. Kind eligibility moved from a
+  hardcoded ternary to the `KINDS_BY_GAME` table — the Number City shell
+  registers its kinds in one place. `meta.conceptId` + `meta.wrapper`
+  (nature | construction; presentation-only by doctrine) and
+  `level.learningLevel` with the ladder rule: when used, educational levels
+  carry exactly recognize → understand → apply → challenge in order.
+  GAME_TYPES deliberately unchanged — `number_city` lands with its shell.
+
 ## v4.2 — Warm palette + supportive retry + learning-event contract (primary learning-system Phase 1)
 
 Product decisions (approved): remove hearts globally, adopt the warm OpenMind

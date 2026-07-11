@@ -549,10 +549,8 @@
 
       this.hud.add([this.hudXpBg, this.hudXpText, this.comboText]);
 
-      // Nahla the bee — the rewards partner — hovers by the XP pill and
-      // reacts to every XP gain, combo, streak and level complete.
-      this.buddy = new Bee(this, edgeX(186), 44, { accent: EduCore.accentInt, scale: 0.55 });
-      this.buddy.setDepth(this.uiDepth);
+      // Nahla the bee is NOT HUD furniture: she appears only as a brief
+      // success celebration (level/session complete) via beeCelebration().
 
       // Interest companion idles near the HUD.
       const interest = EduCore.spec.student.interest;
@@ -565,6 +563,27 @@
     refreshHud() {
       const s = EduCore.session;
       this.hudXpText.setText(EduCore.fmtNum(s.xp) + ' ' + EduCore.t('xp'));
+    }
+
+    /**
+     * Brief, non-blocking Nahla celebration: fly in, rejoice, fly out
+     * (~2.2s). The ONLY way the bee appears during play — never persistent,
+     * never blocking, never sharing a moment with Hudhud.
+     */
+    beeCelebration(kind) {
+      const fromX = EduCore.isRTL ? -60 : W + 60;
+      const bee = new Bee(this, fromX, 190, { accent: EduCore.accentInt, scale: 0.9 });
+      bee.setDepth(this.uiDepth + 55);
+      this.tweens.add({
+        targets: bee, x: W / 2 + (EduCore.isRTL ? -110 : 110), duration: 420, ease: 'Cubic.easeOut',
+        onComplete: () => bee.react(kind || 'levelComplete'),
+      });
+      this.time.delayedCall(1800, () => {
+        this.tweens.add({
+          targets: bee, x: fromX, alpha: 0, duration: 400, ease: 'Cubic.easeIn',
+          onComplete: () => bee.destroy(),
+        });
+      });
     }
 
     // ------------------------------------------------------------ session
@@ -668,8 +687,7 @@
       EduCore.setState('levelEnd');
       return new Promise((resolve) => {
         this.feel.celebrate();
-        if (this.buddy) this.buddy.react('levelComplete');
-        if (this.guide) this.guide.setExpression('happy');
+        this.beeCelebration('levelComplete'); // the celebration is Nahla's moment alone
         if (this.companion) this.companion.celebrate();
 
         const c = this.add.container(0, 0).setDepth(this.uiDepth + 50);
@@ -868,8 +886,6 @@
         const gained = hintsUsed === 0 ? XP.noHint : hintsUsed === 1 ? XP.oneHint : XP.twoHints;
         session.xp += gained;
         GameFeel.audio.correctChain(session.combo);
-        // Rewards belong to the bee; the guide stays focused on the journey.
-        if (this.buddy) this.buddy.react(session.combo >= 3 ? 'combo' : 'correct');
         if (this.companion && session.combo >= 2) this.companion.celebrate();
         this.feel.popText(W / 2, H * 0.42, '+' + EduCore.fmtNum(gained) + ' ' + EduCore.t('xp'), { color: '#EF9722' });
         if (session.combo >= 2) this.showCombo(session.combo);
@@ -879,7 +895,6 @@
         session.strain++;
         session.xp += XP.retry;
         GameFeel.audio.correctChain(1);
-        if (this.buddy) this.buddy.react('correct');
         this.feel.popText(W / 2, H * 0.42,
           EduCore.t('solvedIt') + '  +' + EduCore.fmtNum(XP.retry) + ' ' + EduCore.t('xp'),
           { color: '#EF9722', size: 28 });
@@ -1265,18 +1280,10 @@
           });
         }
 
-        // Hudhud fronts the adventure; Nahla figure-eights around the title.
+        // Hudhud fronts the adventure alone — the bee only ever appears as a
+        // brief success celebration, never on the menu.
         this.mascot = new Hoopoe(this, W / 2, H * 0.3, { accent: EduCore.accentInt, scale: 1.7 });
         this.mascot.setExpression('happy');
-        this.bee = new Bee(this, W / 2 + 130, H * 0.24, { accent: EduCore.accentInt, scale: 0.8 });
-        this.tweens.addCounter({
-          from: 0, to: Math.PI * 2, duration: 6000, repeat: -1,
-          onUpdate: (tw) => {
-            const t = tw.getValue();
-            this.bee.x = W / 2 + 130 + Math.sin(t) * 36;
-            this.bee.y = H * 0.24 + Math.sin(t * 2) * 20;
-          },
-        });
 
         const hi = this.add.text(W / 2, H * 0.455, EduCore.t('hi', { name: spec.student.name }),
           EduCore.textStyle(30, { weight: '800', color: '#079A90', align: 'center' })).setOrigin(0.5);
@@ -1337,12 +1344,10 @@
         ribbon.fillEllipse(W / 2, 130, 900, 320);
         this.tweens.add({ targets: ribbon, x: { from: -40, to: 40 }, duration: 5200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-        // The summary is the rewards moment — Nahla takes center stage,
-        // Hudhud applauds beside her.
-        this.bee = new Bee(this, W / 2 + 26, 160, { accent: EduCore.accentInt, scale: 1.3 });
+        // The summary is the rewards moment — Nahla's alone. The bee and
+        // Hudhud never share a moment: rewards are hers, guidance is his.
+        this.bee = new Bee(this, W / 2, 168, { accent: EduCore.accentInt, scale: 1.35 });
         this.bee.setExpression('celebrating');
-        this.mascot = new Hoopoe(this, W / 2 - 96, 178, { accent: EduCore.accentInt, scale: 0.95 });
-        this.mascot.setExpression('cheering');
         this.time.delayedCall(400, () => {
           this.feel.celebrate();
           this.bee.react('mastery');

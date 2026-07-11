@@ -114,8 +114,8 @@ describe('juice density (GameFeel)', () => {
     });
 
     it(`${g} includes the character duo and applies the student's color`, () => {
-      // Hudhud the hoopoe (guide) lives in each game; Nahla the bee
-      // (rewards partner) is wired in by EduCore's HUD for every game.
+      // Hudhud the hoopoe (guide) lives in each game; Nahla the bee appears
+      // only as EduCore's brief success celebration (never HUD furniture).
       expect(games[g]).toMatch(/new Hoopoe\(/);
       expect(libs.educore).toMatch(/new Bee\(/);
       expect(libs.mascot).toMatch(/class Hoopoe/);
@@ -123,6 +123,17 @@ describe('juice density (GameFeel)', () => {
       expect(games[g]).toMatch(/EduCore\.accentInt/);
     });
   }
+
+  it('the bee is celebration-only: no persistent HUD bee, never beside Hudhud', () => {
+    // no buddy mounted in the HUD; celebrations go through beeCelebration
+    expect(libs.educore).not.toMatch(/this\.buddy/);
+    expect(libs.educore).toMatch(/beeCelebration\(kind\)/);
+    // games never construct the bee themselves
+    for (const g of GAMES) expect(games[g]).not.toMatch(/new Bee\(/);
+    // the summary (rewards moment) is Nahla's alone — no Hoopoe in EndScene
+    const endScene = libs.educore.slice(libs.educore.indexOf('function createEndScene'));
+    expect(endScene).not.toMatch(/new Hoopoe\(/);
+  });
 });
 
 describe('design system', () => {
