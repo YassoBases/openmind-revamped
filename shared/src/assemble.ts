@@ -20,6 +20,7 @@ const INTRO_TITLES: Record<string, { en: string; ar: string }> = {
   quest_path: { en: 'The Adventure Begins', ar: 'تبدأ المغامرة' },
   goal_shootout: { en: 'Warm-Up', ar: 'الإحماء' },
   draw_connect: { en: 'Getting the Feel', ar: 'تعرّف على اللعبة' },
+  number_city: { en: 'Welcome to Number City', ar: 'أهلًا بك في مدينة الأعداد' },
 };
 
 /** The intro level carries no educational content — the tutorial is built into each shell. */

@@ -15,7 +15,7 @@ import type { ContentProvider } from '../pipeline/provider.js';
 import { AskTutorBody } from '../schemas.js';
 import { validateInteractivePayload } from '../tutor/contract.js';
 import { assessInteractiveResult } from '../tutor/result.js';
-import { eligibleTools, subjectFromLabel } from '../tutor/tools/registry.js';
+import { TOOL_REGISTRY, eligibleTools, subjectFromLabel } from '../tutor/tools/registry.js';
 import type { Store } from '../store/types.js';
 
 /** How many prior turns ride along as conversation memory. */
@@ -175,6 +175,29 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
       }
     }
     if (body.interactiveResult) metrics.bump('tutor_interactive_result');
+
+    // Honest-fallback signal (Ask → See → Try growth loop): the model wanted an
+    // interaction none of the registered tools can render. This never reaches
+    // the student as an activity — the reply text carries the explanation — but
+    // it is logged and counted so the team can prioritize the next renderer by
+    // real demand. A wish is redundant when a real block already shipped, so we
+    // drop it; a wish whose mechanic maps to no available tool is the genuine
+    // gap the platform should grow to fill.
+    if (result.data.suggestedInteraction) {
+      if (result.data.interactivePayload) {
+        result.data.suggestedInteraction = null;
+      } else {
+        const wish = result.data.suggestedInteraction;
+        const known = TOOL_REGISTRY.some((t) => t.available && t.primitive === wish.mechanic);
+        req.log.info(
+          { mechanic: wish.mechanic, known, conceptFamily: wish.conceptFamily, subject: body.context?.subject },
+          '[tutor] interaction gap suggested',
+        );
+        metrics.bump('tutor_interaction_suggested');
+        metrics.bump(`tutor_interaction_suggested:${wish.mechanic}`);
+        if (!known) metrics.bump(`tutor_interaction_gap:${wish.mechanic}`);
+      }
+    }
 
     stamps.push(now);
     messageTimestamps.set(student.id, stamps);

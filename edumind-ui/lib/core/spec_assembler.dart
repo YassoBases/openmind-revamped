@@ -46,4 +46,18 @@ class SpecAssembler {
     }
     return specs;
   }
+
+  /// Curated Number City lessons, one golden spec per interest wrapper.
+  /// Both wrappers carry IDENTICAL learning content — the wrapper only
+  /// re-skins presentation inside the shell.
+  static const numberCityLessons = {
+    'nature': 'number_city_shapes_nature.ar.json',
+    'construction': 'number_city_shapes_construction.ar.json',
+  };
+
+  static Future<Map<String, dynamic>> numberCitySpec(String wrapper) async {
+    final file = numberCityLessons[wrapper] ?? numberCityLessons['nature']!;
+    final raw = await rootBundle.loadString('assets/samples/$file');
+    return jsonDecode(raw) as Map<String, dynamic>;
+  }
 }

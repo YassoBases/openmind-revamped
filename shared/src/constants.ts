@@ -7,13 +7,23 @@
 
 export const SPEC_VERSION = 1 as const;
 
-export const GAME_TYPES = ['quest_path', 'goal_shootout', 'draw_connect'] as const;
+export const GAME_TYPES = ['quest_path', 'goal_shootout', 'draw_connect', 'number_city'] as const;
 export type GameType = (typeof GAME_TYPES)[number];
+
+/**
+ * Game types the LLM pipeline can generate content for. Number City ships
+ * curated golden lessons (dedicated trail-home entry) until Phase 5 teaches
+ * the generator the scene-kind spec shape — POST /games rejects it until then.
+ */
+export const GENERATABLE_GAME_TYPES = ['quest_path', 'goal_shootout', 'draw_connect'] as const;
 
 export const THEMES: Record<GameType, readonly string[]> = {
   quest_path: ['fantasy', 'sci_fi', 'detective', 'anime'],
   goal_shootout: ['football', 'basketball', 'hockey', 'archery'],
   draw_connect: ['blueprint', 'notebook', 'whiteboard', 'chalkboard'],
+  // Number City themes are city DISTRICTS — each district is a curriculum
+  // neighborhood (first: the Shapes District, the Grade-1 geometry MVP).
+  number_city: ['shapes_district'],
 } as const;
 
 /**
@@ -32,12 +42,12 @@ export const ITEM_KINDS = [
 ] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 
-/** Which item kinds each shell renders. The Number City learning shell will
- *  register the four scene kinds here when it lands. */
+/** Which item kinds each shell renders. */
 export const KINDS_BY_GAME: Record<GameType, readonly ItemKind[]> = {
   quest_path: ['mcq'],
   goal_shootout: ['mcq'],
   draw_connect: ['connect'],
+  number_city: ['tap_scene', 'drag_collect', 'sequence', 'build_complete'],
 } as const;
 
 /** The four-level learning ladder (canonical order) for learning sessions. */
@@ -147,6 +157,9 @@ export const LIMITS = {
   teachCardsMax: 3,
   hintsMin: 1,
   hintsMax: 2,
+  /** Six-beat learning flow (observe → try → notice → explain → practice →
+   *  checkpoint): the observe/notice beat captions carried per level. */
+  beatCaption: 200,
 } as const;
 
 /** Draw & Connect geometry rules (normalized coords on a 720x1280 canvas). */

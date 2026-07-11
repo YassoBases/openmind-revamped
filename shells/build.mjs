@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 
-const GAMES = ['quest_path', 'goal_shootout', 'draw_connect'];
+const GAMES = ['quest_path', 'goal_shootout', 'draw_connect', 'number_city'];
 
 function read(p) {
   return readFileSync(p, 'utf8');

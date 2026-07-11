@@ -45,6 +45,7 @@ export async function debugState(page) {
     scene: window.EduMindDebug.sceneKey,
     tappables: window.EduMindDebug.tappables,
     connect: window.EduMindDebug.getConnect ? window.EduMindDebug.getConnect() : null,
+    drag: window.EduMindDebug.getDrag ? window.EduMindDebug.getDrag() : null,
   }));
 }
 
@@ -89,6 +90,8 @@ export async function stepOnce(page, opts = {}) {
     case 'levelStart':
     case 'levelEnd':
     case 'feedback':
+    case 'observe': // six-beat watch/notice moments dismiss with a tap
+    case 'notice':
       await tap(page, 360, 620);
       break;
     case 'teach':
@@ -101,6 +104,11 @@ export async function stepOnce(page, opts = {}) {
       if (dbg.connect && dbg.connect.length) {
         const c = dbg.connect[0];
         await drag(page, c.ax, c.ay, c.bx, c.by);
+        break;
+      }
+      if (dbg.drag && dbg.drag.length) {
+        const d = dbg.drag[0];
+        await drag(page, d.ax, d.ay, d.bx, d.by);
         break;
       }
       if (dbg.tappables.length) {

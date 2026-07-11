@@ -4,6 +4,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import {
+  GENERATABLE_GAME_TYPES,
   THEMES,
   buildStubSpec,
   type GameSpec,
@@ -104,6 +105,13 @@ export async function gameRoutes(
 
     if (!(THEMES[body.gameType] as readonly string[]).includes(body.theme)) {
       return err(reply, req.id, 400, 'THEME_INVALID', `theme "${body.theme}" is not valid for ${body.gameType}`);
+    }
+
+    // Number City ships curated lessons through the dedicated trail-home
+    // entry; the generator learns its scene-kind spec shape in a later phase.
+    if (!(GENERATABLE_GAME_TYPES as readonly string[]).includes(body.gameType)) {
+      return err(reply, req.id, 400, 'GAME_TYPE_NOT_GENERATABLE',
+        `${body.gameType} lessons are curated — they cannot be generated yet`);
     }
 
     // simple per-student generation rate limit

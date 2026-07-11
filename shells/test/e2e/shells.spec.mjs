@@ -195,3 +195,107 @@ test('waiting room appears when the spec is late and shows living tips', async (
   }, spec);
   await driveUntil(page, ['teach', 'question'], { timeoutMs: 30000 });
 });
+
+test('number_city (AR): six-beat ladder session, wrong tap recovers, envelope carries rung+beat', async ({ page }) => {
+  const spec = loadSpec('number_city_shapes_nature.ar.json');
+  const errors = await bootShell(page, 'number_city', spec);
+
+  expect((await debugState(page)).state).toBe('menu');
+  expect(await page.evaluate(() => document.documentElement.getAttribute('dir'))).toBe('rtl');
+  await expectAlive(page, 'menu');
+
+  // RTL HUD swap once in the game
+  await driveUntil(page, ['tutorial', 'observe', 'question'], { timeoutMs: 60000 });
+  const xpX = await page.evaluate(() => EduCore.game.scene.getScene('GameScene').hudXpText.x);
+  expect(xpX).toBeGreaterThan(360);
+
+  // reach the first real item, wait for the scene objects to arm, then tap a
+  // deliberate distractor — nothing is lost, the item completes as recovered
+  await driveUntil(page, 'question', { timeoutMs: 90000 });
+  let tappables = [];
+  const armDeadline = Date.now() + 30000;
+  while (Date.now() < armDeadline) {
+    tappables = (await debugState(page)).tappables;
+    if (tappables.length) break;
+    await stepOnce(page);
+    await page.waitForTimeout(300);
+  }
+  const distractor = tappables.find((t) => !t.correct);
+  expect(distractor, 'first item exposes a distractor').toBeTruthy();
+  await page.waitForTimeout(700); // objects arm shortly after spawn
+  await tap(page, distractor.x, distractor.y);
+  await page.waitForTimeout(400);
+  await expectAlive(page, 'question');
+
+  // drive the rest of the session correctly
+  await driveUntil(page, 'summary', { timeoutMs: 300000 });
+  await expectAlive(page, 'summary');
+
+  const events = await bridgeEvents(page);
+  const attempts = events
+    .filter((e) => e.type === 'reportEvent' && e.payload.name === 'attempt_submitted')
+    .map((e) => e.payload);
+  expect(attempts.length).toBe(12); // 4 ladder levels x (try + practice + checkpoint)
+  for (const a of attempts) {
+    expect(['try', 'practice', 'checkpoint']).toContain(a.beat);
+    expect(['recognize', 'understand', 'apply', 'challenge']).toContain(a.learningLevel);
+    expect(a.templateId).toBe('number_city');
+    expect(a.wrapperId).toBe('nature');
+    expect(a.conceptId).toBe('shapes_around_us_g1');
+  }
+  expect(new Set(attempts.map((a) => a.learningLevel)).size).toBe(4); // the full ladder ran
+  expect(new Set(attempts.map((a) => a.beat)).size).toBe(3);
+
+  // the wrong-tapped item completed as recovered — never failed, never punished
+  const scores = events.filter((e) => e.type === 'reportScore').map((e) => e.payload);
+  const stumbled = scores.find((sc) => sc.wasCorrect === false);
+  expect(stumbled, 'the deliberate wrong tap shows up in scoring').toBeTruthy();
+  expect(stumbled.recovered).toBe(true);
+
+  // summary rows carry the item kind (feeds kind-aware evidence server-side)
+  const summary = events.find((e) => e.type === 'reportSummary').payload;
+  const kinds = new Set(summary.items.map((i) => i.kind));
+  expect(kinds).toEqual(new Set(['tap_scene', 'drag_collect', 'sequence', 'build_complete']));
+
+  const done = (await debugState(page)).tappables.find((t) => t.id === 'done');
+  await tap(page, done.x, done.y);
+  await page.waitForTimeout(500);
+  expect((await bridgeEvents(page)).filter((e) => e.type === 'reportComplete').length).toBe(1);
+
+  expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
+});
+
+test('wrapper equivalence: nature and construction present identical learning data', async ({ page, context }) => {
+  // the golden specs are byte-identical except meta.wrapper (asserted in
+  // shared tests); here we check the SHELL keeps the seam: same first item,
+  // same prompt, same correctness map — only presentation differs
+  async function firstQuestion(pg, wrapper) {
+    const spec = loadSpec(`number_city_shapes_${wrapper}.ar.json`);
+    await bootShell(pg, 'number_city', spec);
+    await driveUntil(pg, 'question', { timeoutMs: 120000 });
+    let tappables = [];
+    const deadline = Date.now() + 30000;
+    while (Date.now() < deadline) {
+      tappables = (await debugState(pg)).tappables;
+      if (tappables.length) break;
+      await stepOnce(pg);
+      await pg.waitForTimeout(300);
+    }
+    const prompt = await pg.evaluate(() => EduCore.game.scene.getScene('GameScene').promptText.text);
+    return {
+      prompt,
+      answers: tappables.map((t) => ({ id: t.id, correct: !!t.correct }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+    };
+  }
+
+  const nature = await firstQuestion(page, 'nature');
+  const page2 = await context.newPage();
+  const construction = await firstQuestion(page2, 'construction');
+  await page2.close();
+
+  expect(construction.prompt).toEqual(nature.prompt);
+  expect(construction.answers).toEqual(nature.answers);
+  expect(nature.answers.some((a) => a.correct)).toBe(true);
+  expect(nature.answers.some((a) => !a.correct)).toBe(true);
+});

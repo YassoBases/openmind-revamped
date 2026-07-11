@@ -193,6 +193,7 @@ export class MockProvider implements ContentProvider {
         relatedConcept: null,
         needsClarification: false,
         interactivePayload: null,
+        suggestedInteraction: null,
       };
       return { model: 'mock', data };
     }
@@ -215,6 +216,38 @@ export class MockProvider implements ContentProvider {
           relatedConcept: payload.title,
           needsClarification: false,
           interactivePayload: payload,
+          suggestedInteraction: null,
+        };
+        return { model: 'mock', data };
+      }
+
+      // No registered tool fits, but the question asks to SEE a relationship
+      // the platform does not render yet (graphing, simulation). Mirror the
+      // live prompt's HONESTY RULE: teach with text AND name the missing
+      // interaction, so the whole fallback + future-support signal is testable.
+      const gap = ar
+        ? /رسم بياني|تمثيل بياني|منحنى|المنحنى|دالة|الدالة|محاكاة|تجربة تفاعلية/
+        : /\b(graph|plot|curve|function|simulate|simulation)\b/i;
+      if (gap.test(q)) {
+        const data: TutorReply = {
+          message: ar
+            ? 'سؤال ممتاز! لنمشِ خطوة بخطوة: تخيّل محورًا أفقيًا للأعداد ومحورًا رأسيًا للنتيجة، وكل قيمة تعطي نقطة. سأشرح، وقريبًا سنجرّبها بيدك.'
+            : 'Great question! Step by step: picture a horizontal axis for the input and a vertical one for the result — each value gives one point. I will explain, and soon you will try it by hand.',
+          responseType: 'explanation',
+          followUpQuestion: ar
+            ? 'ما القيمة التي تريد أن نبدأ بها على المحور الأفقي؟'
+            : 'Which value should we start with on the horizontal axis?',
+          suggestedAction: 'ask_followup',
+          relatedConcept: ar ? 'التمثيل البياني' : 'graphing',
+          needsClarification: false,
+          interactivePayload: null,
+          suggestedInteraction: {
+            mechanic: 'plot_graph',
+            reason: ar
+              ? 'رؤية المنحنى وهو يتغيّر مع تغيّر الميل تبني الفكرة أفضل من وصفها بالكلمات.'
+              : 'Watching the curve move as the slope changes builds the idea better than describing it.',
+            conceptFamily: ar ? 'تمثيل الدوال الخطية بيانيًا' : 'graphing linear functions',
+          },
         };
         return { model: 'mock', data };
       }
@@ -231,6 +264,7 @@ export class MockProvider implements ContentProvider {
           relatedConcept: params.context?.concept ?? (ar ? 'مساحة المثلث' : 'triangle area'),
           needsClarification: false,
           interactivePayload: null,
+          suggestedInteraction: null,
         }
       : primary
         ? {
@@ -243,6 +277,7 @@ export class MockProvider implements ContentProvider {
             relatedConcept: null,
             needsClarification: false,
             interactivePayload: null,
+            suggestedInteraction: null,
           }
         : {
             message: ar
@@ -254,6 +289,7 @@ export class MockProvider implements ContentProvider {
             relatedConcept: null,
             needsClarification: false,
             interactivePayload: null,
+            suggestedInteraction: null,
           };
     return { model: 'mock', data };
   }

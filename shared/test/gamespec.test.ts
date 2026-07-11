@@ -15,6 +15,7 @@ import {
   buildIntroLevel,
   assembleMcqSpec,
   McqContentSpecSchema,
+  KINDS_BY_GAME,
   type GameSpec,
 } from '../src/index.js';
 
@@ -385,5 +386,58 @@ describe('learning ladder + concept + wrapper', () => {
     spec.levels[0]!.learningLevel = 'recognize';
     const r = validateGameSpec(spec);
     expect(r.issues.map((i) => i.code)).toContain('INTRO_LEARNING_LEVEL');
+  });
+});
+
+describe('Number City golden lessons (Shapes District)', () => {
+  const nature = () => GameSpecSchema.parse(loadSample('number_city_shapes_nature.ar.json')) as GameSpec;
+  const construction = () =>
+    GameSpecSchema.parse(loadSample('number_city_shapes_construction.ar.json')) as GameSpec;
+
+  it('both wrapper goldens are bundled', () => {
+    expect(fullSpecFiles).toContain('number_city_shapes_nature.ar.json');
+    expect(fullSpecFiles).toContain('number_city_shapes_construction.ar.json');
+  });
+
+  it('wrappers differ ONLY in meta.wrapper — identical items, verification, difficulty, evidence inputs', () => {
+    const a = nature();
+    const b = construction();
+    expect(a.meta.wrapper).toBe('nature');
+    expect(b.meta.wrapper).toBe('construction');
+    const strip = (spec: GameSpec) => ({ ...spec, meta: { ...spec.meta, wrapper: undefined } });
+    expect(strip(b)).toEqual(strip(a));
+  });
+
+  it('the session climbs the full ladder with observe/notice captions on every educational level', () => {
+    const spec = nature();
+    const edu = spec.levels.filter((l) => !l.isIntro);
+    expect(edu.map((l) => l.learningLevel)).toEqual(['recognize', 'understand', 'apply', 'challenge']);
+    for (const l of edu) {
+      expect(l.observe, `level ${l.index} missing observe caption`).toBeTruthy();
+      expect(l.notice, `level ${l.index} missing notice caption`).toBeTruthy();
+    }
+  });
+
+  it('number_city REQUIRES the learning ladder', () => {
+    const spec = nature();
+    for (const l of spec.levels) delete l.learningLevel;
+    expect(validateGameSpec(spec).issues.map((i) => i.code)).toContain('LEARNING_LEVELS_REQUIRED');
+  });
+
+  it('number_city registers exactly the four scene kinds and the lesson uses only those', () => {
+    expect([...KINDS_BY_GAME.number_city]).toEqual(['tap_scene', 'drag_collect', 'sequence', 'build_complete']);
+    const used = new Set(nature().levels.flatMap((l) => l.items.map((i) => i.kind)));
+    expect(used.size).toBe(4); // all four mechanics genuinely used
+    for (const k of used) expect(KINDS_BY_GAME.number_city).toContain(k);
+  });
+
+  it('observe/notice captions reach moderation text and obey Arabic purity', () => {
+    const spec = nature();
+    const texts = collectTextFields(spec);
+    expect(texts).toContain(spec.levels[1]!.observe);
+    expect(texts).toContain(spec.levels[1]!.notice);
+    const bad = nature();
+    bad.levels[1]!.observe = 'English only caption';
+    expect(validateGameSpec(bad).issues.map((i) => i.code)).toContain('LANGUAGE_PURITY');
   });
 });

@@ -49,8 +49,11 @@ const kInterestEmoji = {
   'art': '🎨', 'music': '🎵',
 };
 
+// number_city is NOT in kGameTypes (composer list): its lessons are curated
+// and open through the dedicated Number City entry on the trail home.
 const kGameTypeEmoji = {
   'quest_path': '🗺️', 'goal_shootout': '🥅', 'draw_connect': '✏️',
+  'number_city': '🏙️',
 };
 
 const kThemeEmoji = {

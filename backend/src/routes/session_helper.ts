@@ -96,6 +96,17 @@ export async function recordSession(
  * on a supportive retry (stored as incorrect + recovered, the same shape the
  * learn engine uses for recovered-after-error).
  */
+/** Item kind → evidence kind: manipulation/assembly kinds are construction
+ *  evidence; recognition kinds (tap a choice, tap objects) are recall. */
+const EVIDENCE_KIND_BY_ITEM: Record<string, 'construction' | 'recall'> = {
+  mcq: 'recall',
+  tap_scene: 'recall',
+  connect: 'construction',
+  drag_collect: 'construction',
+  sequence: 'construction',
+  build_complete: 'construction',
+};
+
 export function gameEvidenceFromSummary(
   sessionId: string,
   game: GameRow | null,
@@ -103,7 +114,7 @@ export function gameEvidenceFromSummary(
 ): LearnEvidenceInput[] {
   const items = Array.isArray(summary.items) ? summary.items.slice(0, 60) : [];
   const gameType = typeof summary.gameType === 'string' ? summary.gameType : game?.gameType ?? null;
-  const kind = gameType === 'draw_connect' ? 'construction' : 'recall';
+  const gameKind = gameType === 'draw_connect' ? 'construction' : 'recall';
   const now = new Date();
   const events: LearnEvidenceInput[] = [];
 
@@ -117,11 +128,16 @@ export function gameEvidenceFromSummary(
     if (!itemId || !concept) continue;
     const firstTry = it.correct === true;
     const recovered = it.recovered === true;
+    // Newer shells report the item kind per row; fall back to the game-level
+    // mapping for summaries recorded before the kind field existed.
+    const kind = (typeof it.kind === 'string' && EVIDENCE_KIND_BY_ITEM[it.kind]) || gameKind;
     events.push({
       id: `gi_${sessionId}_${itemId}`.slice(0, 64),
       skillId: `game:${concept}`,
       representation: 'game',
-      context: null,
+      // The checkpoint beat (six-beat learning flow) is the level's own
+      // "show what you know" moment — kept as evidence context.
+      context: it.beat === 'checkpoint' ? 'checkpoint' : null,
       source: 'game_item',
       kind,
       outcome: firstTry ? 'correct' : 'incorrect',

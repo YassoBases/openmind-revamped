@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout *)",
+      "Bash(git merge --no-ff middle-school-curriculum-paths -m 'Merge middle-school-curriculum-paths: Grade 7 curriculum paths \\(catalog v2\\) *)",
+      "Bash(rm -f cairo-*.ttf)",
+      "Bash(curl -fsSL \"https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf\" -o Cairo-VariableFont.ttf)",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

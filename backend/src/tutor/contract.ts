@@ -97,6 +97,35 @@ export const InteractiveResultSchema = z.object({
 });
 export type InteractiveResult = z.infer<typeof InteractiveResultSchema>;
 
+/**
+ * Interaction-mechanic taxonomy for the honest-fallback channel. When acting
+ * WOULD teach better than reading but NO registered tool can render the
+ * concept, the model names the mechanic it wishes existed instead of forcing a
+ * bad fit. The first row are mechanics the registry already covers (naming one
+ * here flags a SELECTION gap — a fit should have produced a real payload); the
+ * rest are the platform's growth edge (nothing renders them yet). 'other' is
+ * the escape hatch. This never becomes a broken activity — it is a
+ * prioritization signal, logged and counted server-side (routes/tutor.ts), so
+ * the tool library grows toward real demand rather than guesswork.
+ */
+export const INTERACTION_MECHANICS = [
+  // Already have renderers (mirror the registry's Primitive taxonomy):
+  'place_on_scale', 'order', 'classify', 'match', 'compose', 'adjust_observe', 'decide',
+  // Not supported yet — the growth edge:
+  'simulate', 'plot_graph', 'draw_annotate', 'locate_map', 'build_expression', 'other',
+] as const;
+export type InteractionMechanic = (typeof INTERACTION_MECHANICS)[number];
+
+export const SuggestedInteractionSchema = z.object({
+  /** The interaction mechanic that would teach this concept best. */
+  mechanic: z.enum(INTERACTION_MECHANICS),
+  /** One line on why DOING would beat reading here — the demand, in plain words. */
+  reason: z.string().min(1).max(240),
+  /** The curriculum concept it would serve, e.g. "قراءة رسم بياني خطي", or null. */
+  conceptFamily: z.string().max(80).nullable(),
+});
+export type SuggestedInteraction = z.infer<typeof SuggestedInteractionSchema>;
+
 /** What the LLM generates (validated before anything reaches a student). */
 export const TutorReplySchema = z.object({
   message: z.string().min(1).max(1200),
@@ -110,6 +139,14 @@ export const TutorReplySchema = z.object({
   needsClarification: z.boolean(),
   /** Ask → See → Try: an approved interactive block, or null for text-only. */
   interactivePayload: InteractivePayloadSchema.nullable(),
+  /**
+   * Honest fallback: when an interactive activity WOULD help but no registered
+   * tool can render the concept, the model sets interactivePayload to null and
+   * names the missing interaction here (for future-renderer prioritization).
+   * Null in every other case — including when a tool DID fit (that produces
+   * interactivePayload), or when plain explanation was the right response.
+   */
+  suggestedInteraction: SuggestedInteractionSchema.nullable(),
 });
 export type TutorReply = z.infer<typeof TutorReplySchema>;
 

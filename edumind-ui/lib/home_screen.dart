@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import 'core/app_theme.dart';
 import 'core/palette.dart';
+import 'core/session.dart';
+import 'core/spec_assembler.dart';
 import 'data/game_store.dart';
 import 'features/composer/composer_screen.dart';
 import 'features/demos/demos_screen.dart';
@@ -84,6 +86,41 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       MaterialPageRoute(builder: (_) => const DemosScreen()),
     );
     if (mounted) await _load();
+  }
+
+  /// Dedicated Number City entry (never through the composer): opens the
+  /// curated Shapes District lesson, wrapper picked from the child's stored
+  /// interest. Wrappers re-skin presentation only — the lesson, its answers,
+  /// difficulty and evidence are identical.
+  Future<void> _openNumberCity() async {
+    final profile = Session.instance.profile ?? const <String, dynamic>{};
+    final interest = profile['interest'] as String?;
+    const buildersAndMovers = {'robots', 'cars', 'football'};
+    final wrapper =
+        buildersAndMovers.contains(interest) ? 'construction' : 'nature';
+    final spec = await SpecAssembler.numberCitySpec(wrapper);
+
+    // Personalize the student block (name/color/companion — never content).
+    final student = Map<String, dynamic>.from(spec['student'] as Map);
+    final name = (profile['name'] as String?)?.trim() ?? '';
+    if (name.isNotEmpty) {
+      student['name'] = name.length > 24 ? name.substring(0, 24) : name;
+    }
+    final color = profile['color'] as String?;
+    if (color != null && RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(color)) {
+      student['color'] = color;
+    }
+    if (kInterests.contains(interest)) student['interest'] = interest;
+    spec['student'] = student;
+
+    if (!mounted) return;
+    final feedback = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (_) => PlayerScreen(launch: PlayerLaunch.demo(spec))),
+    );
+    if (!mounted) return;
+    await _load();
+    _maybeShowFeedback(feedback);
   }
 
   void _maybeShowFeedback(Map<String, dynamic>? feedback) {
@@ -249,10 +286,15 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildPath() {
-    final children = <Widget>[];
+    final children = <Widget>[
+      // Number City leads the trail: the curated learning world has its own
+      // permanent front door, separate from the AI-game composer flow.
+      _numberCityNode(alignStart: true),
+      _pathLine(isStart: true),
+    ];
     // Newest games near the top, the create node leads the trail.
     for (var i = 0; i < _games.length; i++) {
-      final alignStart = i.isEven;
+      final alignStart = i.isOdd;
       children.add(_gameNode(_games[i], alignStart));
       children.add(_pathLine(isStart: alignStart));
     }
@@ -260,8 +302,70 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       children.add(const SizedBox(height: 90));
     }
     // The create node is always last in the column (visually the "next step").
-    children.add(_createNode(alignStart: _games.length.isEven));
+    children.add(_createNode(alignStart: _games.length.isOdd));
     return Column(children: children);
+  }
+
+  Widget _numberCityNode({required bool alignStart}) {
+    final l = AppLocalizations.of(context)!;
+    return Align(
+      alignment: alignStart
+          ? AlignmentDirectional.centerStart
+          : AlignmentDirectional.centerEnd,
+      child: GestureDetector(
+        onTap: _openNumberCity,
+        child: Column(
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: Palette.blue,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 4),
+                boxShadow: [
+                  BoxShadow(
+                    color: Palette.blue.withValues(alpha: 0.5),
+                    blurRadius: 16,
+                    spreadRadius: 3,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text('🏙️', style: TextStyle(fontSize: 38)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: 150,
+              child: Column(
+                children: [
+                  Text(
+                    l.translate('number_city'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: Palette.dark,
+                    ),
+                  ),
+                  Text(
+                    l.translate('number_city_shapes'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Palette.dark.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _createNode({required bool alignStart}) {

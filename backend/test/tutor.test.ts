@@ -206,6 +206,29 @@ describe('tutor', () => {
       expect(res.statusCode).toBe(201);
       expect(res.json().reply.interactivePayload).toBeNull();
       expect(res.json().reply.message.length).toBeGreaterThan(0);
+      // Plain explanation was the right response — no interaction was wanted.
+      expect(res.json().reply.suggestedInteraction).toBeNull();
+    });
+
+    it('names a missing interaction (future-support signal) when acting would help but no tool fits', async () => {
+      const res = await g7('POST', '/api/v1/tutor/messages', {
+        question: 'كيف أرسم دالة خطية على تمثيل بياني؟',
+      });
+      expect(res.statusCode).toBe(201);
+      const reply = res.json().reply;
+      // Honest fallback: text teaches, no forced block, and the wish is named.
+      expect(reply.interactivePayload).toBeNull();
+      expect(reply.message.length).toBeGreaterThan(0);
+      expect(reply.suggestedInteraction).toMatchObject({ mechanic: 'plot_graph' });
+      expect(reply.suggestedInteraction.reason.length).toBeGreaterThan(0);
+    });
+
+    it('drops the wish when a real block shipped (never both)', async () => {
+      const res = await g7('POST', '/api/v1/tutor/messages', {
+        question: 'ضع الكسر ٣/٤ على خط الأعداد',
+      });
+      expect(res.json().reply.interactivePayload?.type).toBe('number_line');
+      expect(res.json().reply.suggestedInteraction).toBeNull();
     });
 
     it('interactiveResult returns through the same conversation and gets a result-aware reply', async () => {

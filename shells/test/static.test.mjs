@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const shellsDir = join(here, '..');
 
-const GAMES = ['quest_path', 'goal_shootout', 'draw_connect'];
+const GAMES = ['quest_path', 'goal_shootout', 'draw_connect', 'number_city'];
 const read = (p) => readFileSync(p, 'utf8');
 
 const libs = {
@@ -30,7 +30,7 @@ const template = read(join(shellsDir, 'src', 'template.html'));
 const allOurCode = Object.values(libs).join('\n') + Object.values(games).join('\n');
 
 describe('built artifacts', () => {
-  it('all three shells are built single-file HTML with the spec slot', () => {
+  it('every shell is built single-file HTML with the spec slot', () => {
     for (const g of GAMES) {
       const p = join(shellsDir, 'dist', `${g}.html`);
       expect(existsSync(p), `${g}.html missing — run build`).toBe(true);
@@ -278,4 +278,57 @@ describe('tutorial (intro level) is built in', () => {
       expect(games[g]).toMatch(/ar:/);
     });
   }
+});
+
+describe('Number City learning shell (Phase 3)', () => {
+  const nc = games.number_city;
+
+  it('runs the six-beat flow: observe → try → notice → explain → practice → checkpoint', () => {
+    expect(nc).toMatch(/observeBeat\(/);
+    expect(nc).toMatch(/noticeBeat\(/);
+    expect(nc).toMatch(/currentBeat = 'try'/);
+    expect(nc).toMatch(/currentBeat = 'explain'/);
+    expect(nc).toMatch(/'checkpoint' : 'practice'/);
+    // interaction before explanation: the try beat runs before the teach cards
+    const teachPhase = nc.slice(nc.indexOf('async teachPhase'), nc.indexOf('async practicePhase'));
+    expect(teachPhase.indexOf('observeBeat')).toBeGreaterThan(-1);
+    expect(teachPhase.indexOf('runItem')).toBeLessThan(teachPhase.indexOf('super.teachPhase'));
+  });
+
+  it('implements all four scene mechanics on the shared Interact primitives', () => {
+    for (const mech of ['playTapScene', 'playDragCollect', 'playSequence', 'playBuildComplete']) {
+      expect(nc, `missing mechanic ${mech}`).toMatch(new RegExp(mech + '\\('));
+    }
+    expect(nc).toMatch(/Interact\.makeTappable\(/);
+    expect(nc).toMatch(/Interact\.attachDrag\(/);
+    expect(nc).toMatch(/Interact\.nearest\(/);
+    // no bespoke pointer machinery in the game file
+    expect(nc).not.toMatch(/this\.input\.on\('pointerdown'/);
+  });
+
+  it('completion mechanics are honest: final results with completed-recovery, first-try scoring intact', () => {
+    const finals = (nc.match(/final: true, completed: true/g) || []).length;
+    expect(finals).toBeGreaterThanOrEqual(4); // one per mechanic
+    expect(nc).toMatch(/wrongAttempts === 0/);
+  });
+
+  it('wrappers are presentation-only tables (nature + construction) and never read answers', () => {
+    expect(nc).toMatch(/WRAPPERS = \{/);
+    expect(nc).toMatch(/nature:/);
+    expect(nc).toMatch(/construction:/);
+    // the wrapper tables carry art/strings only — the word "correct" may not
+    // appear inside them (verification never touches the wrapper seam)
+    const tables = nc.slice(nc.indexOf('const WRAPPERS'), nc.indexOf('// Beat chips'));
+    expect(tables).not.toMatch(/correct/);
+  });
+
+  it('exposes the drag debug surface for the autopilot', () => {
+    expect(nc).toMatch(/EduMindDebug\.getDrag/);
+  });
+
+  it('the engine envelope carries the live learning-ladder rung and beat', () => {
+    expect(libs.educore).toMatch(/learningLevel: this\.currentLearningLevel \|\| null/);
+    expect(libs.educore).toMatch(/beat: this\.currentBeat \|\| null/);
+    expect(libs.educore).toMatch(/currentLearningLevel = level && level\.learningLevel/);
+  });
 });

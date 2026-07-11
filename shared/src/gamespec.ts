@@ -149,6 +149,12 @@ export const LevelSchema = z.object({
    *  levels carry exactly recognize → understand → apply → challenge in
    *  order (enforced semantically). Absent for classic game sessions. */
   learningLevel: z.enum(LEARNING_LEVELS).optional(),
+  /** Six-beat flow captions (observe → try → notice → explain → practice →
+   *  checkpoint). `observe` opens the level before any interaction; `notice`
+   *  names the pattern right after the first try. Canonical learning content:
+   *  identical across wrappers, which only re-skin the scene around them. */
+  observe: z.string().min(1).max(LIMITS.beatCaption).optional(),
+  notice: z.string().min(1).max(LIMITS.beatCaption).optional(),
   teaching: z.array(TeachCardSchema).max(LIMITS.teachCardsMax),
   items: z.array(ItemSchema).max(LIMITS.itemsPerLevelMax),
 });
@@ -325,6 +331,8 @@ export function collectTextFields(spec: GameSpec): string[] {
   if (spec.narrative) out.push(spec.narrative.intro, spec.narrative.outro, ...spec.narrative.perLevel);
   for (const level of spec.levels) {
     out.push(level.title);
+    if (level.observe) out.push(level.observe);
+    if (level.notice) out.push(level.notice);
     for (const t of level.teaching) out.push(t.text);
     for (const item of level.items) {
       out.push(item.prompt, item.explanation, ...item.hints);
@@ -491,6 +499,13 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
             'Arabic teach card contains no Arabic script', t.id);
         }
       });
+      for (const beat of ['observe', 'notice'] as const) {
+        const caption = level[beat];
+        if (caption && !hasArabic(caption)) {
+          pushIssue(issues, 'LANGUAGE_PURITY', `levels[${li}].${beat}`,
+            `Arabic ${beat} caption contains no Arabic script`);
+        }
+      }
     });
     if (spec.narrative && !hasArabic(spec.narrative.intro)) {
       pushIssue(issues, 'LANGUAGE_PURITY', 'narrative.intro', 'Arabic narrative contains no Arabic script');
@@ -577,7 +592,9 @@ function validateBuildComplete(issues: SpecIssue[], ip: string, item: BuildCompl
 }
 
 /** When a session uses the learning ladder, its educational levels carry
- *  exactly recognize → understand → apply → challenge, in order. */
+ *  exactly recognize → understand → apply → challenge, in order. The
+ *  Number City learning shell REQUIRES the ladder — its whole session is
+ *  the four-level climb. */
 function validateLearningLadder(issues: SpecIssue[], spec: GameSpec) {
   const edu = spec.levels.filter((l) => !l.isIntro);
   const tagged = edu.filter((l) => l.learningLevel != null);
@@ -586,7 +603,13 @@ function validateLearningLadder(issues: SpecIssue[], spec: GameSpec) {
     pushIssue(issues, 'INTRO_LEARNING_LEVEL', 'levels[0].learningLevel',
       'the intro level never carries a learning level');
   }
-  if (tagged.length === 0) return; // classic game session
+  if (tagged.length === 0) {
+    if (spec.meta.gameType === 'number_city') {
+      pushIssue(issues, 'LEARNING_LEVELS_REQUIRED', 'levels',
+        'number_city sessions climb the learning ladder — every educational level needs a learningLevel');
+    }
+    return; // classic game session
+  }
   if (tagged.length !== edu.length) {
     pushIssue(issues, 'LEARNING_LEVELS_INCOMPLETE', 'levels',
       'either every educational level carries a learningLevel or none does');

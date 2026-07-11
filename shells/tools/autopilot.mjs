@@ -94,6 +94,7 @@ while (!done && Date.now() - start < timeoutMs) {
     scene: window.EduMindDebug.sceneKey,
     tappables: window.EduMindDebug.tappables,
     connect: window.EduMindDebug.getConnect ? window.EduMindDebug.getConnect() : null,
+    drag: window.EduMindDebug.getDrag ? window.EduMindDebug.getDrag() : null,
     eventTypes: [...new Set(window.EduMindDebug.events.map((e) => e.type))],
   }));
 
@@ -117,6 +118,8 @@ while (!done && Date.now() - start < timeoutMs) {
     case 'levelStart':
     case 'levelEnd':
     case 'feedback':
+    case 'observe':
+    case 'notice':
       await tap(360, 620);
       break;
     case 'teach':
@@ -129,6 +132,11 @@ while (!done && Date.now() - start < timeoutMs) {
       if (dbg.connect && dbg.connect.length) {
         const c = dbg.connect[0];
         await drag(c.ax, c.ay, c.bx, c.by);
+        break;
+      }
+      if (dbg.drag && dbg.drag.length) {
+        const d = dbg.drag[0];
+        await drag(d.ax, d.ay, d.bx, d.by);
         break;
       }
       if (dbg.tappables.length) {

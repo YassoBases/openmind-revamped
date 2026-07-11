@@ -72,12 +72,20 @@ function buildFactcheckPieces(spec: GameSpec): FactCheckPiece[] {
                 explanation: item.explanation,
                 hints: item.hints,
               }
-            : {
-                prompt: item.prompt,
-                edgeIds: item.edgeIds,
-                explanation: item.explanation,
-                hints: item.hints,
-              },
+            : item.kind === 'connect'
+              ? {
+                  prompt: item.prompt,
+                  edgeIds: item.edgeIds,
+                  explanation: item.explanation,
+                  hints: item.hints,
+                }
+              : {
+                  // scene kinds (curated for now) — prompt/explanation carry
+                  // the checkable claims
+                  prompt: item.prompt,
+                  explanation: item.explanation,
+                  hints: item.hints,
+                },
       });
     }
   }

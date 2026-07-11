@@ -16,6 +16,7 @@ process.env.NODE_ENV = 'production'; // no pino-pretty transport in tests
 const { buildApp } = await import('../src/app.js');
 const { MockProvider } = await import('../src/llm/mock.js');
 const { MemoryStore } = await import('../src/store/memory.js');
+const { gameEvidenceFromSummary } = await import('../src/routes/session_helper.js');
 
 let app: FastifyInstance;
 let token = '';
@@ -204,6 +205,34 @@ describe('sessions, XP, streak, review', () => {
     const stats = await api('GET', '/api/v1/students/me/stats');
     expect(stats.json().xp).toBeGreaterThanOrEqual(320);
     expect(stats.json().todaySessions).toBe(1);
+  });
+
+  it('number_city cannot be generated — its lessons are curated', async () => {
+    const res = await api('POST', '/api/v1/games', {
+      topic: 'Shapes', subject: 'Math',
+      gameType: 'number_city', theme: 'shapes_district', sessionLength: 5, difficulty: 'easy',
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('GAME_TYPE_NOT_GENERATABLE');
+  });
+
+  it('scene-kind evidence maps item kinds and the checkpoint beat', () => {
+    const summary = {
+      gameType: 'number_city',
+      items: [
+        { id: 'l1_i1', kind: 'tap_scene', levelIndex: 1, correct: true, hintsUsed: 0, beat: 'try', concepts: ['الدائرة'], difficulty: 1 },
+        { id: 'l2_i1', kind: 'drag_collect', levelIndex: 2, correct: false, recovered: true, hintsUsed: 1, beat: 'practice', concepts: ['المثلث'], difficulty: 2 },
+        { id: 'l3_i1', kind: 'build_complete', levelIndex: 3, correct: true, hintsUsed: 0, beat: 'checkpoint', concepts: ['المربع'], difficulty: 3 },
+        { id: 'l4_i1', kind: 'sequence', levelIndex: 4, correct: true, hintsUsed: 0, beat: 'checkpoint', concepts: ['الزوايا'], difficulty: 4 },
+      ],
+    };
+    const rows = gameEvidenceFromSummary('s1', null, summary);
+    expect(rows.map((r) => r.kind)).toEqual(['recall', 'construction', 'construction', 'construction']);
+    expect(rows.map((r) => r.context)).toEqual([null, null, 'checkpoint', 'checkpoint']);
+    expect(rows[0]!.skillId).toBe('game:الدائرة');
+    expect(rows[1]!.outcome).toBe('incorrect');
+    expect(rows[1]!.recovered).toBe(true);
+    expect(rows[0]!.toolId).toBe('number_city');
   });
 
   it('game sessions leave game_item evidence in the learning-evidence store', async () => {

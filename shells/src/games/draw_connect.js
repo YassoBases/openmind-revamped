@@ -500,8 +500,9 @@
 
       EduCore.setTappables([]);
       // Drawing until complete IS the supportive retry for this mechanic —
-      // `final` tells the engine loop not to re-present the item.
-      return { correct: wrongAttempts === 0, final: true };
+      // `final` tells the engine loop not to re-present the item, and
+      // `completed` marks a finish-with-stumbles as recovered, not failed.
+      return { correct: wrongAttempts === 0, final: true, completed: true };
     }
 
     /** Test surface: remaining required connections as coordinate pairs. */

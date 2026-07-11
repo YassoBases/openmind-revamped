@@ -157,6 +157,7 @@
     H,
     PALETTE,
     XP_RULES: XP,
+    ADAPT,
     VERSION: '4.0.0',
     spec: null,
     stub: false,
@@ -268,11 +269,14 @@
      * attempt_submitted, hint_requested, hint_shown, misconception_detected,
      * level_completed, experience_completed.
      */
+    /** The learning-ladder rung of the level in play (set by runLevelShell). */
+    currentLearningLevel: null,
+
     reportLearning(name, extra) {
       const meta = this.spec && this.spec.meta ? this.spec.meta : {};
       this.bridge.reportEvent(name, Object.assign({
         conceptId: meta.conceptId || null,
-        learningLevel: null, // recognize/understand/apply/challenge — future specs
+        learningLevel: this.currentLearningLevel || null,
         templateId: meta.gameType || null,
         wrapperId: meta.wrapper || meta.theme || null,
       }, extra || {}));
@@ -618,6 +622,7 @@
       const spec = EduCore.spec;
       const level = spec.levels[levelIndex];
       const title = level ? level.title : EduCore.t('intro'); // stub specs carry no levels yet
+      EduCore.currentLearningLevel = level && level.learningLevel ? level.learningLevel : null;
       EduCore.bridge.reportEvent('level_start', { index: levelIndex, title });
 
       await this.levelTransition(levelIndex);
@@ -854,6 +859,9 @@
           attempt,
           outcome: result.correct ? 'correct' : 'incorrect',
           hintsUsed,
+          // Six-beat flow position (try/practice/checkpoint) when the shell
+          // runs one — null for the classic teach → practice loop.
+          beat: this.currentBeat || null,
           ms: Date.now() - startedAt,
         });
         if (result.correct || result.final) break;
@@ -865,14 +873,19 @@
 
       const solved = !!result.correct;
       const firstTry = solved && attempt === 1;
-      const recovered = solved && attempt > 1;
+      // Recovered = worked it out after stumbling: solved on a retry, or a
+      // completion mechanic (final) finished despite wrong tries along the
+      // way — the learner still got there, which is a win, just not first-try.
+      const recovered = (solved && attempt > 1) || (!solved && !!result.completed);
       session.items.push({
         id: item.id,
+        kind: item.kind,
         levelIndex,
         correct: firstTry,
         recovered,
         attempts: attempt,
         hintsUsed,
+        beat: this.currentBeat || null,
         concepts: item.concepts,
         difficulty: item.difficulty,
         prompt: item.prompt,
@@ -929,7 +942,8 @@
         hintsUsed,
       });
 
-      await this.showExplanation(item, solved);
+      // Getting there (even with stumbles) earns the celebratory frame.
+      await this.showExplanation(item, solved || recovered);
     }
 
     /** Between attempts: warm feedback + the next hint rung, auto-offered. */
@@ -1190,6 +1204,7 @@
     // ------------------------------------------------------------- finish
     finishSession() {
       const s = EduCore.session;
+      EduCore.currentLearningLevel = null; // session-level events carry no rung
       s.mastery = EduCore.engine.isMastery();
       if (s.mastery) s.xp += XP.mastery;
 
