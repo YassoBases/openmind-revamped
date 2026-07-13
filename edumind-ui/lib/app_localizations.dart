@@ -154,8 +154,9 @@ class AppLocalizations {
       // check step (تحقق من الفهم)
       'learn_check_item': 'Question {n} of {m}',
       'learn_check_next': 'Next',
-      'learn_check_score': 'You answered {c} of {m} correctly',
+      'learn_check_score': 'You got {c} of {m} right on the first try',
       'learn_check_review': 'Review the idea with your tutor',
+      'learn_try_again': 'Try another answer — you can find it',
       // balance_scale lesson widget (shared with the tutor's Ask Hudhud block)
       'learn_balance_checking': 'Checking…',
       'learn_balance_correct': 'The scale is balanced — well done!',
@@ -199,6 +200,7 @@ class AppLocalizations {
       'blk_correct': 'Correct! Well done',
       'blk_partial': 'Close — look at the marked spots',
       'blk_incorrect': 'Not right yet — your tutor will pick it up from here',
+      'blk_retry': 'Try again',
       'blk_sent': 'Your result went to your tutor',
       'blk_answered': 'You completed this activity — its result is with your tutor',
       'blk_item_of': 'Item {n} of {m}',
@@ -512,8 +514,9 @@ class AppLocalizations {
       // check step (تحقق من الفهم)
       'learn_check_item': 'سؤال {n} من {m}',
       'learn_check_next': 'التالي',
-      'learn_check_score': 'أجبت صحيحًا عن {c} من {m}',
+      'learn_check_score': 'أصبت {c} من {m} من المحاولة الأولى',
       'learn_check_review': 'راجع الفكرة مع مساعدك',
+      'learn_try_again': 'جرّب إجابة أخرى — يمكنك الوصول إليها',
       // ميزان المجهول (نفس أداة اسأل هدهد بالتحقق من الخادم)
       'learn_balance_checking': 'جارٍ التحقق…',
       'learn_balance_correct': 'الميزان متوازن — أحسنت!',
@@ -556,6 +559,7 @@ class AppLocalizations {
       'blk_correct': 'صحيح! أحسنت',
       'blk_partial': 'اقتربت — انظر إلى المواضع المعلَّمة',
       'blk_incorrect': 'ليست صحيحة بعد — سيتابع مساعدك من هنا',
+      'blk_retry': 'حاول مرة أخرى',
       'blk_sent': 'أُرسلت نتيجتك إلى مساعدك',
       'blk_answered': 'أنجزت هذا النشاط — نتيجته عند مساعدك',
       'blk_item_of': 'العنصر {n} من {m}',

@@ -8,6 +8,7 @@ import '../context/context_sheet.dart';
 import '../learn/experience_screen.dart';
 import '../learn/journey_logic.dart';
 import '../learn/learn_catalog.dart';
+import '../learn/learn_models.dart';
 import '../learn/learn_progress_store.dart';
 
 /// The middle-school Home: one meaningful learning moment. A calm greeting,
@@ -32,6 +33,7 @@ class StartScreen extends StatefulWidget {
 
 class _StartScreenState extends State<StartScreen> {
   StartAction? _action;
+  List<LearnCatalog> _catalogs = const [];
   int _pathDone = 0;
   int _pathReady = 0;
   bool _allDone = false;
@@ -61,6 +63,7 @@ class _StartScreenState extends State<StartScreen> {
       grade: Session.instance.grade,
     );
     final store = await LearnProgressStore.load();
+    _catalogs = catalogs;
     void recompute() {
       final completed = store.completed;
       final resume = store.resume;
@@ -91,6 +94,15 @@ class _StartScreenState extends State<StartScreen> {
   Future<void> _openAction() async {
     final action = _action;
     if (action == null) return;
+    // The owning catalog's subject (null when unresolvable — the tutor
+    // context then omits the subject rather than guessing one).
+    String? subject;
+    for (final c in _catalogs) {
+      if (c.paths.any((p) => p.id == action.position.path.id)) {
+        subject = c.subject;
+        break;
+      }
+    }
     await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -98,6 +110,7 @@ class _StartScreenState extends State<StartScreen> {
           path: action.position.path,
           experience: action.position.experience,
           initialStep: action.step,
+          subject: subject,
         ),
       ),
     );

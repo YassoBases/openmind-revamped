@@ -36,9 +36,21 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
   final List<String> _picked = [];
   InteractiveOutcome? _outcome;
 
-  bool get _active => widget.enabled && _outcome == null;
+  // Correct freezes; a miss keeps the sequence editable for another try while
+  // the parent keeps the instance open (same convention as the shared cores).
+  bool get _active => widget.enabled && _outcome != InteractiveOutcome.correct;
   InteractiveItem _item(String id) =>
       widget.payload.items.firstWhere((i) => i.id == id);
+
+  /// Any edit after a miss clears the marks — the learner is on a new try.
+  void _edit(VoidCallback change) {
+    setState(() {
+      if (_outcome != null && _outcome != InteractiveOutcome.correct) {
+        _outcome = null;
+      }
+      change();
+    });
+  }
 
   void _check() {
     final l = AppLocalizations.of(context)!;
@@ -97,7 +109,7 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
                 for (final item in remaining)
                   OutlinedButton(
                     onPressed:
-                        _active ? () => setState(() => _picked.add(item.id)) : null,
+                        _active ? () => _edit(() => _picked.add(item.id)) : null,
                     style: OutlinedButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       shape: RoundedRectangleBorder(
@@ -113,7 +125,11 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.tonal(
-              onPressed: _active && _picked.length == p.items.length ? _check : null,
+              // A re-check requires an edit first (edits clear the marks) —
+              // never a same-answer resubmission.
+              onPressed: _active && _outcome == null && _picked.length == p.items.length
+                  ? _check
+                  : null,
               child: Text(
                 l.translate('blk_check'),
                 style: const TextStyle(fontWeight: FontWeight.w800),
@@ -137,7 +153,7 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
       padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadii.button),
-        onTap: _active ? () => setState(() => _picked.removeAt(i)) : null,
+        onTap: _active ? () => _edit(() => _picked.removeAt(i)) : null,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

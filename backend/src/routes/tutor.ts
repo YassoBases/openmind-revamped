@@ -11,11 +11,11 @@ import { config } from '../config.js';
 import { stageForGrade } from '../learning/stage.js';
 import { moderate } from '../llm/moderation.js';
 import { metrics } from '../pipeline/metrics.js';
-import type { ContentProvider } from '../pipeline/provider.js';
+import type { TutorProvider } from '../pipeline/provider.js';
 import { AskTutorBody } from '../schemas.js';
 import { validateInteractivePayload } from '../tutor/contract.js';
 import { assessInteractiveResult } from '../tutor/result.js';
-import { eligibleTools, subjectFromLabel } from '../tutor/tools/registry.js';
+import { TOOL_REGISTRY, eligibleTools, subjectFromLabel } from '../tutor/tools/registry.js';
 import type { Store } from '../store/types.js';
 
 /** How many prior turns ride along as conversation memory. */
@@ -28,7 +28,9 @@ const HISTORY_TURNS = 12;
  */
 const RESULT_WINDOW = 40;
 
-export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; provider: ContentProvider }) {
+// Only the narrow tutorReply seam is needed here — the full ContentProvider
+// satisfies it, and so does a dedicated tutor-only provider (llm/qwen.ts).
+export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; provider: TutorProvider }) {
   const { store, provider } = opts;
   const auth = makeAuthHook(store);
 
@@ -80,6 +82,9 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
     // and every submission leaves one structured learning signal.
     let interactiveResult = body.interactiveResult ?? null;
     let learningSignal = null;
+    // Whether this block instance can accept another attempt (drives the
+    // client's freeze/retry state; echoed in the response assessment).
+    let interactiveClosed = true;
     if (body.interactiveResult) {
       const assessed = assessInteractiveResult(body.interactiveResult, recentMessages, {
         subjectLabel: body.context?.subject,
@@ -88,6 +93,7 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
       });
       interactiveResult = assessed.result;
       learningSignal = assessed.signal;
+      interactiveClosed = assessed.closed;
       if (!assessed.result) {
         req.log.warn(
           { type: body.interactiveResult.blockType, reason: assessed.signal.rejectReason },
@@ -176,6 +182,29 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
     }
     if (body.interactiveResult) metrics.bump('tutor_interactive_result');
 
+    // Honest-fallback signal (Ask → See → Try growth loop): the model wanted an
+    // interaction none of the registered tools can render. This never reaches
+    // the student as an activity — the reply text carries the explanation — but
+    // it is logged and counted so the team can prioritize the next renderer by
+    // real demand. A wish is redundant when a real block already shipped, so we
+    // drop it; a wish whose mechanic maps to no available tool is the genuine
+    // gap the platform should grow to fill.
+    if (result.data.suggestedInteraction) {
+      if (result.data.interactivePayload) {
+        result.data.suggestedInteraction = null;
+      } else {
+        const wish = result.data.suggestedInteraction;
+        const known = TOOL_REGISTRY.some((t) => t.available && t.primitive === wish.mechanic);
+        req.log.info(
+          { mechanic: wish.mechanic, known, conceptFamily: wish.conceptFamily, subject: body.context?.subject },
+          '[tutor] interaction gap suggested',
+        );
+        metrics.bump('tutor_interaction_suggested');
+        metrics.bump(`tutor_interaction_suggested:${wish.mechanic}`);
+        if (!known) metrics.bump(`tutor_interaction_gap:${wish.mechanic}`);
+      }
+    }
+
     stamps.push(now);
     messageTimestamps.set(student.id, stamps);
 
@@ -235,7 +264,7 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
             verification: 'server_verified',
             attempt: learningSignal.attempt,
             hints: 0,
-            recovered: false,
+            recovered: learningSignal.recovered ?? false,
             errorPattern: learningSignal.errorPattern ?? null,
             toolId: learningSignal.tool,
             pathId: body.context?.pathId ?? null,
@@ -250,7 +279,26 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
       }
     }
 
-    return reply.code(201).send({ conversationId, reply: result.data, model: result.model });
+    // When a result rode this message, echo the server's verdict so the
+    // client can freeze a completed block or keep it open for a retry. Never
+    // more than the signal already persisted — no instance data leaks here.
+    const assessment = body.interactiveResult && learningSignal
+      ? {
+          verification: learningSignal.verification,
+          outcome: learningSignal.outcome,
+          attempt: learningSignal.attempt,
+          recovered: learningSignal.recovered ?? false,
+          closed: interactiveClosed,
+          ...(learningSignal.rejectReason ? { rejectReason: learningSignal.rejectReason } : {}),
+        }
+      : null;
+
+    return reply.code(201).send({
+      conversationId,
+      reply: result.data,
+      model: result.model,
+      ...(assessment ? { assessment } : {}),
+    });
   });
 
   // Conversation history — lets the client restore a thread after a reload.

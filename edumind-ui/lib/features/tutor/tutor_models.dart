@@ -254,16 +254,69 @@ class TutorReply {
       );
 }
 
+/// The server's verdict on a submitted [InteractiveResult] — echoed on the
+/// POST /tutor/messages response so the client can freeze a completed block
+/// or keep it open for a retry. The server owns this decision; the client
+/// only renders it.
+class InteractiveAssessment {
+  InteractiveAssessment({
+    required this.verification,
+    required this.outcome,
+    required this.attempt,
+    required this.recovered,
+    required this.closed,
+    this.rejectReason,
+  });
+
+  /// 'server_verified' | 'client_reported' | 'rejected'.
+  final String verification;
+
+  /// The final (server-recomputed when possible) outcome, or null on reject.
+  final String? outcome;
+
+  /// Which accepted attempt on this instance this was (1 = first try).
+  final int attempt;
+
+  /// True when a correct outcome followed earlier wrong attempts.
+  final bool recovered;
+
+  /// True when the instance accepts no further attempt — freeze the block.
+  final bool closed;
+
+  final String? rejectReason;
+
+  /// Defensive parse; null on anything unexpected (older server) — the
+  /// caller then falls back to the safe pre-retry behavior (freeze).
+  static InteractiveAssessment? fromMap(dynamic raw) {
+    if (raw is! Map) return null;
+    final m = raw.cast<String, dynamic>();
+    final verification = m['verification'];
+    if (verification is! String) return null;
+    return InteractiveAssessment(
+      verification: verification,
+      outcome: m['outcome'] as String?,
+      attempt: (m['attempt'] as num?)?.toInt() ?? 1,
+      recovered: (m['recovered'] as bool?) ?? false,
+      closed: (m['closed'] as bool?) ?? true,
+      rejectReason: m['rejectReason'] as String?,
+    );
+  }
+}
+
 /// The full POST /tutor/messages response.
 class TutorAskResult {
-  TutorAskResult({required this.conversationId, required this.reply});
+  TutorAskResult({required this.conversationId, required this.reply, this.assessment});
 
   final String conversationId;
   final TutorReply reply;
 
+  /// Present only when the request carried an [InteractiveResult].
+  final InteractiveAssessment? assessment;
+
   static TutorAskResult fromMap(Map<String, dynamic> m) => TutorAskResult(
         conversationId: m['conversationId'] as String,
         reply: TutorReply.fromMap(m['reply'] as Map<String, dynamic>),
+        assessment: InteractiveAssessment.fromMap(m['assessment']),
       );
 }
 
@@ -273,6 +326,7 @@ class TutorAskResult {
 class TutorContext {
   TutorContext({
     required this.source,
+    this.mode,
     this.subject,
     this.pathId,
     this.pathTitle,
@@ -289,6 +343,13 @@ class TutorContext {
   });
 
   final String source; // 'ask' | 'experience'
+
+  /// Reserved study-program id — one of the backend's STUDY_MODES stable
+  /// wire ids ('exam_prep', 'lesson_discovery', 'backlog_plan',
+  /// 'solve_diagnose', 'quick_review'). Program logic keys on these ids,
+  /// never on Arabic button text. Null today: no program is implemented yet.
+  final String? mode;
+
   final String? subject;
   final String? pathId;
   final String? pathTitle;
@@ -313,6 +374,7 @@ class TutorContext {
 
   Map<String, dynamic> toMap() => {
         'source': source,
+        if (mode != null) 'mode': mode,
         if (subject != null) 'subject': subject,
         if (pathId != null) 'pathId': pathId,
         if (pathTitle != null) 'pathTitle': pathTitle,

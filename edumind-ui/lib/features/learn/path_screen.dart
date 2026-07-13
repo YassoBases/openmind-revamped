@@ -90,8 +90,11 @@ class _PathScreenState extends State<PathScreen> {
     await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            ExperienceScreen(path: widget.path, experience: experience),
+        builder: (_) => ExperienceScreen(
+          path: widget.path,
+          experience: experience,
+          subject: _catalog?.subject,
+        ),
       ),
     );
     if (mounted) await _load();
@@ -116,6 +119,7 @@ class _PathScreenState extends State<PathScreen> {
           path: widget.path,
           experience: synthetic,
           isCheckpoint: true,
+          subject: catalog.subject,
         ),
       ),
     );

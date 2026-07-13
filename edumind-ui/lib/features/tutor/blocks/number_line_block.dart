@@ -40,7 +40,9 @@ class _NumberLineBlockState extends State<NumberLineBlock> {
   num get _step => widget.payload.step!;
   int get _divisions => ((_max - _min) / _step).round();
 
-  bool get _active => widget.enabled && _outcome == null;
+  // Correct freezes; a miss keeps the slider live for another try while the
+  // parent keeps the instance open (same convention as the shared cores).
+  bool get _active => widget.enabled && _outcome != InteractiveOutcome.correct;
 
   @override
   void initState() {
@@ -67,7 +69,12 @@ class _NumberLineBlockState extends State<NumberLineBlock> {
       step: _step,
       tolerance: p.tolerance,
     );
-    setState(() => _outcome = outcome);
+    // _moved resets so a retry requires actually moving the marker first —
+    // never a same-value resubmission.
+    setState(() {
+      _outcome = outcome;
+      _moved = false;
+    });
     final summary = l
         .translate('ir_numberline')
         .replaceFirst('{v}', formatNum(_value))

@@ -91,6 +91,20 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
     });
   }
 
+  /// A fresh run at the same pairs (the mistakes were already reported; the
+  /// server records the retry as a new attempt on the same instance).
+  void _retry() {
+    _flashTimer?.cancel();
+    setState(() {
+      _selectedId = null;
+      _matched.clear();
+      _mistakes = 0;
+      _wrongTries.clear();
+      _flashWrongId = null;
+      _outcome = null;
+    });
+  }
+
   void _finish() {
     final l = AppLocalizations.of(context)!;
     final p = widget.payload;
@@ -133,6 +147,7 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
       instructions: p.instructions,
       outcome: _outcome,
       sent: finished,
+      onRetry: widget.enabled && finished ? _retry : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

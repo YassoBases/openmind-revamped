@@ -85,6 +85,20 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
     });
   }
 
+  /// A fresh run at the same items (the mistakes were already reported; the
+  /// server records the retry as a new attempt on the same instance).
+  void _retry() {
+    _flashTimer?.cancel();
+    setState(() {
+      _index = 0;
+      _correct = 0;
+      _mistakes.clear();
+      _placements.clear();
+      _flashBucketId = null;
+      _outcome = null;
+    });
+  }
+
   void _finish() {
     final l = AppLocalizations.of(context)!;
     final p = widget.payload;
@@ -128,6 +142,7 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
       instructions: p.instructions,
       outcome: _outcome,
       sent: finished,
+      onRetry: widget.enabled && finished ? _retry : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

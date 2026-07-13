@@ -77,7 +77,18 @@ export interface FactCheckPiece {
   payload: Record<string, unknown>;
 }
 
-export interface ContentProvider {
+/**
+ * The narrow seam the tutor route depends on — just tutorReply. Every
+ * ContentProvider satisfies it, and a dedicated tutor-only provider (e.g.
+ * llm/qwen.ts for Ask Hudhud) can implement it WITHOUT touching the
+ * content-generation stages.
+ */
+export interface TutorProvider {
+  readonly name: string;
+  tutorReply(params: TutorReplyParams): Promise<{ data: TutorReply; model: string }>;
+}
+
+export interface ContentProvider extends TutorProvider {
   readonly name: string;
   normalize(raw: {
     subject?: string;

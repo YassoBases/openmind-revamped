@@ -27,8 +27,10 @@ class _Turn {
   final TutorReply? reply;
   bool isError = false;
 
-  /// True once this turn's interactive block reported its result (blocks
-  /// freeze after one attempt — the tutor takes it from there).
+  /// True once this turn's interactive block is CLOSED: the server verified a
+  /// completing outcome, the retry budget is spent, or the instance was
+  /// superseded. A wrong answer alone never freezes the block — the learner
+  /// may retry (the server enforces the budget either way).
   bool resultSent = false;
 }
 
@@ -116,10 +118,15 @@ class TutorChatState extends State<TutorChat> {
             'needsClarification': false,
             'interactivePayload': m['interactivePayload'],
           }));
-          // A block whose result already came back stays frozen on restore.
-          turn.resultSent = messages
-              .skip(i + 1)
-              .any((later) => later['interactiveResult'] != null);
+          // COMPLETED restored interactions stay frozen: a later result of
+          // the same type with a completing outcome closes this instance, and
+          // so does a newer offer of the same type (the server only accepts
+          // results for the newest instance). A wrong-only history restores
+          // live — the learner may still retry it.
+          final type = turn.reply?.interactivePayload?.type;
+          if (type != null) {
+            turn.resultSent = _restoredInstanceClosed(messages, i, type);
+          }
           restored.add(turn);
         }
       }
@@ -129,6 +136,34 @@ class TutorChatState extends State<TutorChat> {
     } finally {
       if (mounted) setState(() => _restoring = false);
     }
+  }
+
+  /// Mirrors the server's per-instance retry budget (tutor/result.ts) so a
+  /// restored thread freezes exactly the blocks the server would reject.
+  static const _maxBlockAttempts = 3;
+
+  /// Whether the block offered by the tutor turn at [index] can accept no
+  /// further attempt: completed (correct/explored result), retry budget
+  /// spent, or superseded by a newer instance of the same type.
+  bool _restoredInstanceClosed(
+    List<Map<String, dynamic>> messages,
+    int index,
+    String blockType,
+  ) {
+    var attempts = 0;
+    for (final later in messages.skip(index + 1)) {
+      if (later['role'] == 'tutor') {
+        final payload = later['interactivePayload'];
+        if (payload is Map && payload['type'] == blockType) return true; // superseded
+        continue;
+      }
+      final result = later['interactiveResult'];
+      if (result is! Map || result['blockType'] != blockType) continue;
+      final outcome = result['correctnessOrOutcome'];
+      if (outcome == 'correct' || outcome == 'explored') return true; // completed
+      attempts++;
+    }
+    return attempts >= _maxBlockAttempts;
   }
 
   /// Starts a new conversation (the old thread stays on the server).
@@ -154,7 +189,14 @@ class TutorChatState extends State<TutorChat> {
     });
   }
 
-  Future<void> send([String? text, InteractiveResult? interactiveResult]) async {
+  Future<void> send([String? text, InteractiveResult? interactiveResult]) =>
+      _send(text, interactiveResult, null);
+
+  Future<void> _send(
+    String? text,
+    InteractiveResult? interactiveResult,
+    _Turn? blockTurn,
+  ) async {
     final l = AppLocalizations.of(context)!;
     final q = (text ?? _input.text).trim();
     if (q.isEmpty || _sending) return;
@@ -185,6 +227,12 @@ class TutorChatState extends State<TutorChat> {
       _conversationId = result.conversationId;
       if (widget.persistThread) {
         await Session.instance.setTutorConversationId(result.conversationId);
+      }
+      // The server owns the freeze/retry decision: a completed or exhausted
+      // instance closes; a wrong answer stays open for another try. An older
+      // server (no assessment) freezes — the safe pre-retry behavior.
+      if (blockTurn != null) {
+        blockTurn.resultSent = result.assessment?.closed ?? true;
       }
       setState(() => _turns.add(_Turn.tutor(result.reply)));
     } on ApiException catch (e) {
@@ -422,8 +470,10 @@ class TutorChatState extends State<TutorChat> {
                     answered: turn.resultSent,
                     onResult: (result, summary) {
                       if (turn.resultSent || _sending) return;
-                      turn.resultSent = true;
-                      send(summary, result);
+                      // The turn stays open until the server's assessment
+                      // says the instance is closed (see _send) — a wrong
+                      // answer keeps the block retryable.
+                      _send(summary, result, turn);
                     },
                   ) ??
                   const SizedBox.shrink(),

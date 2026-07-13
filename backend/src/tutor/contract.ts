@@ -97,6 +97,35 @@ export const InteractiveResultSchema = z.object({
 });
 export type InteractiveResult = z.infer<typeof InteractiveResultSchema>;
 
+/**
+ * Interaction-mechanic taxonomy for the honest-fallback channel. When acting
+ * WOULD teach better than reading but NO registered tool can render the
+ * concept, the model names the mechanic it wishes existed instead of forcing a
+ * bad fit. The first row are mechanics the registry already covers (naming one
+ * here flags a SELECTION gap — a fit should have produced a real payload); the
+ * rest are the platform's growth edge (nothing renders them yet). 'other' is
+ * the escape hatch. This never becomes a broken activity — it is a
+ * prioritization signal, logged and counted server-side (routes/tutor.ts), so
+ * the tool library grows toward real demand rather than guesswork.
+ */
+export const INTERACTION_MECHANICS = [
+  // Already have renderers (mirror the registry's Primitive taxonomy):
+  'place_on_scale', 'order', 'classify', 'match', 'compose', 'adjust_observe', 'decide',
+  // Not supported yet — the growth edge:
+  'simulate', 'plot_graph', 'draw_annotate', 'locate_map', 'build_expression', 'other',
+] as const;
+export type InteractionMechanic = (typeof INTERACTION_MECHANICS)[number];
+
+export const SuggestedInteractionSchema = z.object({
+  /** The interaction mechanic that would teach this concept best. */
+  mechanic: z.enum(INTERACTION_MECHANICS),
+  /** One line on why DOING would beat reading here — the demand, in plain words. */
+  reason: z.string().min(1).max(240),
+  /** The curriculum concept it would serve, e.g. "قراءة رسم بياني خطي", or null. */
+  conceptFamily: z.string().max(80).nullable(),
+});
+export type SuggestedInteraction = z.infer<typeof SuggestedInteractionSchema>;
+
 /** What the LLM generates (validated before anything reaches a student). */
 export const TutorReplySchema = z.object({
   message: z.string().min(1).max(1200),
@@ -110,6 +139,14 @@ export const TutorReplySchema = z.object({
   needsClarification: z.boolean(),
   /** Ask → See → Try: an approved interactive block, or null for text-only. */
   interactivePayload: InteractivePayloadSchema.nullable(),
+  /**
+   * Honest fallback: when an interactive activity WOULD help but no registered
+   * tool can render the concept, the model sets interactivePayload to null and
+   * names the missing interaction here (for future-renderer prioritization).
+   * Null in every other case — including when a tool DID fit (that produces
+   * interactivePayload), or when plain explanation was the right response.
+   */
+  suggestedInteraction: SuggestedInteractionSchema.nullable(),
 });
 export type TutorReply = z.infer<typeof TutorReplySchema>;
 
@@ -120,6 +157,22 @@ export function tutorReplyJsonSchema(): Record<string, unknown> {
 }
 
 /**
+ * Future study programs (تحضير سبر، فهم درس، تراكم، ساعدني أحل، مراجعة سريعة).
+ * STABLE wire ids — program logic keys on these, never on Arabic button text.
+ * None is implemented yet: today the id may ride TutorContext.mode as a
+ * routing signal only; each program's own prompt/flow lands behind its id
+ * later without a contract change.
+ */
+export const STUDY_MODES = [
+  'exam_prep', // حضّرني لسبر — prioritize topics against a date + time budget
+  'lesson_discovery', // خلّيني أفهم درس — interest-driven interactive discovery
+  'backlog_plan', // عندي تراكم — split the backlog into short tasks + points
+  'solve_diagnose', // ساعدني أحل — diagnose the attempt, guide with hints
+  'quick_review', // راجع معي بسرعة — review only the missing prerequisites
+] as const;
+export type StudyMode = (typeof STUDY_MODES)[number];
+
+/**
  * Learning context the CLIENT may attach. Everything is optional — the "Ask
  * OpenMind" page sends little, the in-experience help button sends a lot.
  * Identity (grade, language, name) always comes from the authenticated
@@ -127,6 +180,8 @@ export function tutorReplyJsonSchema(): Record<string, unknown> {
  */
 export const TutorContextSchema = z.object({
   source: z.enum(['ask', 'experience']).default('ask'),
+  /** Reserved: the study program this question belongs to (see STUDY_MODES). */
+  mode: z.enum(STUDY_MODES).optional(),
   subject: z.string().max(80).optional(),
   pathId: z.string().max(80).optional(),
   pathTitle: z.string().max(160).optional(),

@@ -209,24 +209,39 @@ class LearnExperience {
 /// step: it stays on-demand through the in-experience tutor help sheet.
 enum LearnStepKind { scene, explore, choice, challenge, apply, check }
 
-/// Optional context-lens overrides for one step's NARRATIVE fields. A variant
-/// may reword the story (title/body/emoji/successText) for the learner's
-/// chosen context — it can never carry a widget, choice, or kind, so the
-/// concept, interaction mechanics, targets, and difficulty are identical by
+/// Optional context-lens overrides for one step's NARRATIVE and LABEL fields.
+/// A variant may reword the story (title/body/emoji/successText) and reword
+/// the manipulative's TEXT labels ([widgetParams], string values only) for
+/// the learner's chosen context — it can never carry a widget, choice, or
+/// kind, and it can never touch a numeric parameter, so the concept,
+/// interaction mechanics, targets, and difficulty are identical by
 /// construction across every lens.
 class LearnStepVariant {
-  LearnStepVariant({this.title, this.body, this.emoji, this.successText});
+  LearnStepVariant({
+    this.title,
+    this.body,
+    this.emoji,
+    this.successText,
+    this.widgetParams = const {},
+  });
 
   final String? title;
   final String? body;
   final String? emoji;
   final String? successText;
 
+  /// Widget-label rewording for this lens. Applied by [LearnStep.widgetFor]
+  /// only where BOTH the override and the base param are strings — numbers
+  /// (targets, ranges, steps) structurally cannot be changed by a lens.
+  final Map<String, dynamic> widgetParams;
+
   static LearnStepVariant fromMap(Map<String, dynamic> m) => LearnStepVariant(
         title: m['title'] as String?,
         body: m['body'] as String?,
         emoji: m['emoji'] as String?,
         successText: m['successText'] as String?,
+        widgetParams: ((m['widgetParams'] as Map?) ?? const {})
+            .map((k, v) => MapEntry(k.toString(), v)),
       );
 }
 
@@ -313,6 +328,21 @@ class LearnStep {
   String? successTextFor(String? context) =>
       _variant(context)?.successText ?? successText;
 
+  /// The step's widget with this lens's label rewording applied. Only keys
+  /// whose value is a string on BOTH sides are overridden, so a lens can
+  /// rename «شتلة» to «بلاطة» but can never move a target or a range.
+  LearnWidgetSpec? widgetFor(String? context) {
+    final w = widget;
+    if (w == null) return null;
+    final overrides = _variant(context)?.widgetParams;
+    if (overrides == null || overrides.isEmpty) return w;
+    final merged = Map<String, dynamic>.from(w.params);
+    overrides.forEach((key, value) {
+      if (value is String && merged[key] is String) merged[key] = value;
+    });
+    return LearnWidgetSpec(type: w.type, params: merged);
+  }
+
   static LearnStep fromMap(Map<String, dynamic> m) => LearnStep(
         kind: LearnStepKind.values.byName(m['kind'] as String),
         title: m['title'] as String,
@@ -357,6 +387,28 @@ class LearnWidgetSpec {
       );
 }
 
+/// Context-lens rewording for one [LearnChoice]: the same decision asked in
+/// the learner's chosen world. A variant may reword the prompt, the option
+/// LABELS (same count, same order — the correct slot is [correctIndex] by
+/// construction, a variant has no correctIndex field to disagree with), and
+/// the feedback. It can never change which option is right, the skills, or
+/// the difficulty.
+class LearnChoiceVariant {
+  LearnChoiceVariant({this.prompt, this.options, this.correctFeedback, this.wrongFeedback});
+
+  final String? prompt;
+  final List<String>? options;
+  final String? correctFeedback;
+  final String? wrongFeedback;
+
+  static LearnChoiceVariant fromMap(Map<String, dynamic> m) => LearnChoiceVariant(
+        prompt: m['prompt'] as String?,
+        options: (m['options'] as List?)?.map((o) => o as String).toList(),
+        correctFeedback: m['correctFeedback'] as String?,
+        wrongFeedback: m['wrongFeedback'] as String?,
+      );
+}
+
 /// A committed decision: options, one correct, feedback either way.
 /// Feedback always explains — a wrong pick teaches instead of punishing.
 class LearnChoice {
@@ -369,6 +421,7 @@ class LearnChoice {
     this.distractorPatterns = const [],
     this.skills = const [],
     this.rep,
+    this.variants = const {},
   });
 
   final String prompt;
@@ -376,6 +429,26 @@ class LearnChoice {
   final int correctIndex;
   final String correctFeedback;
   final String wrongFeedback;
+
+  /// Context-lens id → rewording (see [LearnChoiceVariant]).
+  final Map<String, LearnChoiceVariant> variants;
+
+  LearnChoiceVariant? _variant(String? context) =>
+      context == null ? null : variants[context];
+
+  String promptFor(String? context) => _variant(context)?.prompt ?? prompt;
+
+  /// Variant options apply only when the count matches — a malformed variant
+  /// degrades to the base labels, never to a shifted correct slot.
+  List<String> optionsFor(String? context) {
+    final v = _variant(context)?.options;
+    return (v != null && v.length == options.length) ? v : options;
+  }
+
+  String correctFeedbackFor(String? context) =>
+      _variant(context)?.correctFeedback ?? correctFeedback;
+  String wrongFeedbackFor(String? context) =>
+      _variant(context)?.wrongFeedback ?? wrongFeedback;
 
   /// Representation this item exercises (e.g. a symbolic check of a skill
   /// first met on the manipulative). Null = inherit the step's.
@@ -415,5 +488,11 @@ class LearnChoice {
         skills:
             ((m['skills'] as List?) ?? const []).map((s) => s as String).toList(),
         rep: m['rep'] as String?,
+        variants: ((m['variants'] as Map?) ?? const {}).map(
+          (k, v) => MapEntry(
+            k.toString(),
+            LearnChoiceVariant.fromMap((v as Map).cast<String, dynamic>()),
+          ),
+        ),
       );
 }
