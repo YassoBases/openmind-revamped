@@ -129,6 +129,13 @@ class _JourneyScreenState extends State<JourneyScreen> {
                           color: MiddlePalette.body,
                         ),
                       ),
+                      // Honest cross-language fallback: an English profile
+                      // currently receives the Arabic catalogs (translation
+                      // pending) — say so instead of pretending.
+                      if (catalogs.any((c) => c.language != Session.instance.language)) ...[
+                        const SizedBox(height: 12),
+                        _languageNotice(l),
+                      ],
                       // Hudhud's guide moment — only until real progress
                       // exists; a returning learner gets a quiet header.
                       if (_completed.isEmpty) ...[
@@ -152,6 +159,36 @@ class _JourneyScreenState extends State<JourneyScreen> {
                       ],
                     ],
                   ),
+      ),
+    );
+  }
+
+  /// "This content is currently in Arabic" — shown to a profile whose app
+  /// language the catalogs don't cover yet.
+  Widget _languageNotice(AppLocalizations l) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: MiddlePalette.softBlue,
+        borderRadius: BorderRadius.circular(Palette.radiusButton),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.translate_rounded, size: 17, color: MiddlePalette.blueInk),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l.translate('journey_lang_notice'),
+              style: const TextStyle(
+                fontSize: 12.5,
+                height: 1.5,
+                fontWeight: FontWeight.w600,
+                color: MiddlePalette.blueInk,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -230,6 +267,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
         ? null
         : nextGoal(current, catalog, _readiness);
 
+    // A path with nothing playable is honest "coming soon" — never a
+    // tappable dead end that opens an empty trail with disabled nodes.
+    final openable = ready > 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -237,7 +277,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
         borderRadius: BorderRadius.circular(Palette.radiusCard),
         child: InkWell(
           borderRadius: BorderRadius.circular(Palette.radiusCard),
-          onTap: () => _openPath(path),
+          onTap: openable ? () => _openPath(path) : null,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
@@ -309,10 +349,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
                     ),
                   ),
                 const SizedBox(width: 6),
-                Icon(
-                  rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
-                  color: MiddlePalette.body,
-                ),
+                if (openable)
+                  Icon(
+                    rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                    color: MiddlePalette.body,
+                  ),
               ],
             ),
           ),

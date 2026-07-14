@@ -56,16 +56,23 @@ class _MeScreenState extends State<MeScreen> {
     final store = await LearnProgressStore.load();
     final completed = store.completed;
     var pathsDone = 0, pathsTotal = 0;
+    // Only real experiences count as "experiences completed" — checkpoint
+    // completions and legacy/stale keys share the same store but are not
+    // experiences the student finished.
+    final experienceKeys = <String>{};
     for (final c in catalogs) {
       for (final p in c.paths) {
         pathsTotal++;
         final (done, ready) = pathProgress(p, completed);
         if (ready > 0 && done == ready) pathsDone++;
+        for (final e in p.experiences) {
+          experienceKeys.add('${p.id}/${e.id}');
+        }
       }
     }
     if (mounted) {
       setState(() {
-        _experiencesDone = completed.length;
+        _experiencesDone = completed.where(experienceKeys.contains).length;
         _pathsDone = pathsDone;
         _pathsTotal = pathsTotal;
       });
@@ -94,6 +101,7 @@ class _MeScreenState extends State<MeScreen> {
         6 => l.translate('grade_6'),
         7 => l.translate('grade_7'),
         8 => l.translate('grade_8'),
+        9 => l.translate('grade_9'),
         _ => '${l.translate('profile_grade')} $grade',
       };
 

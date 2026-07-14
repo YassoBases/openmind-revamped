@@ -68,8 +68,13 @@ class _StartScreenState extends State<StartScreen> {
       final completed = store.completed;
       final resume = store.resume;
       // No catalogs for this grade = the curriculum is still being authored.
-      // That is a different truth than "you finished everything".
-      _gradeSoon = catalogs.isEmpty;
+      // That is a different truth than "you finished everything". Same rule
+      // when catalogs exist but hold no READY experience yet: an all-"soon"
+      // grade earns the honest "being prepared" card, never a false
+      // "you completed everything!" celebration.
+      final hasReady = catalogs.any((c) => c.paths
+          .any((p) => p.experiences.any((e) => e.ready)));
+      _gradeSoon = catalogs.isEmpty || !hasReady;
       _action = startAction(
         catalogs,
         completed,
