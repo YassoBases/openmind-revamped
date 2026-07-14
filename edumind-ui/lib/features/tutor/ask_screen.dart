@@ -88,6 +88,10 @@ class _AskScreenState extends State<AskScreen> {
                 key: _chatKey,
                 context_: TutorContext(source: 'ask'),
                 persistThread: true,
+                // The five study programs, offered before the conversation
+                // starts — the main Ask Hudhud surface only; the in-lesson
+                // help sheet keeps its contextual quick actions instead.
+                showStudyModes: middle,
                 quickActions: middle
                     ? [
                         l.translate('qa_simpler'),

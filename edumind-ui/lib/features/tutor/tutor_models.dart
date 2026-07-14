@@ -7,6 +7,19 @@ library;
 
 import 'blocks/block_descriptors.dart';
 
+/// The five study programs behind Ask Hudhud's mode picker — the Dart twin
+/// of the backend's STUDY_MODES (tutor/contract.ts). The `id` is the STABLE
+/// wire value that rides TutorContext.mode and keys all program logic; the
+/// visible label/description come from localization (`mode_$id` /
+/// `mode_${id}_desc`) and are display text only, never logic.
+const List<({String id, String emoji})> kStudyModes = [
+  (id: 'exam_prep', emoji: '📝'), // حضّرني لسبر
+  (id: 'lesson_discovery', emoji: '💡'), // خلّيني أفهم درس
+  (id: 'backlog_plan', emoji: '🗂️'), // عندي تراكم
+  (id: 'solve_diagnose', emoji: '🧭'), // ساعدني أحل
+  (id: 'quick_review', emoji: '⚡'), // راجع معي بسرعة
+];
+
 /// What the tutor's message mainly is.
 enum TutorResponseType { explanation, hint, question, encouragement, correction, nextStep, unknown }
 
