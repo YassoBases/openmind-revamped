@@ -27,6 +27,23 @@ export interface Config {
   qwenBaseUrl: string;
   qwenModel: string;
   qwenTimeoutMs: number;
+  /** Completion budget incl. hidden reasoning tokens (qwen3) — keep generous. */
+  qwenMaxTokens: number;
+  /**
+   * Moderation is provider-neutral: MODERATION_PROVIDER selects the
+   * implementation, MODERATION_API_KEY its credential (falls back to
+   * OPENAI_API_KEY for the default 'openai' provider so existing setups
+   * keep working).
+   */
+  moderationProvider: string;
+  moderationApiKey: string | null;
+  /**
+   * True when a LIVE model serves students: moderation-API failures fail
+   * CLOSED (input treated as flagged). False in keyless mock/dev/test.
+   */
+  moderationStrict: boolean;
+  /** Explicit dev-only escape hatch: run a live model WITHOUT moderation. */
+  moderationDisabled: boolean;
   /** measure first, then decide — default off (see DECISIONS.md) */
   escalateArabic: boolean;
   corsOrigins: string | boolean;
@@ -51,6 +68,11 @@ export function loadConfig(env = process.env): Config {
     mockReason = 'no ANTHROPIC_API_KEY set — serving golden specs with simulated latency';
   }
 
+  const moderationApiKey = env.MODERATION_API_KEY || env.OPENAI_API_KEY || null;
+  // "Live" = any real model answers students (content pipeline or the
+  // Qwen tutor seam) — that's when moderation must not fail open.
+  const liveModel = (!mockLlm && !!anthropicApiKey) || !!env.QWEN_API_KEY;
+
   return {
     host: env.HOST || '0.0.0.0', // LAN-reachable by default — phones must connect
     port: Number(env.PORT) || 8080,
@@ -68,6 +90,11 @@ export function loadConfig(env = process.env): Config {
     qwenBaseUrl: (env.QWEN_BASE_URL || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1').replace(/\/+$/, ''),
     qwenModel: env.QWEN_MODEL || 'qwen-plus',
     qwenTimeoutMs: Number(env.QWEN_TIMEOUT_MS) || 20_000,
+    qwenMaxTokens: Number(env.QWEN_MAX_TOKENS) || 4096,
+    moderationProvider: env.MODERATION_PROVIDER || 'openai',
+    moderationApiKey,
+    moderationStrict: bool(env.MODERATION_STRICT, liveModel),
+    moderationDisabled: bool(env.MODERATION_DISABLED),
     escalateArabic: bool(env.ESCALATE_ARABIC, false),
     corsOrigins: env.CORS_ORIGINS ? env.CORS_ORIGINS : true, // permissive in dev
     maxGenerationsPerHour: Number(env.MAX_GENERATIONS_PER_HOUR) || 20,
