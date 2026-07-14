@@ -165,7 +165,16 @@ export class MockProvider implements ContentProvider {
     // voice, flavored by the student's chosen learning context when present.
     const primary = params.student.stage === 'primary_games';
     const lens = params.student.learningContext;
-    const lensSuffix = lens ? (ar ? ` (بعدسة ${lens})` : ` (through the ${lens} lens)`) : '';
+    // Localized lens names — never the raw English id inside an Arabic sentence.
+    const lensNames: Record<string, { ar: string; en: string }> = {
+      market: { ar: 'السوق', en: 'the market' },
+      building: { ar: 'البناء', en: 'construction' },
+      water_energy: { ar: 'الماء والطاقة', en: 'water & energy' },
+      roads_transport: { ar: 'الطرق والمواصلات', en: 'roads & transport' },
+      technology: { ar: 'التقنية', en: 'technology' },
+    };
+    const lensName = lens ? (ar ? lensNames[lens]?.ar ?? lens : lensNames[lens]?.en ?? lens) : null;
+    const lensSuffix = lensName ? (ar ? ` (بعدسة ${lensName})` : ` (through the ${lensName} lens)`) : '';
 
     // The student just acted on a block — mirror the live prompt's
     // result-handling rules so the full Ask → See → Try loop is testable.
@@ -253,15 +262,24 @@ export class MockProvider implements ContentProvider {
       }
     }
 
+    // In-experience help must speak about THIS lesson's concept — a geometry
+    // hint on an equations or history step reads as a broken tutor. The
+    // context's concept/stepTitle anchor the wording; a generic-but-honest
+    // nudge covers the (rare) contextless case.
+    const concept = params.context?.concept ?? params.context?.stepTitle ?? null;
     const data: TutorReply = inExperience
       ? {
           message: ar
-            ? `سؤال جيد يا ${params.student.name}! انظر إلى الشكل أمامك: ماذا يحدث للمساحة عندما تغيّر أحد البعدين فقط؟ جرّب تغييرًا واحدًا وراقب الناتج.${lensSuffix}`
-            : `Good question, ${params.student.name}! Look at the shape on your screen: what happens to the area when you change just one dimension? Try one change and watch the result.${lensSuffix}`,
+            ? concept
+              ? `سؤال جيد يا ${params.student.name}! أنت تعمل الآن على «${concept}». انظر إلى ما أمامك على الشاشة: غيّر عنصرًا واحدًا فقط وراقب ماذا يتغيّر معه — هذا هو مفتاح الخطوة.${lensSuffix}`
+              : `سؤال جيد يا ${params.student.name}! انظر إلى ما أمامك على الشاشة: غيّر عنصرًا واحدًا فقط وراقب ماذا يتغيّر معه، ثم جرّب من جديد.${lensSuffix}`
+            : concept
+              ? `Good question, ${params.student.name}! You are working on "${concept}". Look at your screen: change ONE thing and watch what changes with it — that is the key to this step.${lensSuffix}`
+              : `Good question, ${params.student.name}! Look at your screen: change ONE thing and watch what changes with it, then try again.${lensSuffix}`,
           responseType: 'hint',
-          followUpQuestion: ar ? 'أي بُعد ستغيّر أولًا، ولماذا؟' : 'Which dimension will you change first, and why?',
+          followUpQuestion: ar ? 'ما أول تغيير ستجرّبه، ولماذا؟' : 'What is the first change you will try, and why?',
           suggestedAction: 'try_again',
-          relatedConcept: params.context?.concept ?? (ar ? 'مساحة المثلث' : 'triangle area'),
+          relatedConcept: concept,
           needsClarification: false,
           interactivePayload: null,
           suggestedInteraction: null,
