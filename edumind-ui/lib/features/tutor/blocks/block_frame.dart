@@ -17,6 +17,8 @@ class BlockFrame extends StatelessWidget {
     this.outcome,
     this.sent = false,
     this.onRetry,
+    this.priorAttempts = 0,
+    this.maxAttempts = 3,
   });
 
   final String title;
@@ -28,6 +30,11 @@ class BlockFrame extends StatelessWidget {
 
   /// True once the result went back to the tutor.
   final bool sent;
+
+  /// Accepted attempts this instance already has (server-counted) — shown so
+  /// a learner on a retried or restored block can see the remaining budget.
+  final int priorAttempts;
+  final int maxAttempts;
 
   /// Offered after a non-completing outcome when the instance is still open
   /// (a mistake never freezes the block — the server bounds the attempts).
@@ -80,6 +87,20 @@ class BlockFrame extends StatelessWidget {
             instructions,
             style: TextStyle(fontSize: 12.5, height: 1.5, color: cs.onSurfaceVariant),
           ),
+          if (priorAttempts > 0 && priorAttempts < maxAttempts) ...[
+            const SizedBox(height: 4),
+            Text(
+              l
+                  .translate('blk_attempt_of')
+                  .replaceFirst('{n}', '${priorAttempts + 1}')
+                  .replaceFirst('{m}', '$maxAttempts'),
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.retryYellowInk,
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           child,
           if (bannerKey != null) ...[

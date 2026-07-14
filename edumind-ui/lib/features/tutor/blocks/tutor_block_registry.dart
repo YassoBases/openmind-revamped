@@ -25,25 +25,41 @@ typedef TutorBlockResultCallback = void Function(
 /// [answered] marks a block whose result already reached the tutor (e.g. a
 /// restored thread) — it renders as a calm completed note, never as a live
 /// manipulative that could be acted on twice.
+///
+/// [resetEpoch] bumps when a submission FAILED to reach the server — the
+/// block clears its local outcome so the learner can genuinely resubmit
+/// (nothing was counted server-side). [acked] is true once the server
+/// confirmed receipt — the "sent to your tutor" note renders only then.
+/// [priorAttempts] is how many accepted attempts this instance already has
+/// (live retries or a restored thread) so the learner can see the budget.
 Widget? buildTutorBlock({
   required InteractivePayload payload,
   required bool enabled,
   required bool answered,
   required TutorBlockResultCallback onResult,
+  int resetEpoch = 0,
+  bool acked = true,
+  int priorAttempts = 0,
 }) {
   return switch (payload.type) {
     'number_line' => NumberLineBlock(
-        payload: payload, enabled: enabled, answered: answered, onResult: onResult),
+        payload: payload, enabled: enabled, answered: answered, onResult: onResult,
+        resetEpoch: resetEpoch, acked: acked, priorAttempts: priorAttempts),
     'order_sequence' => OrderSequenceBlock(
-        payload: payload, enabled: enabled, answered: answered, onResult: onResult),
+        payload: payload, enabled: enabled, answered: answered, onResult: onResult,
+        resetEpoch: resetEpoch, acked: acked, priorAttempts: priorAttempts),
     'sort_buckets' => SortBucketsBlock(
-        payload: payload, enabled: enabled, answered: answered, onResult: onResult),
+        payload: payload, enabled: enabled, answered: answered, onResult: onResult,
+        resetEpoch: resetEpoch, acked: acked, priorAttempts: priorAttempts),
     'match_pairs' => MatchPairsBlock(
-        payload: payload, enabled: enabled, answered: answered, onResult: onResult),
+        payload: payload, enabled: enabled, answered: answered, onResult: onResult,
+        resetEpoch: resetEpoch, acked: acked, priorAttempts: priorAttempts),
     'balance_scale' => BalanceScaleBlock(
-        payload: payload, enabled: enabled, answered: answered, onResult: onResult),
+        payload: payload, enabled: enabled, answered: answered, onResult: onResult,
+        resetEpoch: resetEpoch, acked: acked, priorAttempts: priorAttempts),
     'timeline' => TimelineBlock(
-        payload: payload, enabled: enabled, answered: answered, onResult: onResult),
+        payload: payload, enabled: enabled, answered: answered, onResult: onResult,
+        resetEpoch: resetEpoch, acked: acked, priorAttempts: priorAttempts),
     _ => null,
   };
 }

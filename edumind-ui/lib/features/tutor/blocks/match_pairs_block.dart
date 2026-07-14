@@ -20,6 +20,9 @@ class MatchPairsBlock extends StatefulWidget {
     required this.enabled,
     required this.answered,
     required this.onResult,
+    this.resetEpoch = 0,
+    this.acked = true,
+    this.priorAttempts = 0,
   });
 
   final InteractivePayload payload;
@@ -29,6 +32,11 @@ class MatchPairsBlock extends StatefulWidget {
   final bool answered;
 
   final TutorBlockResultCallback onResult;
+
+  /// See tutor_block_registry: failed-submit reset / server ack / attempts.
+  final int resetEpoch;
+  final bool acked;
+  final int priorAttempts;
 
   @override
   State<MatchPairsBlock> createState() => _MatchPairsBlockState();
@@ -91,6 +99,13 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
     });
   }
 
+  @override
+  void didUpdateWidget(covariant MatchPairsBlock old) {
+    super.didUpdateWidget(old);
+    // Failed submit: nothing reached the server — full fresh run.
+    if (widget.resetEpoch != old.resetEpoch) _retry();
+  }
+
   /// A fresh run at the same pairs (the mistakes were already reported; the
   /// server records the retry as a new attempt on the same instance).
   void _retry() {
@@ -146,8 +161,9 @@ class _MatchPairsBlockState extends State<MatchPairsBlock> {
       title: p.title,
       instructions: p.instructions,
       outcome: _outcome,
-      sent: finished,
+      sent: finished && widget.acked,
       onRetry: widget.enabled && finished ? _retry : null,
+      priorAttempts: widget.priorAttempts,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

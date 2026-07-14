@@ -16,6 +16,9 @@ class NumberLineBlock extends StatefulWidget {
     required this.enabled,
     required this.answered,
     required this.onResult,
+    this.resetEpoch = 0,
+    this.acked = true,
+    this.priorAttempts = 0,
   });
 
   final InteractivePayload payload;
@@ -25,6 +28,16 @@ class NumberLineBlock extends StatefulWidget {
   final bool answered;
 
   final TutorBlockResultCallback onResult;
+
+  /// Bumped when a submission failed to reach the server — local outcome
+  /// clears so the learner can genuinely resubmit (see tutor_block_registry).
+  final int resetEpoch;
+
+  /// True once the server confirmed receipt (drives the "sent" note).
+  final bool acked;
+
+  /// Accepted attempts this instance already has (server-counted).
+  final int priorAttempts;
 
   @override
   State<NumberLineBlock> createState() => _NumberLineBlockState();
@@ -51,6 +64,24 @@ class _NumberLineBlockState extends State<NumberLineBlock> {
     final midSteps = (_divisions / 2).floor();
     _value = (_min + midSteps * _step).toDouble();
   }
+
+  @override
+  void didUpdateWidget(covariant NumberLineBlock old) {
+    super.didUpdateWidget(old);
+    // The submission never reached the server — clear the local verdict so
+    // the learner can resubmit; nothing was counted against their attempts.
+    if (widget.resetEpoch != old.resetEpoch) {
+      setState(() {
+        _outcome = null;
+        _moved = false;
+      });
+    }
+  }
+
+  void _retry() => setState(() {
+        _outcome = null;
+        _moved = false;
+      });
 
   void _nudge(int direction) {
     if (!_active) return;
@@ -109,7 +140,9 @@ class _NumberLineBlockState extends State<NumberLineBlock> {
       title: p.title,
       instructions: p.instructions,
       outcome: _outcome,
-      sent: _outcome != null,
+      sent: _outcome != null && widget.acked,
+      onRetry: widget.enabled && _outcome != null ? _retry : null,
+      priorAttempts: widget.priorAttempts,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
