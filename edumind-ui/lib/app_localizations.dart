@@ -68,6 +68,15 @@ class AppLocalizations {
       'journey_next_goal': 'Next goal: {skill}',
       'checkpoint_title': 'Skills checkpoint',
       'checkpoint_sub': 'A short diagnostic — see exactly where you stand.',
+      // synthetic checkpoint scaffolding (checkpoint_logic.dart)
+      'checkpoint_sub_short': 'Skills diagnostic',
+      'journey_lang_notice':
+          'These lessons are currently available in Arabic — an English version is being prepared.',
+      'cp_scene_body':
+          'Short questions that show where you stand on these skills — nothing new, only what you practiced.',
+      'cp_drill_body': 'Apply what you learned to a fresh problem.',
+      'cp_drill_success': 'Well done — that confirms you own this skill.',
+      'cp_check_title': 'Check',
       'path_ready_progress': '{n} of {m} ready',
       // pattern-specific support (each diagnosed error → a real next move)
       'support_revisit_explore': 'Go back to the model and watch what changes — the idea lives there.',
@@ -193,6 +202,18 @@ class AppLocalizations {
       'qa_ask_me': 'Ask me a question that helps me understand',
       'qa_try_again': 'Let me try again',
       'qa_hint_only': 'Give me a hint, not the solution',
+      // study modes (stable ids in code — these labels are display text only)
+      'study_modes_title': 'Or pick a study program',
+      'mode_exam_prep': 'Prep me for a quiz',
+      'mode_exam_prep_desc': 'Topics, date, and your time — turned into priorities',
+      'mode_lesson_discovery': 'Help me understand a lesson',
+      'mode_lesson_discovery_desc': 'Interactive discovery built on what you love',
+      'mode_backlog_plan': "I'm behind — help me catch up",
+      'mode_backlog_plan_desc': 'Small ordered tasks with completion points',
+      'mode_solve_diagnose': 'Help me solve a problem',
+      'mode_solve_diagnose_desc': 'Show your attempt — we diagnose and guide with hints',
+      'mode_quick_review': 'Quick review with me',
+      'mode_quick_review_desc': 'Check the basics, review only what is missing',
       // tutor interactive blocks (Ask → See → Try)
       'tutor_new_chat': 'New conversation',
       'blk_check': 'Check',
@@ -201,6 +222,7 @@ class AppLocalizations {
       'blk_partial': 'Close — look at the marked spots',
       'blk_incorrect': 'Not right yet — your tutor will pick it up from here',
       'blk_retry': 'Try again',
+      'blk_attempt_of': 'Attempt {n} of {m}',
       'blk_sent': 'Your result went to your tutor',
       'blk_answered': 'You completed this activity — its result is with your tutor',
       'blk_item_of': 'Item {n} of {m}',
@@ -291,6 +313,7 @@ class AppLocalizations {
       'grade_6': 'Grade 6',
       'grade_7': 'Grade 7',
       'grade_8': 'Grade 8',
+      'grade_9': 'Grade 9',
       'int_games': 'Games & challenges',
       'int_sports': 'Sports & motion',
       'int_art': 'Drawing & design',
@@ -429,6 +452,15 @@ class AppLocalizations {
       'journey_next_goal': 'الهدف التالي: {skill}',
       'checkpoint_title': 'محطة تحقّق من المهارات',
       'checkpoint_sub': 'تشخيص قصير — اكتشف أين وصلت بالضبط.',
+      // نصوص محطة التحقق المُولَّدة (checkpoint_logic.dart)
+      'checkpoint_sub_short': 'تشخيص المهارات',
+      'journey_lang_notice':
+          'هذه الدروس متوفرة حاليًا بالعربية — النسخة الإنجليزية قيد الإعداد.',
+      'cp_scene_body':
+          'أسئلة قصيرة تكشف أين وصلت في هذه المهارات — لا جديد، فقط ما تدرّبت عليه.',
+      'cp_drill_body': 'طبّق ما تعلّمته على مسألة جديدة.',
+      'cp_drill_success': 'أحسنت — هذا يؤكد أنك أتقنت هذه المهارة.',
+      'cp_check_title': 'تحقّق',
       'path_ready_progress': '{n} من {m} جاهزة',
       // pattern-specific support (each diagnosed error → a real next move)
       'support_revisit_explore': 'عُد إلى النموذج وراقب ما الذي يتغيّر — هناك تعيش الفكرة.',
@@ -553,6 +585,18 @@ class AppLocalizations {
       'qa_try_again': 'دعني أجرب مرة أخرى',
       'qa_hint_only': 'أعطني تلميحًا وليس الحل',
       // tutor interactive blocks (Ask → See → Try)
+      // برامج الدراسة (المعرّفات الثابتة في الكود — هذه التسميات للعرض فقط)
+      'study_modes_title': 'أو اختر برنامج دراسة',
+      'mode_exam_prep': 'حضّرني لسبر',
+      'mode_exam_prep_desc': 'الموضوعات والموعد ووقتك — تتحول إلى أولويات',
+      'mode_lesson_discovery': 'خلّيني أفهم درس',
+      'mode_lesson_discovery_desc': 'اكتشاف تفاعلي يُبنى على ما تحب',
+      'mode_backlog_plan': 'عندي تراكم',
+      'mode_backlog_plan_desc': 'مهام صغيرة مرتبة مع نقاط إنجاز',
+      'mode_solve_diagnose': 'ساعدني أحل',
+      'mode_solve_diagnose_desc': 'أرني محاولتك — نشخّص الخطأ ونتقدم بتلميحات',
+      'mode_quick_review': 'راجع معي بسرعة',
+      'mode_quick_review_desc': 'نفحص الأساسات ونراجع الناقص فقط',
       'tutor_new_chat': 'محادثة جديدة',
       'blk_check': 'تحقق',
       'blk_your_value': 'قيمتك',
@@ -560,6 +604,7 @@ class AppLocalizations {
       'blk_partial': 'اقتربت — انظر إلى المواضع المعلَّمة',
       'blk_incorrect': 'ليست صحيحة بعد — سيتابع مساعدك من هنا',
       'blk_retry': 'حاول مرة أخرى',
+      'blk_attempt_of': 'المحاولة {n} من {m}',
       'blk_sent': 'أُرسلت نتيجتك إلى مساعدك',
       'blk_answered': 'أنجزت هذا النشاط — نتيجته عند مساعدك',
       'blk_item_of': 'العنصر {n} من {m}',
@@ -649,6 +694,7 @@ class AppLocalizations {
       'grade_6': 'الصف السادس',
       'grade_7': 'الصف السابع',
       'grade_8': 'الصف الثامن',
+      'grade_9': 'الصف التاسع',
       'int_games': 'ألعاب وتحديات',
       'int_sports': 'رياضة وحركة',
       'int_art': 'رسم وتصميم',
