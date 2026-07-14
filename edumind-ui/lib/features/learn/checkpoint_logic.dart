@@ -40,6 +40,28 @@ CheckpointMove moveFor(ReadinessLevel level) => switch (level) {
 int _next(int seed) => (seed * 1103515245 + 12345) & 0x7fffffff;
 int _draw(int lo, int hi, int seed) => lo + (seed % (hi - lo + 1));
 
+/// The checkpoint's scaffolding wording — injected by the caller from
+/// AppLocalizations so a checkpoint follows the app language (this module is
+/// pure logic and has no BuildContext). Defaults keep Arabic for callers
+/// that pass nothing (tests, tooling).
+typedef CheckpointStrings = ({
+  String title,
+  String subtitle,
+  String sceneBody,
+  String drillBody,
+  String drillSuccess,
+  String checkTitle,
+});
+
+const CheckpointStrings kCheckpointStringsAr = (
+  title: 'محطة تحقّق',
+  subtitle: 'تشخيص المهارات',
+  sceneBody: 'أسئلة قصيرة تكشف أين وصلت في هذه المهارات — لا جديد، فقط ما تدرّبت عليه.',
+  drillBody: 'طبّق ما تعلّمته على مسألة جديدة.',
+  drillSuccess: 'أحسنت — هذا يؤكد أنك أتقنت هذه المهارة.',
+  checkTitle: 'تحقّق',
+);
+
 /// Builds the synthetic checkpoint experience. [lens] is the learner's CURRENT
 /// context; reuse items are deliberately presented outside the lens they were
 /// first met in (revisit = same skill, new frame). Deterministic given [seed].
@@ -49,13 +71,14 @@ LearnExperience buildCheckpointExperience(
   LearnPath path,
   Map<String, Readiness> skillReadiness, {
   int seed = 1,
+  CheckpointStrings strings = kCheckpointStringsAr,
 }) {
   final steps = <LearnStep>[
     LearnStep(
       kind: LearnStepKind.scene,
       emoji: '🎯',
-      title: 'محطة تحقّق',
-      body: 'أسئلة قصيرة تكشف أين وصلت في هذه المهارات — لا جديد، فقط ما تدرّبت عليه.',
+      title: strings.title,
+      body: strings.sceneBody,
     ),
   ];
 
@@ -69,23 +92,23 @@ LearnExperience buildCheckpointExperience(
     LearnStep? step;
     if (move == CheckpointMove.drill && skill.drill != null) {
       s = _next(s);
-      step = _drillStep(skill, s);
+      step = _drillStep(skill, s, strings);
     }
     // Fall back to a reused authored item when there is no drill template, or
     // for the developing/secure moves.
-    step ??= _reuseStep(skillId, path);
+    step ??= _reuseStep(skillId, path, strings);
     // Last resort: if nothing authored exists either, a drill if possible.
     if (step == null && skill.drill != null) {
       s = _next(s);
-      step = _drillStep(skill, s);
+      step = _drillStep(skill, s, strings);
     }
     if (step != null) steps.add(step);
   }
 
   return LearnExperience(
     id: checkpoint.id,
-    title: 'محطة تحقّق',
-    subtitle: 'تشخيص المهارات',
+    title: strings.title,
+    subtitle: strings.subtitle,
     ready: true,
     steps: steps,
   );
@@ -93,7 +116,7 @@ LearnExperience buildCheckpointExperience(
 
 /// A challenge step wrapping a freshly drawn drill instance. The draw is
 /// solution-first so the instance is always valid and integer-solvable.
-LearnStep? _drillStep(LearnSkill skill, int seed) {
+LearnStep? _drillStep(LearnSkill skill, int seed, CheckpointStrings strings) {
   final drill = skill.drill!;
   int rng = seed;
   int drawRange(String key, int fallbackLo, int fallbackHi) {
@@ -130,21 +153,21 @@ LearnStep? _drillStep(LearnSkill skill, int seed) {
   return LearnStep(
     kind: LearnStepKind.challenge,
     title: skill.title,
-    body: 'طبّق ما تعلّمته على مسألة جديدة.',
+    body: strings.drillBody,
     skills: [skill.id],
     widget: LearnWidgetSpec(type: drill.type, params: params),
-    successText: 'أحسنت — هذا يؤكد أنك أتقنت هذه المهارة.',
+    successText: strings.drillSuccess,
   );
 }
 
 /// A check step re-asking one already-authored item tagged with [skillId],
 /// found anywhere in the path. Returns null when nothing is authored for it.
-LearnStep? _reuseStep(String skillId, LearnPath path) {
+LearnStep? _reuseStep(String skillId, LearnPath path, CheckpointStrings strings) {
   final item = _findAuthoredItem(skillId, path);
   if (item == null) return null;
   return LearnStep(
     kind: LearnStepKind.check,
-    title: 'تحقّق',
+    title: strings.checkTitle,
     body: '',
     skills: [skillId],
     checkItems: [item],
