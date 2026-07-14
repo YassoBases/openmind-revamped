@@ -43,7 +43,14 @@ async function main() {
         baseUrl: config.qwenBaseUrl,
         model: config.qwenModel,
         timeoutMs: config.qwenTimeoutMs,
+        maxTokens: config.qwenMaxTokens,
         fallback: provider,
+        // Without this every fallback is invisible outside a metrics counter.
+        // The provider only ever logs key-free, body-free reasons.
+        logger: {
+          warn: (obj: unknown, msg?: string) =>
+            console.warn(`[tutor] ${msg ?? 'qwen fallback'} ${JSON.stringify(obj)}`),
+        },
       })
     : undefined;
   if (tutorProvider) {

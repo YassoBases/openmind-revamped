@@ -105,6 +105,133 @@ describe('QwenTutorProvider', () => {
     expect(body.messages[1].content).toContain('"grade":7');
   });
 
+  it('normalizes omitted flat keys (json_object mode has no constrained decoding)', async () => {
+    // Qwen's natural output: only the keys the tool actually uses, and no
+    // top-level nulls it considers redundant. Must NOT fall back.
+    const sparse = {
+      message: 'جرّب وضع الكسر على الخط',
+      responseType: 'next_step',
+      suggestedAction: 'try_again',
+      needsClarification: false,
+      interactivePayload: {
+        type: 'number_line',
+        version: 1,
+        title: 'ضع الكسر',
+        instructions: 'حرّك المؤشر إلى ٣/٤',
+        expectedLearningAction: 'وضع القيمة بنفسه',
+        followUpPrompt: 'ماذا لاحظت؟',
+        data: { min: 0, max: 1, step: 0.25, target: 0.75, tolerance: 0.05 },
+      },
+    };
+    const { provider, fallback } = makeProvider(
+      vi.fn(async () => okResponse(sparse)) as unknown as typeof fetch,
+    );
+    const res = await provider.tutorReply(PARAMS);
+    expect(res.model).toBe('qwen-test');
+    expect(fallback.tutorReply).not.toHaveBeenCalled();
+    expect(res.data.followUpQuestion).toBeNull();
+    expect(res.data.relatedConcept).toBeNull();
+    expect(res.data.suggestedInteraction).toBeNull();
+    // Omitted data keys filled with null; provided keys untouched.
+    expect(res.data.interactivePayload?.data.items).toBeNull();
+    expect(res.data.interactivePayload?.data.target).toBe(0.75);
+  });
+
+  it('normalizes omitted NESTED item keys (order items have no bucketId)', async () => {
+    const sparse = {
+      message: 'رتب المراحل',
+      responseType: 'next_step',
+      suggestedAction: 'try_again',
+      needsClarification: false,
+      interactivePayload: {
+        type: 'order_sequence', version: 1, title: 'رتب', instructions: 'رتب المراحل',
+        expectedLearningAction: 'يرتب بنفسه', followUpPrompt: 'ماذا لاحظت؟',
+        data: {
+          items: [
+            { id: 'a', label: 'تبخر' },
+            { id: 'b', label: 'تكاثف' },
+            { id: 'c', label: 'هطول' },
+          ],
+          correctOrder: ['a', 'b', 'c'],
+        },
+      },
+    };
+    const { provider, fallback } = makeProvider(
+      vi.fn(async () => okResponse(sparse)) as unknown as typeof fetch,
+    );
+    const res = await provider.tutorReply(PARAMS);
+    expect(res.model).toBe('qwen-test');
+    expect(fallback.tutorReply).not.toHaveBeenCalled();
+    const items = res.data.interactivePayload?.data.items as Array<{ bucketId: string | null }>;
+    expect(items[0]!.bucketId).toBeNull();
+  });
+
+  it('a malformed payload with a healthy envelope keeps the model text, drops the activity', async () => {
+    // items without ids are unrecoverable (correctOrder references ids) —
+    // the honest degradation is Qwen's own message with NO broken block,
+    // never a canned fallback reply mid-conversation.
+    const wrongTyped = {
+      ...VALID_REPLY,
+      interactivePayload: {
+        type: 'number_line', version: 1, title: 'ت', instructions: 'ت',
+        expectedLearningAction: 'ت', followUpPrompt: 'ت',
+        data: { min: 'zero', max: 1, step: 0.25, target: 0.75, tolerance: 0.05 },
+      },
+    };
+    const { provider, fallback } = makeProvider(
+      vi.fn(async () => okResponse(wrongTyped)) as unknown as typeof fetch,
+    );
+    const res = await provider.tutorReply(PARAMS);
+    expect(res.model).toBe('qwen-test'); // Qwen still answers
+    expect(res.data.message).toBe(VALID_REPLY.message); // its own text
+    expect(res.data.interactivePayload).toBeNull(); // broken activity dropped
+    expect(fallback.tutorReply).not.toHaveBeenCalled();
+  });
+
+  it('a broken ENVELOPE still falls back completely', async () => {
+    const broken = { ...VALID_REPLY, responseType: 'not_a_type' };
+    const { provider, fallback } = makeProvider(
+      vi.fn(async () => okResponse(broken)) as unknown as typeof fetch,
+    );
+    const res = await provider.tutorReply(PARAMS);
+    expect(res.model).toBe('fallback');
+    expect(fallback.tutorReply).toHaveBeenCalledOnce();
+  });
+
+  it('sends the configured max_tokens (reasoning models need headroom)', async () => {
+    const fetchMock = vi.fn(async () => okResponse(VALID_REPLY));
+    const fallback = {
+      name: 'fb',
+      tutorReply: vi.fn(async () => ({ data: VALID_REPLY, model: 'fallback' })),
+    };
+    const provider = new QwenTutorProvider({
+      apiKey: API_KEY,
+      baseUrl: 'https://qwen.test/v1',
+      model: 'qwen-test',
+      timeoutMs: 5000,
+      maxTokens: 8192,
+      fallback,
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+    await provider.tutorReply(PARAMS);
+    const [, init] = fetchMock.mock.calls[0]! as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).max_tokens).toBe(8192);
+  });
+
+  it('forwards context.mode to Qwen — study programs ride the same seam', async () => {
+    const fetchMock = vi.fn(async () => okResponse(VALID_REPLY));
+    const { provider } = makeProvider(fetchMock as unknown as typeof fetch);
+    await provider.tutorReply({
+      ...PARAMS,
+      context: { source: 'ask', mode: 'exam_prep' },
+    });
+    const [, init] = fetchMock.mock.calls[0]! as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.messages[1].content).toContain('"mode":"exam_prep"');
+    // The static system prompt carries the program rules for that id.
+    expect(body.messages[0].content).toContain('"exam_prep"');
+  });
+
   it('accepts a reply wrapped in markdown fences (defensive parse)', async () => {
     const fenced = '```json\n' + JSON.stringify(VALID_REPLY) + '\n```';
     const { provider, fallback } = makeProvider(
