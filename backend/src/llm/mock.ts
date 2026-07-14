@@ -58,6 +58,93 @@ function loadSamples(): GameSpec[] {
 
 const VAGUE = /\b(stuff|things|something|idk|dunno|anything|whatever)\b|^\s*\S{1,3}\s*$|شيء|أشياء|أي شيء/i;
 
+/**
+ * Deterministic first-step (and generic continuation) replies per study mode,
+ * mirroring the live prompt's STUDY MODES rules: collect the required inputs
+ * in ONE compact question (needsClarification=true), except quick_review
+ * whose first step IS the prerequisite check. Continuations acknowledge and
+ * advance one step so multi-turn plumbing stays testable.
+ */
+function mockStudyModeReply(mode: string, hasHistory: boolean, ar: boolean, name: string): TutorReply | null {
+  const base = {
+    relatedConcept: null,
+    interactivePayload: null,
+    suggestedInteraction: null,
+  } as const;
+  if (hasHistory) {
+    // One generic mode-following continuation: acknowledge + next step.
+    return {
+      ...base,
+      message: ar
+        ? `تمام يا ${name}، سجلت ذلك. ننتقل إلى الخطوة التالية من برنامجنا.`
+        : `Great, ${name} — noted. On to the next step of our program.`,
+      responseType: 'next_step',
+      followUpQuestion: null,
+      suggestedAction: 'ask_followup',
+      needsClarification: false,
+    };
+  }
+  switch (mode) {
+    case 'exam_prep':
+      return {
+        ...base,
+        message: ar
+          ? `لنجهّزك للسبر جيدًا يا ${name}. أخبرني في رسالة واحدة: ما المادة، وما الموضوعات التي يشملها السبر، ومتى موعده، وكم من الوقت متاح لك للدراسة؟`
+          : `Let's get you ready, ${name}. In one message: which subject, which topics does the exam cover, when is it, and how much study time do you have?`,
+        responseType: 'question',
+        followUpQuestion: null,
+        suggestedAction: 'ask_followup',
+        needsClarification: true,
+      };
+    case 'lesson_discovery':
+      return {
+        ...base,
+        message: ar
+          ? `يسعدني أن نكتشف الدرس معًا! أي درس تريد أن تفهم؟ وأخبرني أيضًا: ما الذي تستمتع به خارج المدرسة حتى أبني الأمثلة من عالمك؟`
+          : `Happy to discover this together! Which lesson do you want to understand? And tell me: what do you enjoy outside school, so I can build the examples from your world?`,
+        responseType: 'question',
+        followUpQuestion: null,
+        suggestedAction: 'ask_followup',
+        needsClarification: true,
+      };
+    case 'backlog_plan':
+      return {
+        ...base,
+        message: ar
+          ? `لا بأس بالتراكم — سنقسمه معًا إلى خطوات صغيرة. أخبرني: ما الذي تراكم عليك (المواد والدروس)، وهل هناك مواعيد نهائية، وكم من الوقت متاح لك يوميًا؟`
+          : `A backlog is fine — we will split it into small steps together. Tell me: what has piled up (subjects and lessons), any deadlines, and how much time do you have per day?`,
+        responseType: 'question',
+        followUpQuestion: null,
+        suggestedAction: 'ask_followup',
+        needsClarification: true,
+      };
+    case 'solve_diagnose':
+      return {
+        ...base,
+        message: ar
+          ? `أرني المسألة كما هي، والأهم: أرني محاولتك أنت في حلها — حتى لو لم تكتمل. من محاولتك سأعرف أين تختلط الفكرة بالضبط.`
+          : `Show me the problem as written, and — most importantly — your own attempt at it, even unfinished. Your attempt tells me exactly where the idea gets tangled.`,
+        responseType: 'question',
+        followUpQuestion: null,
+        suggestedAction: 'ask_followup',
+        needsClarification: true,
+      };
+    case 'quick_review':
+      return {
+        ...base,
+        message: ar
+          ? `مراجعة سريعة إذن! سؤال أول لفحص الأساس: ما القاعدة أو الفكرة الأساسية التي يقوم عليها هذا الموضوع؟ أجب بما تتذكره وسأكمل بسؤالين قصيرين.`
+          : `Quick review it is! First check question: what is the core rule or idea this topic stands on? Answer from memory and I will follow with two short checks.`,
+        responseType: 'question',
+        followUpQuestion: null,
+        suggestedAction: 'ask_followup',
+        needsClarification: false, // the check itself has begun
+      };
+    default:
+      return null; // unknown mode → normal tutoring (the schema blocks these anyway)
+  }
+}
+
 /** Strip ids/intro from a golden spec to produce generation-shaped content. */
 function toContent(spec: GameSpec, educationalLevels: number): McqContentSpec | ConnectContentSpec {
   const eduLevels = spec.levels.filter((l) => !l.isIntro);
@@ -205,6 +292,16 @@ export class MockProvider implements ContentProvider {
         suggestedInteraction: null,
       };
       return { model: 'mock', data };
+    }
+
+    // Study programs (contract.ts STUDY_MODES): mirror the live prompt's
+    // per-mode FIRST STEP deterministically — collect the program's required
+    // inputs (or open the diagnostic) — so mode plumbing and each first-step
+    // behavior are testable end to end. Program logic keys on the stable id
+    // in context.mode, never on the question's Arabic text.
+    if (params.context?.mode) {
+      const reply = mockStudyModeReply(params.context.mode, params.history.length > 0, ar, params.student.name);
+      if (reply) return { model: 'mock', data: reply };
     }
 
     // Keyword-routed interactive blocks for "ask" questions — deterministic
