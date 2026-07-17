@@ -8,17 +8,20 @@ import '../onboarding/onboarding_flow.dart' show kOnbInterests;
 
 /// Lets a student change their personal interests (1-2, both stages) after
 /// onboarding — the same signal AI explanations, examples and activities
-/// draw from. A lightweight bottom sheet, mirroring [showContextSheet]'s
-/// pattern: local-first save, then a best-effort server PATCH.
+/// draw from. A lightweight bottom sheet: local-first save, then a
+/// best-effort server PATCH.
 ///
 /// Localized, comma-joined labels for the student's current interests (chip
 /// subtitle on Me/Profile). Empty selection falls back to `int_none`.
 String interestsSummary(AppLocalizations l, List<String> ids) {
   if (ids.isEmpty) return l.translate('int_none');
-  return ids
-      .map((id) => kOnbInterests.where((it) => it.id == id).map((it) => l.translate(it.key)).firstOrNull ?? id)
-      .join(', ');
+  return ids.map((id) => interestLabel(l, id)).join(', ');
 }
+
+/// The localized label for a single interest id (falls back to the raw id
+/// if it's somehow not in [kOnbInterests]).
+String interestLabel(AppLocalizations l, String id) =>
+    kOnbInterests.where((it) => it.id == id).map((it) => l.translate(it.key)).firstOrNull ?? id;
 
 /// Returns true when the selection changed, so openers can refresh.
 Future<bool> showInterestsSheet(BuildContext context) async {
@@ -40,6 +43,10 @@ class _InterestsSheet extends StatefulWidget {
 class _InterestsSheetState extends State<_InterestsSheet> {
   final Set<String> _selected = Session.instance.interests.toSet();
   bool _saving = false;
+
+  /// The student's personal accent — a small touch on the selected chips
+  /// and the Save CTA only, never the sheet's background or typography.
+  Color get _accent => hexToColor(Session.instance.color);
 
   Future<void> _save() async {
     if (_saving || _selected.isEmpty) return;
@@ -109,6 +116,10 @@ class _InterestsSheetState extends State<_InterestsSheet> {
             const SizedBox(height: 10),
             FilledButton(
               onPressed: _selected.isEmpty || _saving ? null : _save,
+              style: FilledButton.styleFrom(
+                backgroundColor: _accent,
+                foregroundColor: onAccentColor(_accent),
+              ),
               child: Text(l.translate('int_sheet_save')),
             ),
           ],
@@ -133,16 +144,16 @@ class _InterestsSheetState extends State<_InterestsSheet> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? cs.primary.withValues(alpha: 0.08) : null,
+            color: selected ? _accent.withValues(alpha: 0.08) : null,
             border: Border.all(
-              color: selected ? cs.primary : cs.outlineVariant,
+              color: selected ? _accent : cs.outlineVariant,
               width: selected ? 1.8 : 1,
             ),
             borderRadius: BorderRadius.circular(Palette.radiusButton),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: cs.primary),
+              Icon(icon, size: 20, color: selected ? _accent : cs.primary),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -153,7 +164,7 @@ class _InterestsSheetState extends State<_InterestsSheet> {
                   ),
                 ),
               ),
-              if (selected) Icon(Icons.check_circle_rounded, color: cs.primary, size: 20),
+              if (selected) Icon(Icons.check_circle_rounded, color: _accent, size: 20),
             ],
           ),
         ),

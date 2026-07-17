@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app_localizations.dart';
 import '../../core/api_client.dart';
 import '../../core/app_theme.dart';
+import '../../core/palette.dart';
 import '../../core/session.dart';
 import '../../core/stage.dart';
 import '../../widgets/mascot.dart';
@@ -58,6 +59,7 @@ class TutorChat extends StatefulWidget {
     this.quickActions = const [],
     this.persistThread = false,
     this.showStudyModes = false,
+    this.isHelpSheet = false,
   });
 
   /// Learning context attached to every question (null on the Ask page).
@@ -82,6 +84,11 @@ class TutorChat extends StatefulWidget {
   /// turn of the conversation. The in-lesson help sheet keeps this false —
   /// its contextual quick actions are untouched.
   final bool showStudyModes;
+
+  /// True only for the in-lesson help sheet (openAskHudhud): swaps the long
+  /// main-screen welcome for a short one-line greeting. Everything else —
+  /// input, quick actions, study modes — is unaffected by this flag.
+  final bool isHelpSheet;
 
   @override
   State<TutorChat> createState() => TutorChatState();
@@ -337,13 +344,17 @@ class TutorChatState extends State<TutorChat> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    // The student's personal accent — a small touch on a few interactive
+    // elements here (send button, active-program marker, quick-action
+    // chips) only. Never the surfaces, mascot, or brand typography.
+    final accent = hexToColor(Session.instance.color);
     return Column(
       children: [
         Expanded(
           child: _restoring
               ? const Center(child: CircularProgressIndicator())
               : _turns.isEmpty
-                  ? _emptyState(l, cs)
+                  ? _emptyState(l, cs, accent)
                   : _conversation(cs),
         ),
         // A small always-visible marker of the running study program.
@@ -356,6 +367,7 @@ class TutorChatState extends State<TutorChat> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: cs.primary.withValues(alpha: 0.08),
+                  border: Border.all(color: accent, width: 1.2),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
@@ -394,6 +406,8 @@ class TutorChatState extends State<TutorChat> {
                     child: ActionChip(
                       visualDensity: VisualDensity.compact,
                       label: Text(action, style: const TextStyle(fontSize: 12.5)),
+                      backgroundColor: accent.withValues(alpha: 0.08),
+                      side: BorderSide(color: accent.withValues(alpha: 0.5)),
                       onPressed: _sending ? null : () => send(action),
                     ),
                   ),
@@ -462,6 +476,10 @@ class TutorChatState extends State<TutorChat> {
                 IconButton.filled(
                   onPressed: _sending ? null : () => send(),
                   icon: const Icon(Icons.send_rounded),
+                  style: IconButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: onAccentColor(accent),
+                  ),
                 ),
               ],
             ),
@@ -471,7 +489,7 @@ class TutorChatState extends State<TutorChat> {
     );
   }
 
-  Widget _emptyState(AppLocalizations l, ColorScheme cs) {
+  Widget _emptyState(AppLocalizations l, ColorScheme cs, Color accent) {
     // Hudhud fronts every "Ask" moment — calmer and smaller for middle
     // schoolers, warm and expressive for primary — never a generic icon.
     final middle =
@@ -487,7 +505,7 @@ class TutorChatState extends State<TutorChat> {
             const Mascot(size: 96, expression: MascotExpression.happy),
           const SizedBox(height: 10),
           Text(
-            l.translate('tutor_welcome'),
+            l.translate(widget.isHelpSheet ? 'tutor_sheet_welcome' : 'tutor_welcome'),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14.5, height: 1.7, color: cs.onSurfaceVariant),
           ),
@@ -523,6 +541,8 @@ class TutorChatState extends State<TutorChat> {
                 for (final q in widget.seedQuestions)
                   ActionChip(
                     label: Text(q, style: const TextStyle(fontSize: 12.5)),
+                    backgroundColor: accent.withValues(alpha: 0.08),
+                    side: BorderSide(color: accent.withValues(alpha: 0.5)),
                     onPressed: () => send(q),
                   ),
               ],

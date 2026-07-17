@@ -4,6 +4,7 @@ import '../../app_localizations.dart';
 import '../../core/session.dart';
 import '../../core/stage.dart';
 import '../../widgets/mascot.dart';
+import '../context/interests_sheet.dart' show interestLabel;
 import 'tutor_chat.dart';
 import 'tutor_models.dart';
 
@@ -38,14 +39,16 @@ class _AskScreenState extends State<AskScreen> {
     final ar = Session.instance.language == 'ar';
     final middle =
         Session.instance.stage == LearningStage.middleInteractiveLearning;
-    final lens = Session.instance.learningContext;
-    // «أعطني مثالًا من سياقي» names the learner's real saved lens when one
-    // exists, so the question the backend receives is specific and honest.
-    final exampleAction = lens == null
+    final interests = Session.instance.interests;
+    // «أعطني مثالًا من عالمي» names one of the learner's real saved
+    // interests when set, so the question the backend receives is specific
+    // and honest — interests are the AI's personalization signal now, not
+    // the legacy lens.
+    final exampleAction = interests.isEmpty
         ? l.translate('qa_example_ctx')
         : (ar
-            ? 'أعطني مثالًا من عالم ${l.translate('ctx_$lens')}'
-            : 'Give me an example from the world of ${l.translate('ctx_$lens')}');
+            ? 'أعطني مثالًا من عالم ${interestLabel(l, interests.first)}'
+            : 'Give me an example from the world of ${interestLabel(l, interests.first)}');
 
     return Scaffold(
       body: SafeArea(

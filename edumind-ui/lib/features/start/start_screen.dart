@@ -4,16 +4,15 @@ import '../../app_localizations.dart';
 import '../../core/middle_palette.dart';
 import '../../core/palette.dart';
 import '../../core/session.dart';
-import '../context/context_sheet.dart';
 import '../learn/experience_screen.dart';
 import '../learn/journey_logic.dart';
 import '../learn/learn_catalog.dart';
 import '../learn/learn_models.dart';
 import '../learn/learn_progress_store.dart';
 
-/// The middle-school Home: one meaningful learning moment. A calm greeting,
-/// the context-lens chip (bottom sheet, not a tab), and a single primary
-/// action whose label is honest about the learner's real state:
+/// The middle-school Home: one meaningful learning moment. A calm greeting
+/// and a single primary action whose label is honest about the learner's
+/// real state:
 /// «تابع التجربة» only when a persisted mid-experience position exists,
 /// «استكشف المفهوم التالي» when the path is already in progress, and
 /// «ابدأ التجربة» for a fresh start — all computed from the same catalogs +
@@ -122,16 +121,10 @@ class _StartScreenState extends State<StartScreen> {
     if (mounted) await _load(sync: false);
   }
 
-  Future<void> _openContextSheet() async {
-    final changed = await showContextSheet(context);
-    if (changed && mounted) setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final lens = Session.instance.learningContext;
 
     return Scaffold(
       backgroundColor: MiddlePalette.cream,
@@ -145,23 +138,6 @@ class _StartScreenState extends State<StartScreen> {
                     '${l.translate('start_greeting')} ${Session.instance.name}',
                     style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, height: 1.3),
                   ),
-                  if (!_gradeSoon) ...[
-                    const SizedBox(height: 14),
-                    // The context lens — a small secondary control, never a tab.
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: ActionChip(
-                        avatar: Text(contextEmoji(lens), style: const TextStyle(fontSize: 15)),
-                        label: Text(
-                          lens == null
-                              ? l.translate('ctx_chip_pick')
-                              : '${l.translate('ctx_chip_label')}: ${l.translate('ctx_$lens')}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                        ),
-                        onPressed: _openContextSheet,
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 26),
                   _gradeSoon
                       ? _gradeSoonCard(l, cs)

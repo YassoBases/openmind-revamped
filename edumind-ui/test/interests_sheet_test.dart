@@ -12,6 +12,14 @@ import 'package:edumind/features/context/interests_sheet.dart';
 /// new picks at two, and saves through Session (never forced, only opened
 /// on request).
 void main() {
+  test('interestLabel resolves the localized label, falling back to the raw id', () {
+    final ar = AppLocalizations(const Locale('ar'));
+    final en = AppLocalizations(const Locale('en'));
+    expect(interestLabel(ar, 'tech_robotics'), 'تكنولوجيا وروبوتات');
+    expect(interestLabel(en, 'tech_robotics'), 'Tech & robots');
+    expect(interestLabel(en, 'not_a_real_id'), 'not_a_real_id');
+  });
+
   Widget app() => MaterialApp(
         localizationsDelegates: const [
           AppLocalizations.delegate,
@@ -95,5 +103,27 @@ void main() {
 
     final save = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'));
     expect(save.onPressed, isNull);
+  });
+
+  testWidgets('the selected chip and Save button reflect the student\'s accent color',
+      (tester) async {
+    phoneSurface(tester);
+    SharedPreferences.setMockInitialValues({});
+    await Session.load();
+    await Session.instance.reset();
+    await Session.instance.setProfile({'name': 'Test', 'grade': 8, 'color': '#00AA55'});
+    await Session.instance.setInterests(['tech_robotics']);
+
+    await tester.pumpWidget(app());
+    await tester.pump();
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    final checkIcon = tester.widget<Icon>(find.byIcon(Icons.check_circle_rounded));
+    expect(checkIcon.color, const Color(0xFF00AA55));
+
+    final save = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save'));
+    final resolvedBg = save.style!.backgroundColor!.resolve({});
+    expect(resolvedBg, const Color(0xFF00AA55));
   });
 }

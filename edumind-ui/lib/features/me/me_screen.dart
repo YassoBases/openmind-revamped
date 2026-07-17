@@ -6,14 +6,13 @@ import '../../core/api_client.dart';
 import '../../core/palette.dart';
 import '../../core/session.dart';
 import '../../languageswitchertile.dart';
-import '../context/context_sheet.dart';
 import '../context/interests_sheet.dart';
 import '../learn/journey_logic.dart';
 import '../learn/learn_catalog.dart';
 import '../learn/learn_progress_store.dart';
 
-/// "أنا" — the middle-school Me tab: identity, real learning stats, the
-/// context lens, and the merged settings/about entries. Profile + Settings +
+/// "أنا" — the middle-school Me tab: identity, real learning stats,
+/// interests, and the merged settings/about entries. Profile + Settings +
 /// About collapsed into one calm screen; no elementary games surface here.
 class MeScreen extends StatefulWidget {
   const MeScreen({super.key});
@@ -111,7 +110,6 @@ class _MeScreenState extends State<MeScreen> {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final name = Session.instance.name;
-    final lens = Session.instance.learningContext;
 
     return Scaffold(
       body: SafeArea(
@@ -190,23 +188,6 @@ class _MeScreenState extends State<MeScreen> {
               ],
             ),
             const SizedBox(height: 14),
-            Card(
-              child: ListTile(
-                leading: Text(contextEmoji(lens), style: const TextStyle(fontSize: 22)),
-                title: Text(
-                  l.translate('ctx_chip_label'),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  lens == null ? l.translate('ctx_none') : l.translate('ctx_$lens'),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () async {
-                  if (await showContextSheet(context) && mounted) setState(() {});
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
             Card(
               child: ListTile(
                 leading: Icon(Icons.favorite_rounded, color: cs.primary),

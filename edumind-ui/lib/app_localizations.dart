@@ -113,18 +113,6 @@ class AppLocalizations {
       'me_experiences_done': 'experiences completed',
       'me_paths_done': 'paths completed',
       'me_advanced': 'Advanced',
-      // context lens (middle school)
-      'ctx_sheet_title': 'Your learning lens',
-      'ctx_sheet_sub':
-          'Pick the world your examples come from. It changes the story around an idea — never the idea, its difficulty, or your progress.',
-      'ctx_chip_label': 'My lens',
-      'ctx_chip_pick': 'Pick a learning lens',
-      'ctx_none': 'No lens',
-      'ctx_market': 'Market & trade',
-      'ctx_building': 'Building & construction',
-      'ctx_water_energy': 'Water & energy',
-      'ctx_roads_transport': 'Roads & transport',
-      'ctx_technology': 'Technology',
       // personal interests (both stages — editable later from the profile)
       'int_sheet_title': 'Your interests',
       'int_sheet_sub': 'Pick one or two — your tutor uses them for real-life examples and activities.',
@@ -182,6 +170,8 @@ class AppLocalizations {
       'tutor_title': 'Ask Hudhud',
       'tutor_welcome':
           'Hi, I\'m Hudhud! Ask me about math, science, Arabic, English, or anything you are learning. I will guide you step by step.',
+      // In-lesson help sheet only — short greeting, not the main Ask screen's.
+      'tutor_sheet_welcome': 'I\'m Hudhud — just ask.',
       'tutor_input_hint': 'Write your question…',
       'tutor_thinking': 'Thinking…',
       'tutor_offline': 'Connect to a server first (Settings) so I can answer your questions.',
@@ -491,18 +481,6 @@ class AppLocalizations {
       'me_experiences_done': 'تجربة مكتملة',
       'me_paths_done': 'مسارات مكتملة',
       'me_advanced': 'خيارات متقدمة',
-      // context lens (middle school)
-      'ctx_sheet_title': 'عدستك في التعلم',
-      'ctx_sheet_sub':
-          'اختر العالم الذي تأتي منه أمثلتك. تغيّر العدسة الحكاية حول الفكرة — لا الفكرة نفسها ولا صعوبتها ولا تقدمك.',
-      'ctx_chip_label': 'عدستي',
-      'ctx_chip_pick': 'اختر عدسة التعلم',
-      'ctx_none': 'بدون عدسة',
-      'ctx_market': 'السوق والتجارة',
-      'ctx_building': 'البناء والعمران',
-      'ctx_water_energy': 'الماء والطاقة',
-      'ctx_roads_transport': 'الطرق والمواصلات',
-      'ctx_technology': 'التقنية',
       // personal interests (both stages — editable later from الملف الشخصي)
       'int_sheet_title': 'اهتماماتك',
       'int_sheet_sub': 'اختر واحدًا أو اثنين — يستخدمهما مساعدك في الأمثلة والأنشطة من واقع الحياة.',
@@ -559,6 +537,8 @@ class AppLocalizations {
       'tutor_title': 'اسأل هدهد',
       'tutor_welcome':
           'أهلًا! أنا هدهد. اسألني في الرياضيات أو العلوم أو العربية أو الإنكليزية أو أي شيء تتعلمه، وسأرافقك خطوة بخطوة.',
+      // شاشة المساعدة داخل الدرس فقط — تحية قصيرة، ليست تحية شاشة "اسأل هدهد" الرئيسية.
+      'tutor_sheet_welcome': 'أنا هدهد، اسألني بس',
       'tutor_input_hint': 'اكتب سؤالك…',
       'tutor_thinking': 'أفكر…',
       'tutor_offline': 'اتصل بالخادم أولًا (من الإعدادات) حتى أستطيع الإجابة عن أسئلتك.',
