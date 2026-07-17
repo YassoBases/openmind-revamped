@@ -49,6 +49,13 @@ export const CreateStudentBody = z.object({
   /** Personal interests chosen at onboarding (1-2, both stages) — the primary AI-flavor signal. */
   interests: z.array(z.enum(STUDENT_INTERESTS)).min(1).max(2).optional(),
   dailyGoal: z.union([z.literal(1), z.literal(3), z.literal(5)]).default(3),
+  /**
+   * Client-generated, persisted per device install. Lets a retry after a
+   * lost response (the server created the account but the client never saw
+   * the reply) return the SAME account with a freshly issued token instead
+   * of creating a duplicate — see routes/students.ts.
+   */
+  installationId: z.string().min(8).max(128).optional(),
 });
 
 export const StudentView = z.object({

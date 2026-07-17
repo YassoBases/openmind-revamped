@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_localizations.dart';
-import '../../core/api_client.dart';
+import '../../core/interests_sync.dart';
 import '../../core/palette.dart';
 import '../../core/session.dart';
 import '../onboarding/onboarding_flow.dart' show kOnbInterests;
@@ -12,10 +12,13 @@ import '../onboarding/onboarding_flow.dart' show kOnbInterests;
 /// best-effort server PATCH.
 ///
 /// Localized, comma-joined labels for the student's current interests (chip
-/// subtitle on Me/Profile). Empty selection falls back to `int_none`.
-String interestsSummary(AppLocalizations l, List<String> ids) {
-  if (ids.isEmpty) return l.translate('int_none');
-  return ids.map((id) => interestLabel(l, id)).join(', ');
+/// subtitle on Me/Profile). Empty selection falls back to `int_none`. When
+/// [pending] is true (a save hasn't been confirmed by the server yet — see
+/// [Session.interestsSyncPending]) a short "syncing" marker is appended, so
+/// the subtitle never silently implies a save that hasn't landed.
+String interestsSummary(AppLocalizations l, List<String> ids, {bool pending = false}) {
+  final base = ids.isEmpty ? l.translate('int_none') : ids.map((id) => interestLabel(l, id)).join(', ');
+  return pending ? '$base · ${l.translate('int_sync_pending_badge')}' : base;
 }
 
 /// The localized label for a single interest id (falls back to the raw id
@@ -50,22 +53,27 @@ class _InterestsSheetState extends State<_InterestsSheet> {
 
   Future<void> _save() async {
     if (_saving || _selected.isEmpty) return;
+    final l = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _saving = true);
     final ids = _selected.toList();
     final before = Session.instance.interests;
-    // Local first: the UI and the tutor see the new interests immediately,
-    // even offline.
+    // Local first: the UI sees the new interests immediately, even offline
+    // — marked pending until the server confirms them.
     await Session.instance.setInterests(ids);
-    // Best-effort server save — the trusted copy the tutor reads.
-    if (Session.instance.registered) {
-      try {
-        final student = await Api.patchMe({'interests': ids});
-        await Session.instance.applyStudentView(student);
-      } catch (_) {/* offline — local cache stands, next PATCH reconciles */}
-    }
-    if (mounted) {
-      final changed = before.length != ids.length || !before.toSet().containsAll(ids);
-      Navigator.of(context).pop(changed);
+    // Best-effort server confirm. Ask Hudhud only ever reasons from the
+    // server's copy of interests (it reads the authenticated student row,
+    // never the request body) — so this PATCH is what actually makes the
+    // new pick count, not the local write above. A failure here is never
+    // reported as success: it leaves the pick pending (surfaced next to the
+    // interests summary on Profile/Me, see [Session.interestsSyncPending])
+    // for [InterestsSync] to retry automatically.
+    final synced = Session.instance.registered && await InterestsSync.retry();
+    if (!mounted) return;
+    final changed = before.length != ids.length || !before.toSet().containsAll(ids);
+    Navigator.of(context).pop(changed);
+    if (!synced) {
+      messenger.showSnackBar(SnackBar(content: Text(l.translate('int_sync_pending_toast'))));
     }
   }
 

@@ -4,6 +4,7 @@ import '../../app_localizations.dart';
 import '../../core/api_client.dart';
 import '../../core/app_theme.dart';
 import '../../core/palette.dart';
+import '../../core/registration_sync.dart';
 import '../../core/session.dart';
 import '../../core/stage.dart';
 import '../../widgets/mascot.dart';
@@ -287,6 +288,11 @@ class TutorChatState extends State<TutorChat> {
     });
     _scrollDown();
 
+    // The account may have finished registering since this screen last
+    // rebuilt (a background retry from EduMindRoot, or connectivity just
+    // came back) — a quick check-and-retry here means the learner doesn't
+    // have to leave and come back for a pending registration to resolve.
+    if (RegistrationSync.isPending) await RegistrationSync.retry();
     if (!Session.instance.registered) {
       setState(() {
         _turns.add(_Turn.error(l.translate('tutor_offline')));
@@ -499,6 +505,13 @@ class TutorChatState extends State<TutorChat> {
       child: Column(
         children: [
           const SizedBox(height: 8),
+          // Clear, non-blocking status: the account hasn't finished
+          // registering yet (offline onboarding, or the server was
+          // unreachable). RegistrationSync retries this automatically in
+          // the background (app startup, resume, and right before a real
+          // send attempt) — this banner just keeps the learner honestly
+          // informed meanwhile, never blocking the rest of the app.
+          if (!Session.instance.registered) _pendingRegistrationBanner(l, cs),
           if (middle)
             Mascot(size: 64, accent: cs.primary, expression: MascotExpression.idle)
           else
@@ -548,6 +561,30 @@ class TutorChatState extends State<TutorChat> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _pendingRegistrationBanner(AppLocalizations l, ColorScheme cs) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cloud_off_rounded, size: 16, color: cs.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              l.translate('tutor_pending_registration'),
+              style: TextStyle(fontSize: 12, height: 1.5, color: cs.onSurfaceVariant),
+            ),
+          ),
         ],
       ),
     );

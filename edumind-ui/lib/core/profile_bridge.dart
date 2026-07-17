@@ -1,5 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'api_client.dart';
+import 'registration_sync.dart';
 import 'session.dart';
 import 'stage.dart';
 
@@ -91,16 +91,12 @@ class ProfileBridge {
       'dailyGoal': 3,
     };
 
-    // Save first so the app works offline, then register; the backend's
-    // student view (trusted grade/stage) overwrites the local guess.
+    // Save first so the app works offline, then register through the same
+    // retry path used at app startup and app resume (RegistrationSync) — a
+    // flaky connection here just leaves the account pending, never lost,
+    // and the backend's student view (trusted grade/stage) overwrites the
+    // local guess once it lands.
     await Session.instance.setProfile(profile);
-    try {
-      final res = await Api.createStudent(profile);
-      await Session.instance.setAuth(res['studentId'] as String, res['token'] as String);
-      final student = res['student'];
-      if (student is Map<String, dynamic>) {
-        await Session.instance.applyStudentView(student);
-      }
-    } catch (_) {/* offline — generation needs a server, everything else works */}
+    await RegistrationSync.retry();
   }
 }

@@ -55,6 +55,9 @@ export async function createPrismaStore(): Promise<Store> {
     async getStudent(id) {
       return (await prisma.student.findUnique({ where: { id } })) as StudentRow | null;
     },
+    async getStudentByInstallationId(installationId) {
+      return (await prisma.student.findUnique({ where: { installationId } })) as StudentRow | null;
+    },
     async updateStudent(id, patch) {
       return (await prisma.student.update({ where: { id }, data: patch })) as StudentRow;
     },

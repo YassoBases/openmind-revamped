@@ -27,6 +27,12 @@ model Student {
   streakCount         Int       @default(0)
   streakLastPlayedAt  DateTime?
   tokenHash           String    @unique
+  // Client-generated, persisted per device install — the idempotency key for
+  // POST /students. Nullable: older rows (and any caller that doesn't send
+  // one) never populate it, and Postgres unique indexes allow any number of
+  // NULLs. A retry with a matching id reissues a token for the SAME row
+  // instead of creating a duplicate account (see routes/students.ts).
+  installationId      String?   @unique
   createdAt           DateTime  @default(now())
   games               Game[]
   xpEvents            XpEvent[]

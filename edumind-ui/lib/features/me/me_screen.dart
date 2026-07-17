@@ -195,7 +195,8 @@ class _MeScreenState extends State<MeScreen> {
                   l.translate('int_chip_label'),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: Text(interestsSummary(l, Session.instance.interests)),
+                subtitle: Text(interestsSummary(l, Session.instance.interests,
+                    pending: Session.instance.interestsSyncPending)),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () async {
                   if (await showInterestsSheet(context) && mounted) setState(() {});

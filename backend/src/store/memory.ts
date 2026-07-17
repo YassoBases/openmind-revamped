@@ -1,5 +1,6 @@
 /** In-memory store — dev fallback when DATABASE_URL is unset. Data dies on restart. */
 import { randomUUID } from 'node:crypto';
+import { uniqueConstraintError } from './errors.js';
 import type { GameRow, LearnEvidenceInput, LearnEvidenceRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, XpEventRow } from './types.js';
 
 export class MemoryStore implements Store {
@@ -19,6 +20,13 @@ export class MemoryStore implements Store {
   }
 
   async createStudent(data: Omit<StudentRow, 'id' | 'createdAt' | 'xp' | 'streakCount' | 'streakLastPlayedAt'>) {
+    // Mirrors the Postgres `@unique` constraint on installationId (schema.prisma)
+    // so a duplicate-insert race behaves the same way regardless of store
+    // backend — routes/students.ts relies on this to safely recover instead
+    // of creating two accounts for one installation.
+    if (data.installationId && (await this.getStudentByInstallationId(data.installationId))) {
+      throw uniqueConstraintError('installationId');
+    }
     const row: StudentRow = {
       ...data,
       id: randomUUID(),
@@ -38,6 +46,11 @@ export class MemoryStore implements Store {
 
   async getStudent(id: string) {
     return this.students.get(id) ?? null;
+  }
+
+  async getStudentByInstallationId(installationId: string) {
+    for (const s of this.students.values()) if (s.installationId === installationId) return s;
+    return null;
   }
 
   async updateStudent(id: string, patch: Partial<StudentRow>) {

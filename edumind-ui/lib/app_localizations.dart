@@ -119,6 +119,8 @@ class AppLocalizations {
       'int_sheet_save': 'Save',
       'int_chip_label': 'My interests',
       'int_none': 'No interests picked yet',
+      'int_sync_pending_badge': 'syncing',
+      'int_sync_pending_toast': "Couldn't save to the server yet — will retry automatically.",
       // learning engine (features/learn)
       'learn_title': 'Learning journeys',
       'learn_subtitle':
@@ -175,6 +177,8 @@ class AppLocalizations {
       'tutor_input_hint': 'Write your question…',
       'tutor_thinking': 'Thinking…',
       'tutor_offline': 'Connect to a server first (Settings) so I can answer your questions.',
+      'tutor_pending_registration':
+          'Finishing setup with the server — Ask Hudhud will connect automatically once it\'s done.',
       'tutor_error': 'Something went wrong — try again in a moment.',
       'tutor_rate_limited': 'That is a lot of questions this hour! Take a short break and come back.',
       'tutor_try_again': 'Now try it yourself!',
@@ -487,6 +491,8 @@ class AppLocalizations {
       'int_sheet_save': 'حفظ',
       'int_chip_label': 'اهتماماتي',
       'int_none': 'لم تختر اهتمامات بعد',
+      'int_sync_pending_badge': 'قيد المزامنة',
+      'int_sync_pending_toast': 'لم يتم الحفظ على الخادم بعد — ستتم إعادة المحاولة تلقائيًا.',
       // learning engine (features/learn)
       'learn_title': 'رحلات التعلم',
       'learn_subtitle':
@@ -542,6 +548,7 @@ class AppLocalizations {
       'tutor_input_hint': 'اكتب سؤالك…',
       'tutor_thinking': 'أفكر…',
       'tutor_offline': 'اتصل بالخادم أولًا (من الإعدادات) حتى أستطيع الإجابة عن أسئلتك.',
+      'tutor_pending_registration': 'جارٍ إكمال الإعداد مع الخادم — سيتصل هدهد تلقائيًا فور الانتهاء.',
       'tutor_error': 'حدث خطأ — جرّب مرة أخرى بعد قليل.',
       'tutor_rate_limited': 'أسئلة كثيرة في هذه الساعة! خذ استراحة قصيرة ثم عد.',
       'tutor_try_again': 'الآن جرّب بنفسك!',

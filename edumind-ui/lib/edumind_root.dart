@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'about_screen.dart';
 import 'app_localizations.dart';
 import 'core/api_client.dart';
+import 'core/interests_sync.dart';
+import 'core/registration_sync.dart';
 import 'core/session.dart';
 import 'core/stage.dart';
+import 'core/sync_lifecycle.dart';
 import 'features/learn/journey_screen.dart';
 import 'features/learn/learn_progress_store.dart';
 import 'features/me/me_screen.dart';
@@ -37,16 +40,16 @@ class _EduMindRootState extends State<EduMindRoot> {
   int _index = 0;
   LearningStage _stage = Session.instance.stage;
 
-  @override
-  void initState() {
-    super.initState();
-    _refreshIdentity();
-  }
-
-  /// The backend is the trusted source of grade/stage/context. Refresh once
-  /// per app start; if the stage changed (e.g. moved from grade 6 to 7),
-  /// rebuild into the right product experience.
+  /// The backend is the trusted source of grade/stage/context. Also the one
+  /// place that retries anything left pending from onboarding or an offline
+  /// interests edit (RegistrationSync/InterestsSync) — [SyncOnStartupAndResume]
+  /// (below, in build()) calls this on every app start and every foreground
+  /// resume, not just once.
   Future<void> _refreshIdentity() async {
+    if (RegistrationSync.isPending) {
+      final registered = await RegistrationSync.retry();
+      if (registered && mounted) setState(() {}); // let banners/badges react
+    }
     if (!Session.instance.registered) return;
     try {
       final me = await Api.me();
@@ -59,6 +62,7 @@ class _EduMindRootState extends State<EduMindRoot> {
         });
       }
     } catch (_) {/* offline — the cached stage stands */}
+    if (InterestsSync.isPending) await InterestsSync.retry();
     // Middle-school progress reconciles in the background at startup too.
     if (Session.instance.stage == LearningStage.middleInteractiveLearning) {
       final store = await LearnProgressStore.load();
@@ -140,28 +144,31 @@ class _EduMindRootState extends State<EduMindRoot> {
             ),
           ];
 
-    return Scaffold(
-      body: IndexedStack(index: _index, children: screens),
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-        decoration: BoxDecoration(
-          color: cs.surface.withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: cs.shadow.withValues(alpha: 0.12),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
+    return SyncOnStartupAndResume(
+      onSync: _refreshIdentity,
+      child: Scaffold(
+        body: IndexedStack(index: _index, children: screens),
+        bottomNavigationBar: Container(
+          margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          decoration: BoxDecoration(
+            color: cs.surface.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: cs.shadow.withValues(alpha: 0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: NavigationBar(
+              selectedIndex: _index,
+              onDestinationSelected: _goTo,
+              destinations: destinations,
             ),
-          ],
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: _goTo,
-            destinations: destinations,
           ),
         ),
       ),
