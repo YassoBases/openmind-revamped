@@ -1,7 +1,6 @@
 import { buildApp } from './app.js';
 import { config } from './config.js';
 import { MockProvider } from './llm/mock.js';
-import { QwenTutorProvider } from './llm/qwen.js';
 import { ensureShellData } from './pipeline/assembler.js';
 import { LiveProvider } from './pipeline/provider.js';
 import { createStore } from './store/index.js';
@@ -21,7 +20,7 @@ async function main() {
   // A live model serving minors REQUIRES a working moderation provider.
   // MODERATION_DISABLED=1 is the explicit dev-only escape hatch; every
   // skipped request still bumps the moderation_skipped metric.
-  const liveModel = (!config.mockLlm && !!config.anthropicApiKey) || !!config.qwenApiKey;
+  const liveModel = !config.mockLlm && !!config.anthropicApiKey;
   if (liveModel && !config.moderationApiKey) {
     if (config.moderationDisabled) {
       bootLog.warn('[moderation] MODERATION_DISABLED=1 — live model WITHOUT moderation (development only; never ship this)');
@@ -34,33 +33,10 @@ async function main() {
     }
   }
 
-  // Ask Hudhud only: QWEN_API_KEY routes tutor replies through Qwen with the
-  // regular provider as fallback; content generation is untouched. Only the
-  // model NAME is logged — never the key.
-  const tutorProvider = config.qwenApiKey
-    ? new QwenTutorProvider({
-        apiKey: config.qwenApiKey,
-        baseUrl: config.qwenBaseUrl,
-        model: config.qwenModel,
-        timeoutMs: config.qwenTimeoutMs,
-        maxTokens: config.qwenMaxTokens,
-        fallback: provider,
-        // Without this every fallback is invisible outside a metrics counter.
-        // The provider only ever logs key-free, body-free reasons.
-        logger: {
-          warn: (obj: unknown, msg?: string) =>
-            console.warn(`[tutor] ${msg ?? 'qwen fallback'} ${JSON.stringify(obj)}`),
-        },
-      })
-    : undefined;
-  if (tutorProvider) {
-    bootLog.info(`[llm] tutor (Ask Hudhud): qwen ${config.qwenModel} (fallback: ${provider.name})`);
-  }
-
   const store = await createStore(bootLog);
   ensureShellData(bootLog);
 
-  const app = await buildApp({ store, provider, tutorProvider });
+  const app = await buildApp({ store, provider });
   await app.listen({ host: config.host, port: config.port });
   app.log.info(`OpenMind backend on http://${config.host}:${config.port} — docs at /api/docs`);
   if (config.host === '0.0.0.0') {

@@ -8,7 +8,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config.js';
 import { buildOpenApiDoc } from './openapi.js';
 import { metrics } from './pipeline/metrics.js';
-import type { ContentProvider, TutorProvider } from './pipeline/provider.js';
+import type { ContentProvider } from './pipeline/provider.js';
 import { gameRoutes } from './routes/games.js';
 import { learnRoutes } from './routes/learn.js';
 import { reviewRoutes } from './routes/review.js';
@@ -24,8 +24,6 @@ const startedAt = Date.now();
 export async function buildApp(deps: {
   store: Store;
   provider: ContentProvider;
-  /** Ask Hudhud only — tutor replies route here when set (llm/qwen.ts). */
-  tutorProvider?: TutorProvider;
 }): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
@@ -66,7 +64,6 @@ export async function buildApp(deps: {
     uptimeSec: Math.round((Date.now() - startedAt) / 1000),
     db: deps.store.kind === 'prisma' ? ((await deps.store.ping()) ? 'postgres' : 'down') : 'memory',
     llm: deps.provider.name,
-    tutorLlm: (deps.tutorProvider ?? deps.provider).name,
     mockReason: config.mockReason,
     metrics: metrics.snapshot(),
   }));
@@ -84,10 +81,7 @@ export async function buildApp(deps: {
   await app.register(gameRoutes, { store: deps.store, provider: deps.provider });
   await app.register(reviewRoutes, { store: deps.store, provider: deps.provider });
   await app.register(statsRoutes, { store: deps.store });
-  await app.register(tutorRoutes, {
-    store: deps.store,
-    provider: deps.tutorProvider ?? deps.provider,
-  });
+  await app.register(tutorRoutes, { store: deps.store, provider: deps.provider });
   await app.register(learnRoutes, { store: deps.store });
   await app.register(toolsRoutes, { store: deps.store });
 

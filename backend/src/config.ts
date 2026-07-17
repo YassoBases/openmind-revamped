@@ -18,18 +18,6 @@ export interface Config {
   modelDefault: string;
   modelEscalation: string;
   /**
-   * Ask Hudhud only: when set, tutor replies route through Qwen (OpenAI-
-   * compatible endpoint) with the regular provider as fallback. Every other
-   * pipeline stage (normalize/spec/factcheck/repair/feedback) is unaffected.
-   * The key lives in the environment and is never logged or sent to clients.
-   */
-  qwenApiKey: string | null;
-  qwenBaseUrl: string;
-  qwenModel: string;
-  qwenTimeoutMs: number;
-  /** Completion budget incl. hidden reasoning tokens (qwen3) — keep generous. */
-  qwenMaxTokens: number;
-  /**
    * Moderation is provider-neutral: MODERATION_PROVIDER selects the
    * implementation, MODERATION_API_KEY its credential (falls back to
    * OPENAI_API_KEY for the default 'openai' provider so existing setups
@@ -69,9 +57,9 @@ export function loadConfig(env = process.env): Config {
   }
 
   const moderationApiKey = env.MODERATION_API_KEY || env.OPENAI_API_KEY || null;
-  // "Live" = any real model answers students (content pipeline or the
-  // Qwen tutor seam) — that's when moderation must not fail open.
-  const liveModel = (!mockLlm && !!anthropicApiKey) || !!env.QWEN_API_KEY;
+  // "Live" = a real model answers students — that's when moderation must
+  // not fail open.
+  const liveModel = !mockLlm && !!anthropicApiKey;
 
   return {
     host: env.HOST || '0.0.0.0', // LAN-reachable by default — phones must connect
@@ -86,11 +74,6 @@ export function loadConfig(env = process.env): Config {
     promptCacheTtl: env.PROMPT_CACHE_TTL === '5m' ? '5m' : '1h',
     modelDefault: env.MODEL_DEFAULT || 'claude-haiku-4-5',
     modelEscalation: env.MODEL_ESCALATION || 'claude-sonnet-4-6',
-    qwenApiKey: env.QWEN_API_KEY || null,
-    qwenBaseUrl: (env.QWEN_BASE_URL || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1').replace(/\/+$/, ''),
-    qwenModel: env.QWEN_MODEL || 'qwen-plus',
-    qwenTimeoutMs: Number(env.QWEN_TIMEOUT_MS) || 20_000,
-    qwenMaxTokens: Number(env.QWEN_MAX_TOKENS) || 4096,
     moderationProvider: env.MODERATION_PROVIDER || 'openai',
     moderationApiKey,
     moderationStrict: bool(env.MODERATION_STRICT, liveModel),

@@ -99,7 +99,7 @@ describe('moderate()', () => {
 describe('loadConfig moderation posture', () => {
   it('strict defaults ON when a live model is configured, OFF otherwise', async () => {
     const { loadConfig } = await import('../src/config.js');
-    const live = loadConfig({ QWEN_API_KEY: 'k', MODERATION_API_KEY: 'm' } as NodeJS.ProcessEnv);
+    const live = loadConfig({ ANTHROPIC_API_KEY: 'k', MODERATION_API_KEY: 'm' } as NodeJS.ProcessEnv);
     expect(live.moderationStrict).toBe(true);
     const dev = loadConfig({ MOCK_LLM: 'true' } as NodeJS.ProcessEnv);
     expect(dev.moderationStrict).toBe(false);

@@ -137,20 +137,7 @@ guides without revealing, a second miss auto-opens the next hint-ladder rung,
 and stars/check scores count first-try successes while recoveries are recorded
 as their own evidence.
 
-## 6. Tutor provider seam — Qwen for Ask Hudhud only
-
-`TutorProvider` (pipeline/provider.ts) is the narrow seam the tutor route
-depends on. With `QWEN_API_KEY` set, `server.ts` routes ONLY Ask Hudhud
-through `QwenTutorProvider` (`llm/qwen.ts`, OpenAI-compatible endpoint);
-normalize/spec/factcheck/repair/feedback keep their existing provider. The
-key lives in env only and is never logged; Qwen output must pass the same
-`TutorReplySchema` Zod gate, and the route's gates (eligibility, semantic
-payload validation, result integrity, moderation, auth, rate limits) apply
-unchanged on top. Any failure — HTTP error, timeout
-(`QWEN_TIMEOUT_MS`), non-JSON, schema mismatch — falls back to the regular
-provider. Tests (`test/qwen.test.ts`) run entirely against a mocked fetch.
-
-## 7. Future study modes (reserved, not implemented)
+## 6. Future study modes (reserved, not implemented)
 
 `STUDY_MODES` (tutor/contract.ts) reserves the five program ids as stable wire
 values — program logic keys on these, never on Arabic button text:
@@ -160,7 +147,7 @@ values — program logic keys on these, never on Arabic button text:
 `context.mode`; each program's prompt/flow lands behind its id later without
 a contract change.
 
-## 8. What is verified here vs. what needs a live key
+## 7. What is verified here vs. what needs a live key
 
 This environment has **no `ANTHROPIC_API_KEY`**, so the backend runs in mock mode
 (`backend/src/llm/mock.ts`). The mock routes real registry specs by keyword and
