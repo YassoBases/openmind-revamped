@@ -7,6 +7,7 @@ import '../../core/palette.dart';
 import '../../core/session.dart';
 import '../../languageswitchertile.dart';
 import '../context/context_sheet.dart';
+import '../context/interests_sheet.dart';
 import '../learn/journey_logic.dart';
 import '../learn/learn_catalog.dart';
 import '../learn/learn_progress_store.dart';
@@ -202,6 +203,21 @@ class _MeScreenState extends State<MeScreen> {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () async {
                   if (await showContextSheet(context) && mounted) setState(() {});
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.favorite_rounded, color: cs.primary),
+                title: Text(
+                  l.translate('int_chip_label'),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(interestsSummary(l, Session.instance.interests)),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () async {
+                  if (await showInterestsSheet(context) && mounted) setState(() {});
                 },
               ),
             ),

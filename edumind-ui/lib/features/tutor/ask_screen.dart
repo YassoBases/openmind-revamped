@@ -67,11 +67,6 @@ class _AskScreenState extends State<AskScreen> {
                           l.translate('tutor_title'),
                           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          l.translate('tutor_subtitle'),
-                          style: TextStyle(fontSize: 14, height: 1.6, color: cs.onSurfaceVariant),
-                        ),
                       ],
                     ),
                   ),

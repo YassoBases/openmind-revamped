@@ -61,6 +61,7 @@ const kThemeEmoji = {
 const kColorChoices = [
   Color(0xFF58CC02), Color(0xFF1CB0F6), Color(0xFFFFC800), Color(0xFFCE82FF),
   Color(0xFFFF6F61), Color(0xFF00C2A8), Color(0xFFFF8FB3), Color(0xFFFFA94D),
+  Color(0xFF1C1C1E),
 ];
 
 String colorToHex(Color c) {

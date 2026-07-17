@@ -145,11 +145,6 @@ class _StartScreenState extends State<StartScreen> {
                     '${l.translate('start_greeting')} ${Session.instance.name}',
                     style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, height: 1.3),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l.translate('start_subtitle'),
-                    style: TextStyle(fontSize: 14, height: 1.6, color: cs.onSurfaceVariant),
-                  ),
                   if (!_gradeSoon) ...[
                     const SizedBox(height: 14),
                     // The context lens — a small secondary control, never a tab.

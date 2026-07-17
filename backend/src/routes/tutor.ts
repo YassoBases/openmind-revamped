@@ -11,7 +11,7 @@ import { config } from '../config.js';
 import { stageForGrade } from '../learning/stage.js';
 import { moderate } from '../llm/moderation.js';
 import { metrics } from '../pipeline/metrics.js';
-import type { TutorProvider } from '../pipeline/provider.js';
+import type { ContentProvider } from '../pipeline/provider.js';
 import { AskTutorBody } from '../schemas.js';
 import { STUDY_MODES, validateInteractivePayload } from '../tutor/contract.js';
 import { assessInteractiveResult } from '../tutor/result.js';
@@ -35,9 +35,7 @@ const HISTORY_TURNS_MODE = 24;
  */
 const RESULT_WINDOW = 40;
 
-// Only the narrow tutorReply seam is needed here — the full ContentProvider
-// satisfies it, and so does a dedicated tutor-only provider (llm/qwen.ts).
-export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; provider: TutorProvider }) {
+export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; provider: ContentProvider }) {
   const { store, provider } = opts;
   const auth = makeAuthHook(store);
 
@@ -162,6 +160,8 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
           language: student.language,
           interest: student.interest,
           learningContext: student.learningContext,
+          interests: student.interests,
+          gender: student.gender,
         },
         question: body.question,
         context: body.context ?? null,

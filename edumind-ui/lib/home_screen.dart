@@ -334,19 +334,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               offset: Offset(0, _guide.value * -12),
               child: child,
             ),
-            child: Column(
-              children: [
-                const Mascot(size: 96, expression: MascotExpression.happy),
-                Text(
-                  l.translate('tap_to_play'),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: cs.secondary,
-                  ),
-                ),
-              ],
-            ),
+            child: const Mascot(size: 96, expression: MascotExpression.happy),
           ),
         ),
       ],

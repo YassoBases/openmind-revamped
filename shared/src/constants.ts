@@ -47,6 +47,23 @@ export const INTEREST_ARCHETYPES = [
 ] as const;
 export type InterestArchetype = (typeof INTEREST_ARCHETYPES)[number];
 
+/**
+ * Personal interests chosen at onboarding (1-2, both stages) — a distinct
+ * concept from INTEREST_ARCHETYPES above (which only picks the primary-stage
+ * companion sprite). These are the primary signal the tutor uses to flavor
+ * real-life examples and activities; see TUTOR_SYSTEM_PROMPT.
+ */
+export const STUDENT_INTERESTS = [
+  'tech_robotics',
+  'games_challenges',
+  'drawing_design',
+  'sports_movement',
+  'reading_stories',
+  'helping_people',
+  'nature_environment',
+] as const;
+export type StudentInterest = (typeof STUDENT_INTERESTS)[number];
+
 /** Duolingo-inspired design palette (also defined in shells + Flutter). */
 export const PALETTE = {
   primaryGreen: '#58CC02',

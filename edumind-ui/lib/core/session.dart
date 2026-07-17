@@ -61,7 +61,8 @@ class Session {
   LearningStage get stage =>
       LearningStage.fromWire(profile?['stage'] as String?) ?? stageForGrade(grade);
 
-  /// Middle-school context lens ('market', 'building', …) or null.
+  /// Middle-school context lens ('market', 'building', …) — legacy, kept as
+  /// a fallback flavor for profiles without [interests]. Null if unset.
   String? get learningContext => profile?['learningContext'] as String?;
 
   Future<void> setLearningContext(String? id) async {
@@ -74,10 +75,24 @@ class Session {
     await setProfile(p);
   }
 
+  /// 'm' or 'f' or null — used ONLY for Arabic grammatical addressing.
+  String? get gender => profile?['gender'] as String?;
+
+  /// Personal interests (1-2, both stages) — the primary signal AI
+  /// explanations, examples and activities draw from.
+  List<String> get interests =>
+      (profile?['interests'] as List?)?.cast<String>() ?? const [];
+
+  Future<void> setInterests(List<String> ids) async {
+    final p = Map<String, dynamic>.from(profile ?? {});
+    p['interests'] = ids;
+    await setProfile(p);
+  }
+
   /// Merges the backend's trusted student view (GET/PATCH /students/me or the
-  /// create response) into the cached profile: grade, resolved stage, and
-  /// learningContext. Local cache stays for offline startup, but the server
-  /// wins whenever it has spoken.
+  /// create response) into the cached profile: grade, resolved stage,
+  /// learningContext, gender, and interests. Local cache stays for offline
+  /// startup, but the server wins whenever it has spoken.
   Future<void> applyStudentView(Map<String, dynamic> student) async {
     final p = Map<String, dynamic>.from(profile ?? {});
     if (student['grade'] is num) p['grade'] = (student['grade'] as num).toInt();
@@ -91,6 +106,15 @@ class Session {
         p['learningContext'] = ctx;
       }
     }
+    if (student.containsKey('gender')) {
+      final g = student['gender'];
+      if (g == null) {
+        p.remove('gender');
+      } else {
+        p['gender'] = g;
+      }
+    }
+    if (student['interests'] is List) p['interests'] = student['interests'];
     await setProfile(p);
   }
 

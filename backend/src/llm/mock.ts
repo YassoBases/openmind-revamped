@@ -65,7 +65,13 @@ const VAGUE = /\b(stuff|things|something|idk|dunno|anything|whatever)\b|^\s*\S{1
  * whose first step IS the prerequisite check. Continuations acknowledge and
  * advance one step so multi-turn plumbing stays testable.
  */
-function mockStudyModeReply(mode: string, hasHistory: boolean, ar: boolean, name: string): TutorReply | null {
+function mockStudyModeReply(
+  mode: string,
+  hasHistory: boolean,
+  ar: boolean,
+  name: string,
+  hasInterests: boolean,
+): TutorReply | null {
   const base = {
     relatedConcept: null,
     interactivePayload: null,
@@ -97,11 +103,17 @@ function mockStudyModeReply(mode: string, hasHistory: boolean, ar: boolean, name
         needsClarification: true,
       };
     case 'lesson_discovery':
+      // Interests are already known from onboarding for most students — only
+      // ask what they care about when that signal is genuinely missing.
       return {
         ...base,
-        message: ar
-          ? `يسعدني أن نكتشف الدرس معًا! أي درس تريد أن تفهم؟ وأخبرني أيضًا: ما الذي تستمتع به خارج المدرسة حتى أبني الأمثلة من عالمك؟`
-          : `Happy to discover this together! Which lesson do you want to understand? And tell me: what do you enjoy outside school, so I can build the examples from your world?`,
+        message: hasInterests
+          ? ar
+            ? `يسعدني أن نكتشف الدرس معًا! أي درس تريد أن تفهم؟`
+            : `Happy to discover this together! Which lesson do you want to understand?`
+          : ar
+            ? `يسعدني أن نكتشف الدرس معًا! أي درس تريد أن تفهم؟ وأخبرني أيضًا: ما الذي تستمتع به خارج المدرسة حتى أبني الأمثلة من عالمك؟`
+            : `Happy to discover this together! Which lesson do you want to understand? And tell me: what do you enjoy outside school, so I can build the examples from your world?`,
         responseType: 'question',
         followUpQuestion: null,
         suggestedAction: 'ask_followup',
@@ -249,10 +261,21 @@ export class MockProvider implements ContentProvider {
     const inExperience = params.context?.source === 'experience';
     // Mirror the live prompt's stage rule so the plumbing is testable:
     // primary gets playful game framing; middle keeps the calm hint-first
-    // voice, flavored by the student's chosen learning context when present.
+    // voice; both flavor examples from the student's interests when present.
     const primary = params.student.stage === 'primary_games';
+    const interests = params.student.interests ?? [];
     const lens = params.student.learningContext;
-    // Localized lens names — never the raw English id inside an Arabic sentence.
+    // Localized interest names — never the raw English id inside an Arabic sentence.
+    const interestNames: Record<string, { ar: string; en: string }> = {
+      tech_robotics: { ar: 'التقنية والروبوتات', en: 'technology & robots' },
+      games_challenges: { ar: 'الألعاب والتحديات', en: 'games & challenges' },
+      drawing_design: { ar: 'الرسم والتصميم', en: 'drawing & design' },
+      sports_movement: { ar: 'الرياضة والحركة', en: 'sports & movement' },
+      reading_stories: { ar: 'القراءة والقصص', en: 'reading & stories' },
+      helping_people: { ar: 'مساعدة الناس', en: 'helping people' },
+      nature_environment: { ar: 'الطبيعة والبيئة', en: 'nature & environment' },
+    };
+    // Localized lens names (legacy fallback only) — never the raw English id inside an Arabic sentence.
     const lensNames: Record<string, { ar: string; en: string }> = {
       market: { ar: 'السوق', en: 'the market' },
       building: { ar: 'البناء', en: 'construction' },
@@ -260,8 +283,30 @@ export class MockProvider implements ContentProvider {
       roads_transport: { ar: 'الطرق والمواصلات', en: 'roads & transport' },
       technology: { ar: 'التقنية', en: 'technology' },
     };
-    const lensName = lens ? (ar ? lensNames[lens]?.ar ?? lens : lensNames[lens]?.en ?? lens) : null;
-    const lensSuffix = lensName ? (ar ? ` (بعدسة ${lensName})` : ` (through the ${lensName} lens)`) : '';
+    // Interests are the PRIMARY flavor signal (both stages), rotated naturally
+    // across a conversation when two are present (keyed off prior student
+    // turns, so repeat asks alternate). The legacy lens is a fallback ONLY
+    // when interests is empty — never combined with an active interest.
+    let flavorName: string | null = null;
+    if (interests.length > 0) {
+      const studentTurns = params.history.filter((h) => h.role === 'student').length;
+      const id = interests[studentTurns % interests.length]!;
+      flavorName = ar ? interestNames[id]?.ar ?? id : interestNames[id]?.en ?? id;
+    } else if (lens) {
+      flavorName = ar ? lensNames[lens]?.ar ?? lens : lensNames[lens]?.en ?? lens;
+    }
+    const flavorSuffix = flavorName ? (ar ? ` (بعدسة ${flavorName})` : ` (through the ${flavorName} lens)`) : '';
+
+    // Arabic grammatical addressing ONLY (student.gender) — conjugates the
+    // 2nd-person verb ending exactly like the game shells' existing {m,f,n}
+    // gendered strings (educore.js). Never changes content: same sentence,
+    // same idea, same difficulty — only the verb ending moves. Neutral
+    // (undiacritized) form when gender is absent, exactly as before.
+    const gender = params.student.gender;
+    const ar2p = (masc: string, fem: string, neutral: string) =>
+      gender === 'm' ? masc : gender === 'f' ? fem : neutral;
+    const wellDone = ar2p('أحسنتَ', 'أحسنتِ', 'أحسنت');
+    const youTried = ar2p('جرّبتَ', 'جرّبتِ', 'جرّبت');
 
     // The student just acted on a block — mirror the live prompt's
     // result-handling rules so the full Ask → See → Try loop is testable.
@@ -272,11 +317,11 @@ export class MockProvider implements ContentProvider {
       const data: TutorReply = {
         message: correct
           ? (ar
-              ? `أحسنت يا ${params.student.name}! ${r.answerOrState} — هذا يبيّن أنك فهمت الفكرة بيديك لا بالحفظ. ما رأيك أن نجرّبها في موقف جديد؟`
+              ? `${wellDone} يا ${params.student.name}! ${r.answerOrState} — هذا يبيّن أنك فهمت الفكرة بيديك لا بالحفظ. ما رأيك أن نجرّبها في موقف جديد؟`
               : `Well done, ${params.student.name}! ${r.answerOrState} — that shows you built the idea with your hands, not by memorizing. Shall we try it in a new situation?`)
           : explored
             ? (ar
-                ? `جرّبت ولاحظت: ${r.answerOrState}. ما النمط الذي لفت انتباهك أثناء التحريك؟`
+                ? `${youTried} ولاحظت: ${r.answerOrState}. ما النمط الذي لفت انتباهك أثناء التحريك؟`
                 : `You explored and observed: ${r.answerOrState}. What pattern caught your eye while moving things?`)
             : (ar
                 ? `محاولة مفيدة! ${r.answerOrState}. هذا يخبرنا أين تختلط الفكرة — انظر إلى العنصر الذي لم يستقر في مكانه وفكّر: ما الذي يميّزه؟ جرّب مرة أخرى.`
@@ -300,7 +345,13 @@ export class MockProvider implements ContentProvider {
     // behavior are testable end to end. Program logic keys on the stable id
     // in context.mode, never on the question's Arabic text.
     if (params.context?.mode) {
-      const reply = mockStudyModeReply(params.context.mode, params.history.length > 0, ar, params.student.name);
+      const reply = mockStudyModeReply(
+        params.context.mode,
+        params.history.length > 0,
+        ar,
+        params.student.name,
+        interests.length > 0,
+      );
       if (reply) return { model: 'mock', data: reply };
     }
 
@@ -314,8 +365,8 @@ export class MockProvider implements ContentProvider {
       if (payload) {
         const data: TutorReply = {
           message: ar
-            ? `فكرة تستحق التجريب لا القراءة فقط! جهّزت لك نشاطًا قصيرًا — جرّبه وسنكمل من نتيجتك.${lensSuffix}`
-            : `This idea deserves trying, not just reading! I prepared a short activity — do it and we will continue from your result.${lensSuffix}`,
+            ? `فكرة تستحق التجريب لا القراءة فقط! جهّزت لك نشاطًا قصيرًا — جرّبه وسنكمل من نتيجتك.${flavorSuffix}`
+            : `This idea deserves trying, not just reading! I prepared a short activity — do it and we will continue from your result.${flavorSuffix}`,
           responseType: 'next_step',
           followUpQuestion: null,
           suggestedAction: 'try_again',
@@ -368,11 +419,11 @@ export class MockProvider implements ContentProvider {
       ? {
           message: ar
             ? concept
-              ? `سؤال جيد يا ${params.student.name}! أنت تعمل الآن على «${concept}». انظر إلى ما أمامك على الشاشة: غيّر عنصرًا واحدًا فقط وراقب ماذا يتغيّر معه — هذا هو مفتاح الخطوة.${lensSuffix}`
-              : `سؤال جيد يا ${params.student.name}! انظر إلى ما أمامك على الشاشة: غيّر عنصرًا واحدًا فقط وراقب ماذا يتغيّر معه، ثم جرّب من جديد.${lensSuffix}`
+              ? `سؤال جيد يا ${params.student.name}! أنت تعمل الآن على «${concept}». انظر إلى ما أمامك على الشاشة: غيّر عنصرًا واحدًا فقط وراقب ماذا يتغيّر معه — هذا هو مفتاح الخطوة.${flavorSuffix}`
+              : `سؤال جيد يا ${params.student.name}! انظر إلى ما أمامك على الشاشة: غيّر عنصرًا واحدًا فقط وراقب ماذا يتغيّر معه، ثم جرّب من جديد.${flavorSuffix}`
             : concept
-              ? `Good question, ${params.student.name}! You are working on "${concept}". Look at your screen: change ONE thing and watch what changes with it — that is the key to this step.${lensSuffix}`
-              : `Good question, ${params.student.name}! Look at your screen: change ONE thing and watch what changes with it, then try again.${lensSuffix}`,
+              ? `Good question, ${params.student.name}! You are working on "${concept}". Look at your screen: change ONE thing and watch what changes with it — that is the key to this step.${flavorSuffix}`
+              : `Good question, ${params.student.name}! Look at your screen: change ONE thing and watch what changes with it, then try again.${flavorSuffix}`,
           responseType: 'hint',
           followUpQuestion: ar ? 'ما أول تغيير ستجرّبه، ولماذا؟' : 'What is the first change you will try, and why?',
           suggestedAction: 'try_again',
@@ -384,8 +435,8 @@ export class MockProvider implements ContentProvider {
       : primary
         ? {
             message: ar
-              ? `يا ${params.student.name}، سؤال رائع! لنلعب معه خطوة صغيرة: ما الذي تعرفه عنه حتى الآن؟ كل إجابة صغيرة تقرّبك من الحل مثل مرحلة في لعبة.`
-              : `${params.student.name}, great question! Let's play with it one small step at a time: what do you already know? Each little answer is a level cleared on the way to the solution.`,
+              ? `يا ${params.student.name}، سؤال رائع! لنلعب معه خطوة صغيرة: ما الذي تعرفه عنه حتى الآن؟ كل إجابة صغيرة تقرّبك من الحل مثل مرحلة في لعبة.${flavorSuffix}`
+              : `${params.student.name}, great question! Let's play with it one small step at a time: what do you already know? Each little answer is a level cleared on the way to the solution.${flavorSuffix}`,
             responseType: 'question',
             followUpQuestion: ar ? 'ما أول شيء يخطر ببالك؟' : 'What first thing comes to mind?',
             suggestedAction: 'ask_followup',
@@ -396,8 +447,8 @@ export class MockProvider implements ContentProvider {
           }
         : {
             message: ar
-              ? `فكرة ممتازة أن تسأل! قبل أن أجيب مباشرة: ما الذي تعرفه عن هذا الموضوع حتى الآن؟ ابدأ بخطوة صغيرة وسأكمل معك.${lensSuffix}`
-              : `Great that you asked! Before I answer directly: what do you already know about this topic? Start with one small step and I will continue with you.${lensSuffix}`,
+              ? `فكرة ممتازة أن تسأل! قبل أن أجيب مباشرة: ما الذي تعرفه عن هذا الموضوع حتى الآن؟ ابدأ بخطوة صغيرة وسأكمل معك.${flavorSuffix}`
+              : `Great that you asked! Before I answer directly: what do you already know about this topic? Start with one small step and I will continue with you.${flavorSuffix}`,
             responseType: 'question',
             followUpQuestion: ar ? 'ما أول خطوة تخطر ببالك؟' : 'What first step comes to mind?',
             suggestedAction: 'ask_followup',

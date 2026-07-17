@@ -11,9 +11,9 @@ import '../../language_provider.dart';
 import '../../widgets/mascot.dart';
 import 'onboarding_widgets.dart';
 
-/// First-run learner onboarding — five short screens, one primary action
-/// each: welcome → name → stage & grade → interests → starting preference +
-/// personal accent. Replaces the old long scrollable setup form.
+/// First-run learner onboarding — seven short screens, one primary action
+/// each: welcome → name → gender → stage & grade → interests → accent color
+/// → starting preference. Replaces the old long scrollable setup form.
 ///
 /// Completion writes the same `user_*` prefs the app has always used and
 /// hands off to [ProfileBridge.finishSetup], so Session.profile, backend
@@ -30,38 +30,44 @@ class OnboardingFlow extends StatefulWidget {
   State<OnboardingFlow> createState() => _OnboardingFlowState();
 }
 
-/// The six interests (stable ids — ProfileBridge maps them to archetypes).
+/// The seven interests (stable ids — ProfileBridge maps the first pick to a
+/// companion archetype for the primary-stage game shells). Shown for BOTH
+/// stages — the source AI explanations, examples and activities draw from.
 const kOnbInterests = [
-  (id: 'science', icon: Icons.science_outlined, key: 'onb_int_science'),
-  (id: 'tech', icon: Icons.smart_toy_outlined, key: 'onb_int_tech'),
-  (id: 'sport', icon: Icons.sports_soccer_outlined, key: 'onb_int_sport'),
-  (id: 'art', icon: Icons.palette_outlined, key: 'onb_int_art'),
-  (id: 'stories', icon: Icons.auto_stories_outlined, key: 'onb_int_stories'),
-  (id: 'nature', icon: Icons.eco_outlined, key: 'onb_int_nature'),
+  (id: 'tech_robotics', icon: Icons.smart_toy_outlined, key: 'onb_int_tech_robotics'),
+  (id: 'games_challenges', icon: Icons.sports_esports_outlined, key: 'onb_int_games_challenges'),
+  (id: 'drawing_design', icon: Icons.palette_outlined, key: 'onb_int_drawing_design'),
+  (id: 'sports_movement', icon: Icons.sports_soccer_outlined, key: 'onb_int_sports_movement'),
+  (id: 'reading_stories', icon: Icons.auto_stories_outlined, key: 'onb_int_reading_stories'),
+  (id: 'helping_people', icon: Icons.volunteer_activism_outlined, key: 'onb_int_helping_people'),
+  (id: 'nature_environment', icon: Icons.eco_outlined, key: 'onb_int_nature_environment'),
 ];
 
-/// Personal accent choices — a curated four from the approved OpenMind
-/// accent tokens (palette.dart kColorChoices), picked for equal visual
-/// weight: no over-saturated yellow/green circles. Default (blue) first.
+/// Personal accent choices — exactly the four approved OpenMind accent
+/// tokens (palette.dart kColorChoices). Default (blue) first. This accent
+/// only ever touches small elements (selected cards, chips, progress
+/// details) — never the brand's main visual identity.
 final kOnbAccents = [
   (color: kColorChoices[1], key: 'onb_color_blue'), // 1CB0F6
-  (color: kColorChoices[5], key: 'onb_color_teal'), // 00C2A8
-  (color: kColorChoices[4], key: 'onb_color_coral'), // FF6F61
-  (color: kColorChoices[7], key: 'onb_color_orange'), // FFA94D
+  (color: kColorChoices[0], key: 'onb_color_green'), // 58CC02
+  (color: kColorChoices[6], key: 'onb_color_pink'), // FF8FB3
+  (color: kColorChoices[8], key: 'onb_color_black'), // 1C1C1E
 ];
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
   int _step = 0;
   final _name = TextEditingController();
+
+  /// 'm' or 'f' — used ONLY for Arabic grammatical addressing downstream
+  /// (the game shells' gendered strings). Never affects tone, content, or
+  /// implies anything about the student.
+  String? _gender;
   LearningStage? _stageChoice;
   int? _grade;
-  final Set<String> _interests = {};
 
-  /// Middle-school-only: the real-life learning lens (market, building,
-  /// water_energy, roads_transport, technology) — seeds `learningContext` so
-  /// lesson stories are personalized from the first session. Primary-stage
-  /// learners use [_interests] instead; the two never mix.
-  String? _lensChoice;
+  /// Personal interests (1-2, both stages) — the primary signal AI
+  /// explanations, examples and activities draw from.
+  final Set<String> _interests = {};
   int? _style;
   int _accent = 0; // sensible default so the learner is never blocked
   bool _saving = false;
@@ -80,17 +86,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   bool get _canAdvance => switch (_step) {
     1 => _name.text.trim().isNotEmpty,
-    2 => _grade != null,
-    3 => _stageChoice == LearningStage.middleInteractiveLearning
-        ? _lensChoice != null
-        : _interests.isNotEmpty,
-    4 => _style != null,
+    2 => _gender != null,
+    3 => _grade != null,
+    4 => _interests.isNotEmpty,
+    6 => _style != null,
     _ => true,
   };
 
   void _next() {
     if (!_canAdvance) return;
-    if (_step == 4) {
+    if (_step == 6) {
       _finish();
     } else {
       setState(() => _step++);
@@ -113,12 +118,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     ).currentLocale.languageCode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', _name.text.trim());
+    if (_gender != null) await prefs.setString('user_gender', _gender!);
     await prefs.setInt('user_grade', _grade!);
-    if (_lensChoice != null) {
-      await prefs.setString('user_learning_context', _lensChoice!);
-    } else {
-      await prefs.setStringList('user_interests_v2', _interests.toList());
-    }
+    await prefs.setStringList('user_interests_v2', _interests.toList());
     if (_style != null) await prefs.setInt('user_learning_style', _style!);
     await Future.wait([
       ProfileBridge.finishSetup(
@@ -142,7 +144,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final l = AppLocalizations.of(context)!;
     final stepLabel = l.translateWith('onb_step_of', {
       'n': '${_step + 1}',
-      'm': '5',
+      'm': '7',
     });
     return OnbRail(
       child: Scaffold(
@@ -158,7 +160,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 child: Column(
                   children: [
                     // Quiet orientation header: small back control, a
-                    // compact «الخطوة n من 5» label, five step dots.
+                    // compact «الخطوة n من 7» label, seven step dots.
                     Padding(
                       padding: const EdgeInsetsDirectional.fromSTEB(
                         10,
@@ -191,7 +193,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           const Spacer(),
                           OnbStepDots(
                             current: _step,
-                            total: 5,
+                            total: 7,
                             semanticLabel: stepLabel,
                           ),
                         ],
@@ -204,8 +206,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           key: ValueKey(_step),
                           child: switch (_step) {
                             1 => _nameStep(l),
-                            2 => _stageStep(l),
-                            3 => _interestsStep(l),
+                            2 => _genderStep(l),
+                            3 => _stageStep(l),
+                            4 => _interestsStep(l),
+                            5 => _colorStep(l),
                             _ => _styleStep(l),
                           },
                         ),
@@ -220,10 +224,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   /// Shared step layout: scrollable content + always-visible CTA. The
   /// Scaffold resizes for the keyboard, so the CTA never hides behind it.
+  /// Title + choices + CTA only — no explanatory subtitle (declutter).
   Widget _stepShell(
     AppLocalizations l, {
     required String titleKey,
-    required String subtitleKey,
     required Widget child,
     String ctaKey = 'onb_next',
   }) {
@@ -247,16 +251,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    l.translate(subtitleKey),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: OnbColors.body,
-                      height: 1.65,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   child,
                 ],
               ),
@@ -277,7 +272,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     return _stepShell(
       l,
       titleKey: 'onb_name_title',
-      subtitleKey: 'onb_name_sub',
       child: TextField(
         controller: _name,
         maxLength: 24,
@@ -316,6 +310,56 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   // ------------------------------------------------------------ screen 3
+  /// Used ONLY for Arabic grammatical addressing downstream (the game
+  /// shells' gendered strings) — never for tone, content, or stereotyping.
+  Widget _genderStep(AppLocalizations l) {
+    return _stepShell(
+      l,
+      titleKey: 'onb_gender_title',
+      child: Row(
+        children: [
+          Expanded(child: _genderCard(l, 'm', 'onb_gender_m', Icons.male_rounded)),
+          const SizedBox(width: 12),
+          Expanded(child: _genderCard(l, 'f', 'onb_gender_f', Icons.female_rounded)),
+        ],
+      ),
+    );
+  }
+
+  Widget _genderCard(AppLocalizations l, String value, String key, IconData icon) {
+    final selected = _gender == value;
+    return OnbSelectCard(
+      selected: selected,
+      onTap: () => setState(() => _gender = value),
+      semanticLabel: l.translate(key),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : OnbColors.softBlue,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 22, color: OnbColors.blue),
+          ),
+          const SizedBox(height: 9),
+          Text(
+            l.translate(key),
+            style: TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w700,
+              color: selected ? OnbColors.blue : OnbColors.blueInk,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------ screen 4
   Widget _stageStep(AppLocalizations l) {
     final grades = switch (_stageChoice) {
       LearningStage.primaryGames => const [1, 2, 3, 4, 5, 6],
@@ -325,7 +369,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     return _stepShell(
       l,
       titleKey: 'onb_stage_title',
-      subtitleKey: 'onb_stage_sub',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -407,13 +450,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         _stageChoice = stage;
         // a grade from the other stage can't survive a stage switch
         if (_grade != null && stageForGrade(_grade!) != stage) _grade = null;
-        // interests and the lens are stage-exclusive — clear whichever no
-        // longer applies so a stale pick can't sneak into the wrong stage.
-        if (stage == LearningStage.middleInteractiveLearning) {
-          _interests.clear();
-        } else {
-          _lensChoice = null;
-        }
       }),
       semanticLabel: l.translate(key),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -443,15 +479,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
-  // ------------------------------------------------------------ screen 4
+  // ------------------------------------------------------------ screen 5
+  /// Shown for BOTH stages — the same personal interests drive AI
+  /// explanations, examples and activities regardless of grade.
   Widget _interestsStep(AppLocalizations l) {
-    if (_stageChoice == LearningStage.middleInteractiveLearning) {
-      return _lensStep(l);
-    }
     return _stepShell(
       l,
       titleKey: 'onb_interests_title',
-      subtitleKey: 'onb_interests_sub',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -513,54 +547,25 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
-  /// Middle-school variant of screen 4: a single-select real-life learning
-  /// lens (reuses the same ids/emoji/labels as the in-app «عدستي» sheet —
-  /// core/stage.dart's kLearningContexts and AppLocalizations' ctx_* keys —
-  /// so this is the same one system, just picked earlier). Sets
-  /// learningContext from the first session; the sheet stays how it's
-  /// changed later.
-  Widget _lensStep(AppLocalizations l) {
+  // ------------------------------------------------------------ screen 6
+  Widget _colorStep(AppLocalizations l) {
     return _stepShell(
       l,
-      titleKey: 'onb_lens_title',
-      subtitleKey: 'onb_lens_sub',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final ctx in kLearningContexts)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: OnbSelectCard(
-                selected: _lensChoice == ctx.id,
-                onTap: () => setState(() => _lensChoice = ctx.id),
-                semanticLabel: l.translate('ctx_${ctx.id}'),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                child: Row(
-                  children: [
-                    Text(ctx.emoji, style: const TextStyle(fontSize: 22)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        l.translate('ctx_${ctx.id}'),
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                          color: _lensChoice == ctx.id
-                              ? OnbColors.blue
-                              : OnbColors.blueInk,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
+      titleKey: 'onb_accent_title',
+      child: Center(
+        child: Wrap(
+          spacing: 22,
+          runSpacing: 18,
+          alignment: WrapAlignment.center,
+          children: [
+            for (var i = 0; i < kOnbAccents.length; i++) _accentCircle(l, i),
+          ],
+        ),
       ),
     );
   }
 
-  // ------------------------------------------------------------ screen 5
+  // ------------------------------------------------------------ screen 7
   Widget _styleStep(AppLocalizations l) {
     // The third option adapts to the learner's stage; this is a STARTING
     // preference only, never a fixed learning style.
@@ -575,7 +580,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     return _stepShell(
       l,
       titleKey: 'onb_style_title',
-      subtitleKey: 'onb_style_sub',
       ctaKey: 'onb_finish_cta',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -623,24 +627,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 ),
               ),
             ),
-          const SizedBox(height: 14),
-          Text(
-            l.translate('onb_accent_title'),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: OnbColors.blueInk,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              for (var i = 0; i < kOnbAccents.length; i++) ...[
-                if (i > 0) const SizedBox(width: 16),
-                _accentCircle(l, i),
-              ],
-            ],
-          ),
         ],
       ),
     );

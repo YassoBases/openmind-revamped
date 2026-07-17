@@ -54,8 +54,12 @@ export interface TutorReplyParams {
     stage: LearningStage;
     language: string;
     interest: string | null;
-    /** Middle-school context lens chosen by the student (server-stored). */
+    /** Middle-school context lens chosen by the student (server-stored). Legacy — a fallback flavor only when interests is empty. */
     learningContext: string | null;
+    /** Personal interests chosen at onboarding (1-2, both stages) — the primary source for real-life examples/activities. */
+    interests: string[];
+    /** 'm' | 'f' | null — used ONLY for Arabic grammatical addressing. Never anything else. */
+    gender: string | null;
   };
   question: string;
   context: TutorContext | null;
@@ -77,18 +81,7 @@ export interface FactCheckPiece {
   payload: Record<string, unknown>;
 }
 
-/**
- * The narrow seam the tutor route depends on — just tutorReply. Every
- * ContentProvider satisfies it, and a dedicated tutor-only provider (e.g.
- * llm/qwen.ts for Ask Hudhud) can implement it WITHOUT touching the
- * content-generation stages.
- */
-export interface TutorProvider {
-  readonly name: string;
-  tutorReply(params: TutorReplyParams): Promise<{ data: TutorReply; model: string }>;
-}
-
-export interface ContentProvider extends TutorProvider {
+export interface ContentProvider {
   readonly name: string;
   normalize(raw: {
     subject?: string;

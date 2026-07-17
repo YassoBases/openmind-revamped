@@ -17,6 +17,7 @@ export function studentView(s: StudentRow) {
     color: s.color,
     interest: s.interest,
     learningContext: s.learningContext,
+    interests: s.interests,
     dailyGoal: s.dailyGoal,
     xp: s.xp,
     streakCount: s.streakCount,
@@ -44,6 +45,7 @@ export async function studentRoutes(app: FastifyInstance, opts: { store: Store }
       color: parsed.data.color,
       interest: parsed.data.interest ?? null,
       learningContext: parsed.data.learningContext ?? null,
+      interests: parsed.data.interests ?? [],
       dailyGoal: parsed.data.dailyGoal,
       tokenHash: hash,
     });

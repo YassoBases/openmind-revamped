@@ -7,6 +7,7 @@ import {
   GAME_TYPES,
   HEX_COLOR_RE,
   INTEREST_ARCHETYPES,
+  STUDENT_INTERESTS,
   LANGUAGES,
   DIFFICULTIES,
 } from '@edumind/shared';
@@ -43,8 +44,10 @@ export const CreateStudentBody = z.object({
   color: z.string().regex(HEX_COLOR_RE).default('#58CC02'),
   /** Elementary game-engine archetype — primary stage only. */
   interest: z.enum(INTEREST_ARCHETYPES).nullable().optional(),
-  /** Middle-school context lens — never mixed with `interest`. */
+  /** Middle-school context lens — legacy; kept as a fallback for profiles without `interests`. */
   learningContext: z.enum(LEARNING_CONTEXTS).nullable().optional(),
+  /** Personal interests chosen at onboarding (1-2, both stages) — the primary AI-flavor signal. */
+  interests: z.array(z.enum(STUDENT_INTERESTS)).min(1).max(2).optional(),
   dailyGoal: z.union([z.literal(1), z.literal(3), z.literal(5)]).default(3),
 });
 
@@ -59,6 +62,7 @@ export const StudentView = z.object({
   color: z.string(),
   interest: z.string().nullable(),
   learningContext: z.string().nullable(),
+  interests: z.array(z.string()),
   dailyGoal: z.number(),
   xp: z.number(),
   streakCount: z.number(),
@@ -81,6 +85,7 @@ export const PatchStudentBody = z.object({
   color: z.string().regex(HEX_COLOR_RE).optional(),
   interest: z.enum(INTEREST_ARCHETYPES).nullable().optional(),
   learningContext: z.enum(LEARNING_CONTEXTS).nullable().optional(),
+  interests: z.array(z.enum(STUDENT_INTERESTS)).min(1).max(2).optional(),
   dailyGoal: z.union([z.literal(1), z.literal(3), z.literal(5)]).optional(),
 });
 

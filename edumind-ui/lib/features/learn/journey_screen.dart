@@ -120,15 +120,6 @@ class _JourneyScreenState extends State<JourneyScreen> {
                           color: MiddlePalette.blueInk,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l.translate('journey_pick_sub'),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.6,
-                          color: MiddlePalette.body,
-                        ),
-                      ),
                       // Honest cross-language fallback: an English profile
                       // currently receives the Arabic catalogs (translation
                       // pending) — say so instead of pretending.

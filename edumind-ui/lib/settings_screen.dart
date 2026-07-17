@@ -72,7 +72,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 l.translate('demo_games'),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              subtitle: Text(l.translate('demo_games_sub')),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => Navigator.push(
                 context,
