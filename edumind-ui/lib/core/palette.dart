@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 /// The warm OpenMind game palette — the composer and game player flows keep
-/// their own register (deep-teal chrome instead of the old heavy black, per
-/// the approved warm palette), distinct from the warm app system in
-/// core/app_theme.dart (AppColors). Everything OUTSIDE the game-creation and
-/// game-player flows should use AppColors / the theme, not these constants.
+/// their own register (deep-teal chrome instead of the old heavy black).
+/// Since the app-wide theme unification, AppColors (core/app_theme.dart)
+/// carries the SAME fixed OpenMind brand palette on cream surfaces — this
+/// class and AppColors are two registers of one identity, never two brands.
+/// Everything OUTSIDE the game-creation and game-player flows should use
+/// AppColors / the theme, not these constants.
 /// Also still the home of hexToColor/colorToHex and the game/emoji constants.
 class Palette {
   static const green = Color(0xFF4D8C58); // Deep Green — positive CTAs
@@ -30,12 +32,15 @@ class Palette {
 /// demos); ship production with --dart-define=SHOW_DEMOS=false to hide it.
 const kShowDemos = bool.fromEnvironment('SHOW_DEMOS', defaultValue: true);
 
-const kGameTypes = ['quest_path', 'goal_shootout', 'draw_connect'];
+const kGameTypes = ['quest_path', 'goal_shootout', 'draw_connect', 'scene_play'];
 
 const kThemesByGame = {
   'quest_path': ['fantasy', 'sci_fi', 'detective', 'anime'],
   'goal_shootout': ['football', 'basketball', 'hockey', 'archery'],
   'draw_connect': ['blueprint', 'notebook', 'whiteboard', 'chalkboard'],
+  // scene_play carries one theme — visual variety comes from the child's
+  // interest kit (nature/construction/space/cars/ocean), picked server-side.
+  'scene_play': ['wonder_world'],
 };
 
 const kInterests = [
@@ -53,13 +58,14 @@ const kInterestEmoji = {
 // and open through the dedicated Number City entry on the trail home.
 const kGameTypeEmoji = {
   'quest_path': '🗺️', 'goal_shootout': '🥅', 'draw_connect': '✏️',
-  'number_city': '🏙️',
+  'number_city': '🏙️', 'scene_play': '🔬',
 };
 
 const kThemeEmoji = {
   'fantasy': '🏰', 'sci_fi': '🛸', 'detective': '🕵️', 'anime': '🌸',
   'football': '⚽', 'basketball': '🏀', 'hockey': '🏒', 'archery': '🏹',
   'blueprint': '📐', 'notebook': '📓', 'whiteboard': '🖊️', 'chalkboard': '🧑‍🏫',
+  'wonder_world': '🌈',
 };
 
 const kColorChoices = [

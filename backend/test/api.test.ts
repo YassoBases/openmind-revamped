@@ -216,6 +216,48 @@ describe('sessions, XP, streak, review', () => {
     expect(res.json().error.code).toBe('GAME_TYPE_NOT_GENERATABLE');
   });
 
+  it('scene_play IS generatable: full mock pipeline, ladder stamped, kit from interest', async () => {
+    const res = await api('POST', '/api/v1/games', {
+      topic: 'Simple Machines', subject: 'Science',
+      gameType: 'scene_play', theme: 'wonder_world', sessionLength: 3, difficulty: 'easy',
+    });
+    expect(res.statusCode).toBe(201);
+    const created = res.json();
+    // scene_play sessions are always the four-rung ladder, whatever was asked
+    expect(created.stubSpec.meta.sessionLength).toBe(5);
+    await waitReady(created.gameId);
+    const spec = (await api('GET', `/api/v1/games/${created.gameId}/spec`)).json();
+    expect(spec.meta.gameType).toBe('scene_play');
+    // the kit was resolved server-side (interest or nature fallback) — a valid kit either way
+    expect(['nature', 'construction', 'space', 'cars', 'ocean']).toContain(spec.meta.wrapper);
+    expect(spec.levels.length).toBe(5);
+    expect(spec.levels.slice(1).map((l: { learningLevel: string }) => l.learningLevel))
+      .toEqual(['recognize', 'understand', 'apply', 'challenge']);
+    const kinds = new Set(spec.levels.slice(1).flatMap((l: { items: Array<{ kind: string }> }) => l.items.map((i) => i.kind)));
+    for (const k of ['rotation_transform', 'cause_effect', 'find_fix', 'create_express']) {
+      expect(kinds.has(k), `generated spec missing ${k}`).toBe(true);
+    }
+  });
+
+  it('scene_play evidence: experiments are prediction, creation is explored', () => {
+    const summary = {
+      gameType: 'scene_play',
+      items: [
+        { id: 'l1_i1', kind: 'rotation_transform', levelIndex: 1, correct: true, hintsUsed: 0, beat: 'try', concepts: ['rotation'], difficulty: 1 },
+        { id: 'l2_i1', kind: 'cause_effect', levelIndex: 2, correct: false, recovered: true, hintsUsed: 1, beat: 'practice', concepts: ['levers'], difficulty: 2 },
+        { id: 'l3_i1', kind: 'find_fix', levelIndex: 3, correct: true, hintsUsed: 0, beat: 'checkpoint', concepts: ['materials'], difficulty: 3 },
+        { id: 'l4_i1', kind: 'create_express', levelIndex: 4, correct: false, scored: false, expressive: true, hintsUsed: 0, beat: 'checkpoint', concepts: ['building'], difficulty: 5 },
+      ],
+    };
+    const rows = gameEvidenceFromSummary('s2', null, summary);
+    expect(rows.map((r) => r.kind)).toEqual(['construction', 'prediction', 'transfer', 'exploration']);
+    // creative work is explored — never correct, never incorrect
+    expect(rows[3]!.outcome).toBe('explored');
+    expect(rows[3]!.recovered).toBe(false);
+    expect(rows[1]!.outcome).toBe('incorrect');
+    expect(rows[1]!.recovered).toBe(true);
+  });
+
   it('scene-kind evidence maps item kinds and the checkpoint beat', () => {
     const summary = {
       gameType: 'number_city',

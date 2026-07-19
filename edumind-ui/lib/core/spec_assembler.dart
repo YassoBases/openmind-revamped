@@ -38,6 +38,8 @@ class SpecAssembler {
       'goal_shootout_world_capitals.en.json',
       'draw_connect_plant_cell.en.json',
       'quest_path_water_cycle.ar.json',
+      'scene_play_simple_machines.en.json',
+      'scene_play_plants_nature.ar.json',
     ];
     final specs = <Map<String, dynamic>>[];
     for (final f in files) {

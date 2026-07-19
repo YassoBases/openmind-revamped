@@ -1,0 +1,410 @@
+{
+  "specVersion": 1,
+  "meta": {
+    "gameType": "scene_play",
+    "theme": "wonder_world",
+    "subject": "Science",
+    "topic": "Simple Machines and Building",
+    "language": "en",
+    "grade": 2,
+    "difficulty": "easy",
+    "sessionLength": 5,
+    "numerals": "western",
+    "conceptId": "simple_machines_g2",
+    "wrapper": "construction"
+  },
+  "student": {
+    "name": "Sam",
+    "gender": "m",
+    "color": "#079A90",
+    "interest": "robots"
+  },
+  "levels": [
+    {
+      "index": 0,
+      "isIntro": true,
+      "title": "Welcome to Wonder World",
+      "teaching": [],
+      "items": []
+    },
+    {
+      "index": 1,
+      "isIntro": false,
+      "title": "Meet the Building Site",
+      "learningLevel": "recognize",
+      "observe": "Look around the site! Bricks, wheels and ramps are everywhere.",
+      "notice": "Did you see? A house is still a house even when it is turned around.",
+      "teaching": [
+        {
+          "id": "l1_t1",
+          "text": "Builders use simple machines — ramps, levers and wheels — to make heavy work easy.",
+          "emphasis": ["simple machines"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "rotation_transform",
+          "id": "l1_i1",
+          "prompt": "Turn the house right side up!",
+          "explanation": "Now the roof is on top, just like a real house.",
+          "hints": ["Try one more turn."],
+          "concepts": ["shapes of buildings"],
+          "difficulty": 1,
+          "object": { "id": "o1", "label": "house" },
+          "startAngle": 180,
+          "targetAngle": 0,
+          "snapAngle": 90
+        },
+        {
+          "kind": "cause_effect",
+          "id": "l1_i2",
+          "prompt": "Help the cart roll down safely!",
+          "explanation": "A gentler slope lets the cart roll slowly and safely.",
+          "hints": ["Slow and steady wins."],
+          "concepts": ["ramps"],
+          "difficulty": 2,
+          "variable": {
+            "label": "the ramp",
+            "settings": [
+              { "id": "s1", "label": "steep drop" },
+              { "id": "s2", "label": "gentle slope" }
+            ]
+          },
+          "outcomes": [
+            { "id": "g1", "label": "the cart rolls too fast and tips" },
+            { "id": "g2", "label": "the cart rolls down safely" }
+          ],
+          "mapping": [
+            { "settingId": "s1", "outcomeId": "g1" },
+            { "settingId": "s2", "outcomeId": "g2" }
+          ],
+          "goalOutcomeId": "g2"
+        },
+        {
+          "kind": "find_fix",
+          "id": "l1_i3",
+          "prompt": "One piece of this wall is wrong — find it!",
+          "explanation": "Ice melts in the sun — walls need pieces that last.",
+          "hints": ["Which piece would melt away?"],
+          "concepts": ["strong materials"],
+          "difficulty": 2,
+          "objects": [
+            { "id": "b1", "label": "brick", "mistake": false },
+            { "id": "b2", "label": "wooden beam", "mistake": false },
+            { "id": "b3", "label": "block of ice", "mistake": true, "correctionId": "k1" }
+          ],
+          "corrections": [
+            { "id": "k1", "label": "a strong brick" },
+            { "id": "k2", "label": "a paper sheet" }
+          ]
+        },
+        {
+          "kind": "create_express",
+          "id": "l1_i4",
+          "prompt": "Build your own little corner of the site!",
+          "explanation": "What a great build! Every builder starts somewhere.",
+          "hints": ["Add whatever you like."],
+          "concepts": ["building"],
+          "difficulty": 3,
+          "palette": [
+            { "id": "p1", "label": "brick" },
+            { "id": "p2", "label": "wheel" },
+            { "id": "p3", "label": "sun" },
+            { "id": "p4", "label": "tree" },
+            { "id": "p5", "label": "house" }
+          ],
+          "minElements": 3,
+          "mustInclude": ["p1"]
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "isIntro": false,
+      "title": "How Machines Help",
+      "learningLevel": "understand",
+      "observe": "Watch the crew: one worker lifts a rock with a long lever, easily!",
+      "notice": "The trick is WHERE you push — far from the rock, the lever works hardest.",
+      "teaching": [
+        {
+          "id": "l2_t1",
+          "text": "A lever is like a see-saw for work: pushing farther from the load lifts it with less effort.",
+          "emphasis": ["farther from the load"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "cause_effect",
+          "id": "l2_i1",
+          "prompt": "Lift the heavy rock with the lever!",
+          "explanation": "Pushing far from the rock gives the lever its power.",
+          "hints": ["Long arms are strong arms."],
+          "concepts": ["levers"],
+          "difficulty": 2,
+          "variable": {
+            "label": "the lever",
+            "settings": [
+              { "id": "s1", "label": "push close to the rock" },
+              { "id": "s2", "label": "push at the far end" }
+            ]
+          },
+          "outcomes": [
+            { "id": "g1", "label": "the rock barely moves" },
+            { "id": "g2", "label": "the rock lifts right up!" }
+          ],
+          "mapping": [
+            { "settingId": "s1", "outcomeId": "g1" },
+            { "settingId": "s2", "outcomeId": "g2" }
+          ],
+          "goalOutcomeId": "g2"
+        },
+        {
+          "kind": "rotation_transform",
+          "id": "l2_i2",
+          "prompt": "Turn the car onto its wheels!",
+          "explanation": "Wheels belong on the ground — now it can roll.",
+          "hints": ["Wheels go at the bottom."],
+          "concepts": ["wheels"],
+          "difficulty": 2,
+          "object": { "id": "o2", "label": "car" },
+          "startAngle": 180,
+          "targetAngle": 0,
+          "snapAngle": 90
+        },
+        {
+          "kind": "find_fix",
+          "id": "l2_i3",
+          "prompt": "This cart will not roll — why?",
+          "explanation": "Round shapes roll smoothly — corners bump and stop.",
+          "hints": ["Which shape rolls best?"],
+          "concepts": ["wheels"],
+          "difficulty": 3,
+          "objects": [
+            { "id": "b1", "label": "round front wheel", "mistake": false },
+            { "id": "b2", "label": "square back wheel", "mistake": true, "correctionId": "k1" },
+            { "id": "b3", "label": "cart handle", "mistake": false }
+          ],
+          "corrections": [
+            { "id": "k1", "label": "a round wheel" },
+            { "id": "k2", "label": "a bigger square" }
+          ]
+        },
+        {
+          "kind": "create_express",
+          "id": "l2_i4",
+          "prompt": "Arrange your tool corner however you like!",
+          "explanation": "A tidy corner — every tool has its place.",
+          "hints": ["There is no wrong way here."],
+          "concepts": ["building"],
+          "difficulty": 1,
+          "palette": [
+            { "id": "p1", "label": "brick" },
+            { "id": "p2", "label": "wheel" },
+            { "id": "p3", "label": "book" },
+            { "id": "p4", "label": "ball" }
+          ],
+          "minElements": 2,
+          "mustInclude": []
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "isIntro": false,
+      "title": "Fix the Site",
+      "learningLevel": "apply",
+      "observe": "The site is busy today — but a few things are not quite right.",
+      "notice": "You spotted problems by THINKING like a builder: will it hold? will it roll?",
+      "teaching": [
+        {
+          "id": "l3_t1",
+          "text": "A smart builder checks first: is it strong? is it safe? will it move the way we need?",
+          "emphasis": ["checks first"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "find_fix",
+          "id": "l3_i1",
+          "prompt": "Fix the building site before work starts!",
+          "explanation": "Frozen steps melt away — builders choose materials that last.",
+          "hints": ["What would melt in the sun?"],
+          "concepts": ["strong materials"],
+          "difficulty": 3,
+          "objects": [
+            { "id": "b1", "label": "ramp up to the door", "mistake": false },
+            { "id": "b2", "label": "stairs made of ice", "mistake": true, "correctionId": "k2" },
+            { "id": "b3", "label": "cart with wheels", "mistake": false }
+          ],
+          "corrections": [
+            { "id": "k1", "label": "a slide of sand" },
+            { "id": "k2", "label": "strong wooden stairs" },
+            { "id": "k3", "label": "a bucket of water" }
+          ]
+        },
+        {
+          "kind": "cause_effect",
+          "id": "l3_i2",
+          "prompt": "Lift the box the easy way!",
+          "explanation": "Two ropes share the load — the pulley makes lifting light.",
+          "hints": ["More ropes share the weight."],
+          "concepts": ["pulleys"],
+          "difficulty": 3,
+          "variable": {
+            "label": "the pulley",
+            "settings": [
+              { "id": "s1", "label": "one rope" },
+              { "id": "s2", "label": "two ropes" },
+              { "id": "s3", "label": "no rope" }
+            ]
+          },
+          "outcomes": [
+            { "id": "g1", "label": "the box feels heavy" },
+            { "id": "g2", "label": "the box feels light!" },
+            { "id": "g3", "label": "the box stays on the ground" }
+          ],
+          "mapping": [
+            { "settingId": "s1", "outcomeId": "g1" },
+            { "settingId": "s2", "outcomeId": "g2" },
+            { "settingId": "s3", "outcomeId": "g3" }
+          ],
+          "goalOutcomeId": "g2"
+        },
+        {
+          "kind": "rotation_transform",
+          "id": "l3_i3",
+          "prompt": "Turn the brick to lie flat in the wall!",
+          "explanation": "Bricks lie flat so each row sits strong on the last.",
+          "hints": ["Walls like their bricks lying down."],
+          "concepts": ["building"],
+          "difficulty": 2,
+          "object": { "id": "o3", "label": "brick" },
+          "startAngle": 90,
+          "targetAngle": 0,
+          "snapAngle": 90,
+          "symmetryFold": 2
+        },
+        {
+          "kind": "create_express",
+          "id": "l3_i4",
+          "prompt": "Build a machine corner for the site!",
+          "explanation": "A working corner! Wheels and bricks, ready for the crew.",
+          "hints": ["Think of what builders use most."],
+          "concepts": ["wheels", "building"],
+          "difficulty": 4,
+          "palette": [
+            { "id": "p1", "label": "wheel" },
+            { "id": "p2", "label": "brick" },
+            { "id": "p3", "label": "wall" },
+            { "id": "p4", "label": "sun" },
+            { "id": "p5", "label": "car" },
+            { "id": "p6", "label": "house" }
+          ],
+          "minElements": 3,
+          "mustInclude": ["p1", "p2"]
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "isIntro": false,
+      "title": "The Master Builder Challenge",
+      "learningLevel": "challenge",
+      "observe": "You have earned your helmet! The whole site waits for your decisions.",
+      "notice": "Master builders let machines do the heavy part — muscles are for steering.",
+      "teaching": [
+        {
+          "id": "l4_t1",
+          "text": "The smartest plan uses machines together: wheels to carry, ramps to climb, levers to lift.",
+          "emphasis": ["together"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "cause_effect",
+          "id": "l4_i1",
+          "prompt": "Choose the smartest plan for moving all the bricks!",
+          "explanation": "Machines help our muscles — the loaded wagon does the heavy part.",
+          "hints": ["Machines help our muscles.", "Rolling beats carrying."],
+          "concepts": ["wheels", "planning"],
+          "difficulty": 4,
+          "variable": {
+            "label": "the work plan",
+            "settings": [
+              { "id": "s1", "label": "carry them alone" },
+              { "id": "s2", "label": "load the wagon" },
+              { "id": "s3", "label": "wait and rest" }
+            ]
+          },
+          "outcomes": [
+            { "id": "g1", "label": "your arms get very tired" },
+            { "id": "g2", "label": "the job gets done fast!" },
+            { "id": "g3", "label": "nothing gets built" }
+          ],
+          "mapping": [
+            { "settingId": "s1", "outcomeId": "g1" },
+            { "settingId": "s2", "outcomeId": "g2" },
+            { "settingId": "s3", "outcomeId": "g3" }
+          ],
+          "goalOutcomeId": "g2"
+        },
+        {
+          "kind": "find_fix",
+          "id": "l4_i2",
+          "prompt": "Two things are wrong on site — fix them both!",
+          "explanation": "A master builder's eye! Ropes lift loads, and ladders stand tall.",
+          "hints": ["What should the rope lift?", "How do workers climb up?"],
+          "concepts": ["planning", "strong materials"],
+          "difficulty": 4,
+          "objects": [
+            { "id": "b1", "label": "crane lifting a beam", "mistake": false },
+            { "id": "b2", "label": "rope tied to a feather", "mistake": true, "correctionId": "k1" },
+            { "id": "b3", "label": "wheelbarrow full of sand", "mistake": false },
+            { "id": "b4", "label": "ladder lying in the mud", "mistake": true, "correctionId": "k3" }
+          ],
+          "corrections": [
+            { "id": "k1", "label": "tie it to the beam" },
+            { "id": "k2", "label": "cut the rope" },
+            { "id": "k3", "label": "stand it against the wall" }
+          ]
+        },
+        {
+          "kind": "rotation_transform",
+          "id": "l4_i3",
+          "prompt": "Turn the little house step by step until it stands!",
+          "explanation": "Small careful turns — that is how builders line things up.",
+          "hints": ["Small steps get there too.", "How many little turns are left?"],
+          "concepts": ["shapes of buildings"],
+          "difficulty": 2,
+          "object": { "id": "o4", "label": "house" },
+          "startAngle": 135,
+          "targetAngle": 0,
+          "snapAngle": 45
+        },
+        {
+          "kind": "create_express",
+          "id": "l4_i4",
+          "prompt": "Design your dream building site!",
+          "explanation": "The dream site is finished — the whole crew is cheering for you!",
+          "hints": ["It is YOUR site — no wrong answers."],
+          "concepts": ["building", "planning"],
+          "difficulty": 5,
+          "palette": [
+            { "id": "p1", "label": "brick" },
+            { "id": "p2", "label": "wall" },
+            { "id": "p3", "label": "wheel" },
+            { "id": "p4", "label": "car" },
+            { "id": "p5", "label": "crane" },
+            { "id": "p6", "label": "sun" }
+          ],
+          "minElements": 4,
+          "mustInclude": ["p1", "p2"]
+        }
+      ]
+    }
+  ],
+  "summaryHints": {
+    "concepts": ["ramps", "levers", "wheels", "strong materials"],
+    "nextTopics": ["pulleys everywhere", "bridges and arches"]
+  }
+}

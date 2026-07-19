@@ -16,6 +16,7 @@ import type {
   Meta,
   NormalizedRequest,
   RepairItems,
+  ScenePlayContentSpec,
 } from '@edumind/shared';
 import type { ContentProvider, FactCheckPiece, TutorReplyParams } from '../pipeline/provider.js';
 import type { InteractivePayload, TutorReply } from '../tutor/contract.js';
@@ -58,18 +59,24 @@ function loadSamples(): GameSpec[] {
 
 const VAGUE = /\b(stuff|things|something|idk|dunno|anything|whatever)\b|^\s*\S{1,3}\s*$|شيء|أشياء|أي شيء/i;
 
-/** Strip ids/intro from a golden spec to produce generation-shaped content. */
-function toContent(spec: GameSpec, educationalLevels: number): McqContentSpec | ConnectContentSpec {
+/** Strip ids/intro from a golden spec to produce generation-shaped content.
+ *  scene_play levels MIX item kinds, so their items KEEP `kind` (it is the
+ *  discriminator the assembler relies on); single-kind games drop it because
+ *  their assembler stamps it back. */
+function toContent(spec: GameSpec, educationalLevels: number): McqContentSpec | ConnectContentSpec | ScenePlayContentSpec {
+  const scene = spec.meta.gameType === 'scene_play';
   const eduLevels = spec.levels.filter((l) => !l.isIntro);
   const levels = [];
   for (let i = 0; i < educationalLevels; i++) {
     const src = eduLevels[i % eduLevels.length]!;
     levels.push({
       title: src.title + (i >= eduLevels.length ? ` ${i + 1}` : ''),
+      ...(scene && src.observe ? { observe: src.observe } : {}),
+      ...(scene && src.notice ? { notice: src.notice } : {}),
       teaching: src.teaching.map(({ id: _id, ...t }) => t),
       items: src.items.map((item) => {
-        const { id: _id, kind: _kind, ...rest } = item as Record<string, unknown> & { id: string; kind: string };
-        return rest;
+        const { id: _id, kind, ...rest } = item as Record<string, unknown> & { id: string; kind: string };
+        return scene ? { kind, ...rest } : rest;
       }),
     });
   }
@@ -87,6 +94,9 @@ function toContent(spec: GameSpec, educationalLevels: number): McqContentSpec | 
       levels,
       summaryHints: spec.summaryHints,
     } as ConnectContentSpec;
+  }
+  if (scene) {
+    return { narrative, levels, summaryHints: spec.summaryHints } as unknown as ScenePlayContentSpec;
   }
   return { narrative, levels, summaryHints: spec.summaryHints } as McqContentSpec;
 }
@@ -115,7 +125,7 @@ export class MockProvider implements ContentProvider {
     };
   }
 
-  async generateContent(meta: Meta): Promise<{ content: McqContentSpec | ConnectContentSpec; model: string }> {
+  async generateContent(meta: Meta): Promise<{ content: McqContentSpec | ConnectContentSpec | ScenePlayContentSpec; model: string }> {
     await sleep(MOCK_LATENCY_MS);
     const all = loadSamples();
     const match =

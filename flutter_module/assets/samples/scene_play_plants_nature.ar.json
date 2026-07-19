@@ -1,0 +1,411 @@
+{
+  "specVersion": 1,
+  "meta": {
+    "gameType": "scene_play",
+    "theme": "wonder_world",
+    "subject": "العلوم",
+    "topic": "النبات والضوء",
+    "language": "ar",
+    "grade": 2,
+    "difficulty": "easy",
+    "sessionLength": 5,
+    "numerals": "arabic_indic",
+    "conceptId": "plants_light_g2",
+    "wrapper": "nature"
+  },
+  "student": {
+    "name": "نور",
+    "gender": "f",
+    "color": "#EF9722",
+    "interest": "dinosaurs"
+  },
+  "levels": [
+    {
+      "index": 0,
+      "isIntro": true,
+      "title": "أهلًا بك في عالم العجائب",
+      "teaching": [],
+      "items": []
+    },
+    {
+      "index": 1,
+      "isIntro": false,
+      "title": "تعرّف على النبات",
+      "learningLevel": "recognize",
+      "observe": "انظر! الحديقة مليئة بالنباتات التي تتمايل مع النسيم.",
+      "notice": "لاحظتِ؟ الزهرة تبقى زهرة مهما أدرناها — شكلها لا يتغير.",
+      "teaching": [
+        {
+          "id": "l1_t1",
+          "text": "النبات كائن حي: له جذور وساق وأوراق، ويحتاج إلى الضوء والماء لينمو.",
+          "emphasis": ["الضوء", "الماء"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "rotation_transform",
+          "id": "l1_i1",
+          "prompt": "أديري الزهرة حتى تقف مستقيمة!",
+          "explanation": "أحسنتِ! الزهرة الآن تقف كما تنمو في الحديقة.",
+          "hints": ["جرّبي دورة أخرى."],
+          "concepts": ["أجزاء النبات"],
+          "difficulty": 1,
+          "object": { "id": "o1", "label": "زهرة" },
+          "startAngle": 90,
+          "targetAngle": 0,
+          "snapAngle": 90
+        },
+        {
+          "kind": "cause_effect",
+          "id": "l1_i2",
+          "prompt": "اجعلي النبتة تنمو وتكبر!",
+          "explanation": "النبات يحتاج إلى الضوء لينمو — لذلك نضعه قرب النور.",
+          "hints": ["النبات يحب النور."],
+          "concepts": ["النبات يحتاج الضوء"],
+          "difficulty": 2,
+          "variable": {
+            "label": "الضوء",
+            "settings": [
+              { "id": "s1", "label": "غرفة مظلمة" },
+              { "id": "s2", "label": "نافذة مشمسة" }
+            ]
+          },
+          "outcomes": [
+            { "id": "g1", "label": "تذبل النبتة وتميل" },
+            { "id": "g2", "label": "تنمو النبتة وتكبر" }
+          ],
+          "mapping": [
+            { "settingId": "s1", "outcomeId": "g1" },
+            { "settingId": "s2", "outcomeId": "g2" }
+          ],
+          "goalOutcomeId": "g2"
+        },
+        {
+          "kind": "find_fix",
+          "id": "l1_i3",
+          "prompt": "شيء في الحديقة ليس في مكانه — جِديه!",
+          "explanation": "الحديقة تبقى جميلة عندما نضع كل شيء في مكانه الصحيح.",
+          "hints": ["ما الذي لا ينتمي إلى الحديقة؟"],
+          "concepts": ["العناية بالنبات"],
+          "difficulty": 2,
+          "objects": [
+            { "id": "b1", "label": "شجرة", "mistake": false },
+            { "id": "b2", "label": "زهرة", "mistake": false },
+            { "id": "b3", "label": "كيس نفايات", "mistake": true, "correctionId": "k1" }
+          ],
+          "corrections": [
+            { "id": "k1", "label": "سلة المهملات" },
+            { "id": "k2", "label": "عش العصفور" }
+          ]
+        },
+        {
+          "kind": "create_express",
+          "id": "l1_i4",
+          "prompt": "ازرعي حديقتكِ الصغيرة!",
+          "explanation": "يا لها من حديقة جميلة! كل نبتة اخترتِها تحتاج ضوءًا وماءً.",
+          "hints": ["أضيفي ما تحبين أنتِ."],
+          "concepts": ["العناية بالنبات"],
+          "difficulty": 3,
+          "palette": [
+            { "id": "p1", "label": "زهرة" },
+            { "id": "p2", "label": "شجرة" },
+            { "id": "p3", "label": "عصفور" },
+            { "id": "p4", "label": "شمس" },
+            { "id": "p5", "label": "غيمة" }
+          ],
+          "minElements": 3,
+          "mustInclude": ["p1"]
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "isIntro": false,
+      "title": "ماذا يحتاج النبات؟",
+      "learningLevel": "understand",
+      "observe": "شاهدي: نبتة قرب النافذة تنمو، ونبتة في العتمة تذبل.",
+      "notice": "السر هو الاعتدال: ماء يكفي وضوء يصل — فلا كثير يغرق ولا قليل يجفف.",
+      "teaching": [
+        {
+          "id": "l2_t1",
+          "text": "النبات يشرب الماء بجذوره، لكن الماء الزائد يؤذيه كما يؤذيه العطش.",
+          "emphasis": ["الماء الزائد", "العطش"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "cause_effect",
+          "id": "l2_i1",
+          "prompt": "اسقِ النبتة بالطريقة الصحيحة!",
+          "explanation": "الاعتدال في السقاية يجعل الجذور تتنفس وتشرب معًا.",
+          "hints": ["الاعتدال أفضل دائمًا.", "الكثير جدًا يؤذي مثل النادر جدًا."],
+          "concepts": ["النبات يحتاج الماء"],
+          "difficulty": 2,
+          "variable": {
+            "label": "الماء",
+            "settings": [
+              { "id": "s1", "label": "بدون سقاية" },
+              { "id": "s2", "label": "سقاية معتدلة" },
+              { "id": "s3", "label": "غمر بالماء" }
+            ]
+          },
+          "outcomes": [
+            { "id": "g1", "label": "تجف الأوراق وتذبل" },
+            { "id": "g2", "label": "تنمو النبتة بسعادة" },
+            { "id": "g3", "label": "تختنق الجذور" }
+          ],
+          "mapping": [
+            { "settingId": "s1", "outcomeId": "g1" },
+            { "settingId": "s2", "outcomeId": "g2" },
+            { "settingId": "s3", "outcomeId": "g3" }
+          ],
+          "goalOutcomeId": "g2"
+        },
+        {
+          "kind": "rotation_transform",
+          "id": "l2_i2",
+          "prompt": "أديري الورقة لتقف كما تنمو على الغصن!",
+          "explanation": "الأوراق تتجه نحو الأعلى لتستقبل ضوء الشمس.",
+          "hints": ["قمة الورقة تنظر إلى السماء."],
+          "concepts": ["أجزاء النبات"],
+          "difficulty": 2,
+          "object": { "id": "o2", "label": "ورقة نبات" },
+          "startAngle": 180,
+          "targetAngle": 0,
+          "snapAngle": 90
+        },
+        {
+          "kind": "find_fix",
+          "id": "l2_i3",
+          "prompt": "أي نبتة في مكان خاطئ؟",
+          "explanation": "النبات لا يعيش في العتمة — يحتاج مكانًا يصله النور.",
+          "hints": ["أين لا يصل النور؟"],
+          "concepts": ["النبات يحتاج الضوء"],
+          "difficulty": 3,
+          "objects": [
+            { "id": "b1", "label": "نبتة قرب النافذة", "mistake": false },
+            { "id": "b2", "label": "نبتة داخل صندوق مغلق", "mistake": true, "correctionId": "k1" },
+            { "id": "b3", "label": "إبريق ماء", "mistake": false }
+          ],
+          "corrections": [
+            { "id": "k1", "label": "مكان مضيء" },
+            { "id": "k2", "label": "خزانة المطبخ" }
+          ]
+        },
+        {
+          "kind": "create_express",
+          "id": "l2_i4",
+          "prompt": "رتّبي ركن النباتات كما تحبين!",
+          "explanation": "ركن رائع! النباتات السعيدة تعيش قرب الضوء والماء.",
+          "hints": ["لا توجد طريقة خاطئة هنا."],
+          "concepts": ["العناية بالنبات"],
+          "difficulty": 1,
+          "palette": [
+            { "id": "p1", "label": "زهرة" },
+            { "id": "p2", "label": "إبريق" },
+            { "id": "p3", "label": "شمس" },
+            { "id": "p4", "label": "شجرة" }
+          ],
+          "minElements": 2,
+          "mustInclude": []
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "isIntro": false,
+      "title": "طبّقي ما تعلمتِ",
+      "learningLevel": "apply",
+      "observe": "هذه حديقة الجيران: فيها نباتات سعيدة وأخرى تحتاج مساعدتك.",
+      "notice": "عرفتِ المشكلة من شكل النبتة: تربة جافة تعني عطشًا، وميلان يعني قلة نور.",
+      "teaching": [
+        {
+          "id": "l3_t1",
+          "text": "البستاني الذكي ينظر أولًا: هل التربة جافة؟ هل يصل النور؟ ثم يقرر كيف يساعد.",
+          "emphasis": ["ينظر أولًا"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "find_fix",
+          "id": "l3_i1",
+          "prompt": "ساعدي الحديقة — ما الذي يجب إصلاحه؟",
+          "explanation": "التربة الجافة علامة العطش — السقاية تعيد للنبتة حياتها.",
+          "hints": ["انظري إلى التربة.", "ماذا ينقص الأوراق الذابلة؟"],
+          "concepts": ["النبات يحتاج الماء", "العناية بالنبات"],
+          "difficulty": 3,
+          "objects": [
+            { "id": "b1", "label": "عصفور يشرب", "mistake": false },
+            { "id": "b2", "label": "زهرة في الشمس", "mistake": false },
+            { "id": "b3", "label": "نبتة ذابلة وتربة متشققة", "mistake": true, "correctionId": "k2" }
+          ],
+          "corrections": [
+            { "id": "k1", "label": "مزيد من الظل" },
+            { "id": "k2", "label": "سقاية فورية" },
+            { "id": "k3", "label": "قصّ الأوراق" }
+          ]
+        },
+        {
+          "kind": "cause_effect",
+          "id": "l3_i2",
+          "prompt": "اختاري البيت الأفضل للنبتة!",
+          "explanation": "قرب النافذة يصل الضوء كل يوم — هناك تزدهر النبتة.",
+          "hints": ["أين يدخل ضوء الصباح؟"],
+          "concepts": ["النبات يحتاج الضوء"],
+          "difficulty": 3,
+          "variable": {
+            "label": "مكان النبتة",
+            "settings": [
+              { "id": "s1", "label": "قرب النافذة" },
+              { "id": "s2", "label": "تحت السرير" },
+              { "id": "s3", "label": "في الثلاجة" }
+            ]
+          },
+          "outcomes": [
+            { "id": "g1", "label": "تنمو وتزهر" },
+            { "id": "g2", "label": "تذبل في العتمة" },
+            { "id": "g3", "label": "تتجمد من البرد" }
+          ],
+          "mapping": [
+            { "settingId": "s1", "outcomeId": "g1" },
+            { "settingId": "s2", "outcomeId": "g2" },
+            { "settingId": "s3", "outcomeId": "g3" }
+          ],
+          "goalOutcomeId": "g1"
+        },
+        {
+          "kind": "rotation_transform",
+          "id": "l3_i3",
+          "prompt": "أديري العصفور ليقف على الغصن!",
+          "explanation": "الآن يقف العصفور كما يقف في الحديقة — فوق الغصن.",
+          "hints": ["رأسه نحو الأعلى وقدماه على الغصن."],
+          "concepts": ["الحديقة من حولنا"],
+          "difficulty": 2,
+          "object": { "id": "o3", "label": "عصفور" },
+          "startAngle": 270,
+          "targetAngle": 0,
+          "snapAngle": 90
+        },
+        {
+          "kind": "create_express",
+          "id": "l3_i4",
+          "prompt": "ابني ركنًا مشمسًا لنباتاتك!",
+          "explanation": "ركن مشمس رائع! فيه ضوء وماء — كل ما تحتاجه النباتات.",
+          "hints": ["تذكري ما يحتاجه النبات."],
+          "concepts": ["النبات يحتاج الضوء", "النبات يحتاج الماء"],
+          "difficulty": 4,
+          "palette": [
+            { "id": "p1", "label": "زهرة" },
+            { "id": "p2", "label": "شجرة" },
+            { "id": "p3", "label": "شمس" },
+            { "id": "p4", "label": "قطرة ماء" },
+            { "id": "p5", "label": "عصفور" }
+          ],
+          "minElements": 3,
+          "mustInclude": ["p3", "p4"]
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "isIntro": false,
+      "title": "التحدي الكبير",
+      "learningLevel": "challenge",
+      "observe": "أصبحتِ بستانية ماهرة! هذه الحديقة الكبيرة تنتظر قراراتك.",
+      "notice": "أقوى نبتة هي التي حصلت على كل شيء معًا: ضوء وماء وعناية.",
+      "teaching": [
+        {
+          "id": "l4_t1",
+          "text": "النبات القوي يحتاج الأشياء معًا لا واحدة فقط: ضوء يراه وماء يشربه وعين تعتني به.",
+          "emphasis": ["معًا"]
+        }
+      ],
+      "items": [
+        {
+          "kind": "cause_effect",
+          "id": "l4_i1",
+          "prompt": "اختاري الخطة التي تجعل النبتة أقوى!",
+          "explanation": "النبات يحتاج الضوء والماء معًا — خطة واحدة لا تكفي.",
+          "hints": ["النبات يحتاج أكثر من شيء واحد.", "فكري: ماذا شربت النبتة؟ وماذا رأت؟"],
+          "concepts": ["النبات يحتاج الضوء", "النبات يحتاج الماء"],
+          "difficulty": 4,
+          "variable": {
+            "label": "خطة العناية",
+            "settings": [
+              { "id": "s1", "label": "سقاية فقط" },
+              { "id": "s2", "label": "إضاءة فقط" },
+              { "id": "s3", "label": "سقاية وإضاءة" }
+            ]
+          },
+          "outcomes": [
+            { "id": "g1", "label": "تنمو قليلًا ثم تتعب" },
+            { "id": "g2", "label": "تنمو ببطء وتشحب" },
+            { "id": "g3", "label": "تنمو قوية وتزهر" }
+          ],
+          "mapping": [
+            { "settingId": "s1", "outcomeId": "g1" },
+            { "settingId": "s2", "outcomeId": "g2" },
+            { "settingId": "s3", "outcomeId": "g3" }
+          ],
+          "goalOutcomeId": "g3"
+        },
+        {
+          "kind": "find_fix",
+          "id": "l4_i2",
+          "prompt": "مشكلتان في الحديقة — اكتشفيهما وأصلحيهما!",
+          "explanation": "بستانية حقيقية! واحدة كانت تحتاج النور والأخرى كانت تحتاج الماء.",
+          "hints": ["واحدة ظمآنة وواحدة لا ترى الشمس."],
+          "concepts": ["العناية بالنبات"],
+          "difficulty": 4,
+          "objects": [
+            { "id": "b1", "label": "زهرة في الشمس", "mistake": false },
+            { "id": "b2", "label": "نبتة في العتمة", "mistake": true, "correctionId": "k1" },
+            { "id": "b3", "label": "نبتة تربتها جافة", "mistake": true, "correctionId": "k2" },
+            { "id": "b4", "label": "عصفور فوق الشجرة", "mistake": false }
+          ],
+          "corrections": [
+            { "id": "k1", "label": "نقلها إلى النور" },
+            { "id": "k2", "label": "سقايتها بالماء" },
+            { "id": "k3", "label": "وضعها في الثلاجة" }
+          ]
+        },
+        {
+          "kind": "rotation_transform",
+          "id": "l4_i3",
+          "prompt": "أديري الزهرة بخطوات صغيرة حتى تعتدل!",
+          "explanation": "خطوة بعد خطوة اعتدلت الزهرة — الصبر طريق البستاني.",
+          "hints": ["الخطوات الصغيرة توصل أيضًا.", "كم دورة صغيرة تبقى؟"],
+          "concepts": ["أجزاء النبات"],
+          "difficulty": 2,
+          "object": { "id": "o4", "label": "زهرة" },
+          "startAngle": 180,
+          "targetAngle": 0,
+          "snapAngle": 45
+        },
+        {
+          "kind": "create_express",
+          "id": "l4_i4",
+          "prompt": "صمّمي حديقة أحلامك الكاملة!",
+          "explanation": "حديقة الأحلام اكتملت! فيها كل ما يجعل النباتات سعيدة.",
+          "hints": ["حديقتك أنتِ — لا إجابة خاطئة."],
+          "concepts": ["العناية بالنبات"],
+          "difficulty": 5,
+          "palette": [
+            { "id": "p1", "label": "زهرة" },
+            { "id": "p2", "label": "شجرة" },
+            { "id": "p3", "label": "عصفور" },
+            { "id": "p4", "label": "شمس" },
+            { "id": "p5", "label": "غيمة" },
+            { "id": "p6", "label": "قطرة ماء" }
+          ],
+          "minElements": 4,
+          "mustInclude": ["p1", "p2"]
+        }
+      ]
+    }
+  ],
+  "summaryHints": {
+    "concepts": ["النبات يحتاج الضوء", "النبات يحتاج الماء", "العناية بالنبات"],
+    "nextTopics": ["أجزاء النبات", "الفصول والنبات"]
+  }
+}

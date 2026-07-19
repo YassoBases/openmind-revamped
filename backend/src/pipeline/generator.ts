@@ -16,8 +16,10 @@
  */
 import { createHash } from 'node:crypto';
 import {
+  KIT_BY_INTEREST,
   assembleConnectSpec,
   assembleMcqSpec,
+  assembleSceneSpec,
   collectTextFields,
   parseAndValidateGameSpec,
   type ConnectContentSpec,
@@ -25,6 +27,7 @@ import {
   type Item,
   type McqContentSpec,
   type Meta,
+  type ScenePlayContentSpec,
   type Student,
 } from '@edumind/shared';
 import { moderate } from '../llm/moderation.js';
@@ -42,14 +45,18 @@ export interface GenerationDeps {
 }
 
 export function specCacheKey(meta: Meta): string {
-  const raw = [meta.subject, meta.topic, meta.language, meta.gameType, meta.theme, meta.grade, meta.difficulty, meta.sessionLength].join('|');
+  // The wrapper (interest kit) flavors generated labels for scene_play, so it
+  // is content-determining there; absent everywhere else it hashes as ''.
+  const raw = [meta.subject, meta.topic, meta.language, meta.gameType, meta.theme, meta.grade, meta.difficulty, meta.sessionLength, meta.wrapper ?? ''].join('|');
   return createHash('sha256').update(raw.toLowerCase()).digest('hex');
 }
 
-function assemble(meta: Meta, student: Student, content: McqContentSpec | ConnectContentSpec): GameSpec {
-  return meta.gameType === 'draw_connect'
-    ? assembleConnectSpec(meta, student, content as ConnectContentSpec)
-    : assembleMcqSpec(meta, student, content as McqContentSpec);
+export type AnyContentSpec = McqContentSpec | ConnectContentSpec | ScenePlayContentSpec;
+
+function assemble(meta: Meta, student: Student, content: AnyContentSpec): GameSpec {
+  if (meta.gameType === 'draw_connect') return assembleConnectSpec(meta, student, content as ConnectContentSpec);
+  if (meta.gameType === 'scene_play') return assembleSceneSpec(meta, student, content as ScenePlayContentSpec);
+  return assembleMcqSpec(meta, student, content as McqContentSpec);
 }
 
 function buildFactcheckPieces(spec: GameSpec): FactCheckPiece[] {
@@ -79,13 +86,44 @@ function buildFactcheckPieces(spec: GameSpec): FactCheckPiece[] {
                   explanation: item.explanation,
                   hints: item.hints,
                 }
-              : {
-                  // scene kinds (curated for now) — prompt/explanation carry
-                  // the checkable claims
-                  prompt: item.prompt,
-                  explanation: item.explanation,
-                  hints: item.hints,
-                },
+              : item.kind === 'cause_effect'
+                ? {
+                    // the experiment's causal claims ARE the checkable facts:
+                    // the judge sees every setting → outcome mapping + the goal
+                    prompt: item.prompt,
+                    variable: item.variable.label,
+                    settings: item.variable.settings.map((s) => s.label),
+                    outcomes: item.outcomes.map((o) => o.label),
+                    mapping: item.mapping.map((m) => {
+                      const s = item.variable.settings.find((x) => x.id === m.settingId);
+                      const o = item.outcomes.find((x) => x.id === m.outcomeId);
+                      return `${s?.label ?? m.settingId} → ${o?.label ?? m.outcomeId}`;
+                    }),
+                    goalOutcome: item.outcomes.find((o) => o.id === item.goalOutcomeId)?.label ?? null,
+                    explanation: item.explanation,
+                    hints: item.hints,
+                  }
+                : item.kind === 'find_fix'
+                  ? {
+                      // what is "wrong" and its "fix" are factual claims
+                      prompt: item.prompt,
+                      sceneObjects: item.objects.map((o) => o.label),
+                      mistakes: item.objects
+                        .filter((o) => o.mistake)
+                        .map((o) => ({
+                          mistake: o.label,
+                          fix: item.corrections.find((c) => c.id === o.correctionId)?.label ?? null,
+                        })),
+                      explanation: item.explanation,
+                      hints: item.hints,
+                    }
+                  : {
+                      // remaining scene kinds — prompt/explanation carry the
+                      // checkable claims (labels ride collectTextFields)
+                      prompt: item.prompt,
+                      explanation: item.explanation,
+                      hints: item.hints,
+                    },
       });
     }
   }
@@ -113,6 +151,13 @@ function applyRepairs(spec: GameSpec, repairs: Array<Record<string, unknown> & {
         base.correctIndex = fix.correctIndex ?? item.correctIndex;
       } else if (fix.edgeIds) {
         base.edgeIds = fix.edgeIds;
+      }
+      // scene_play payloads: replace whichever mechanic fields the repair
+      // carries (kind never changes; semantic validators re-run afterwards)
+      for (const key of ['object', 'startAngle', 'targetAngle', 'snapAngle', 'symmetryFold',
+        'variable', 'outcomes', 'mapping', 'goalOutcomeId',
+        'objects', 'corrections', 'palette', 'minElements', 'mustInclude'] as const) {
+        if (fix[key] !== undefined) base[key] = fix[key];
       }
       return base as unknown as Item;
     });
@@ -150,14 +195,20 @@ export async function generateSpec(
   },
 ): Promise<GenerationResult> {
   const { store, provider, log } = deps;
-  const { meta, student } = params;
+  const { student } = params;
+  // scene_play: resolve the interest kit BEFORE generation so labels can live
+  // naturally in the kit's world (server-side + deterministic — never the LLM).
+  const meta: Meta =
+    params.meta.gameType === 'scene_play' && !params.meta.wrapper
+      ? { ...params.meta, wrapper: student.interest ? KIT_BY_INTEREST[student.interest] : 'nature' }
+      : params.meta;
   const startedAll = Date.now();
 
   // ---- spec cache: repeated topics are nearly free --------------------
   const key = specCacheKey(meta);
   const cached = await store.cacheGet(key);
   if (cached) {
-    const spec = assemble(meta, student, cached as unknown as McqContentSpec | ConnectContentSpec);
+    const spec = assemble(meta, student, cached as unknown as AnyContentSpec);
     const check = parseAndValidateGameSpec(spec);
     if (check.result.ok) {
       metrics.bump('spec_cache_hit');

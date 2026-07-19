@@ -152,7 +152,9 @@ export async function gameRoutes(
       language,
       grade: gameGenGrade(student.grade),
       difficulty: body.difficulty,
-      sessionLength: body.sessionLength,
+      // scene_play sessions ARE the four-rung learning ladder: always intro +
+      // recognize/understand/apply/challenge, whatever length was requested.
+      sessionLength: body.gameType === 'scene_play' ? 5 : body.sessionLength,
       numerals: language === 'ar' ? 'arabic_indic' : 'western',
     };
     const sBlock = studentBlock(student);

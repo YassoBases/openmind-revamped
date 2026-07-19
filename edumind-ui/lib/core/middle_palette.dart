@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// Middle-school (grades 7-9) design tokens — the calm counterpart to the
-/// primary product's bright [Palette]. Extends the onboarding OnbColors
-/// direction: warm cream surfaces, ink-blue structure, muted per-path accents.
+/// Middle-school (grades 7-9) design tokens — the calm register of the same
+/// fixed OpenMind brand palette the rest of the app carries (AppColors /
+/// Palette): cream surfaces, deep-teal structure, muted per-path accents.
+/// Token NAMES are historical (blueInk predates the teal identity) and kept
+/// stable so call sites heal by value.
 /// Used only by the middle learn screens; primary screens never import this.
 ///
 /// Color roles (deliberately narrow — each hue means one thing):
@@ -14,33 +16,33 @@ import 'package:flutter/material.dart';
 ///    red/purple/amber/orange).
 class MiddlePalette {
   /// Screen background for رحلتي and the path detail.
-  static const cream = Color(0xFFF6F0E4);
+  static const cream = Color(0xFFFAF3E6);
 
   /// Warm white card/surface — one step lighter than [cream] so cards read as
   /// raised without a hard white/grey break.
   static const card = Color(0xFFFFFCF7);
 
-  /// Headings and strong text.
-  static const blueInk = Color(0xFF14395C);
+  /// Headings and strong text — Deep Teal, never heavy black.
+  static const blueInk = Color(0xFF19725E);
 
-  /// Body/secondary text.
-  static const body = Color(0xFF5B6B7C);
+  /// Body/secondary text — muted deep teal.
+  static const body = Color(0xFF4E6E64);
 
-  /// Calm card/selection surfaces.
-  static const softBlue = Color(0xFFE9F1F8);
+  /// Calm card/selection surfaces — a teal-tinted quiet sky.
+  static const softBlue = Color(0xFFE2F1EF);
 
-  /// Hairline card outlines.
-  static const outline = Color(0xFFDFE3E8);
+  /// Hairline card outlines — sand.
+  static const outline = Color(0xFFEAD9BF);
 
   /// Primary action buttons (continue/finish/start) — the one clear next tap.
-  static const primaryAction = Color(0xFF1C4E80);
+  static const primaryAction = Color(0xFF19725E);
 
   /// Progress and discovery: step/ready bars, next-goal chips, exploration
   /// badges. Never used for buttons or for error/retry states.
-  static const discovery = Color(0xFFE8872E);
+  static const discovery = Color(0xFFEF9722);
 
   /// A correct or complete outcome. Never used for anything else.
-  static const success = Color(0xFF3E7C59);
+  static const success = Color(0xFF4D8C58);
 
   /// Incorrect/retry feedback — a soft learning yellow, not an alarm.
   static const retryYellow = Color(0xFFE8C978);

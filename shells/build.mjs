@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 
-const GAMES = ['quest_path', 'goal_shootout', 'draw_connect', 'number_city'];
+const GAMES = ['quest_path', 'goal_shootout', 'draw_connect', 'number_city', 'scene_play'];
 
 function read(p) {
   return readFileSync(p, 'utf8');
@@ -46,6 +46,7 @@ const gamefeel = read(join(here, 'src', 'lib', 'gamefeel.js'));
 const interact = read(join(here, 'src', 'lib', 'interact.js'));
 const mascot = read(join(here, 'src', 'lib', 'mascot.js'));
 const educore = read(join(here, 'src', 'lib', 'educore.js'));
+const scenekit = read(join(here, 'src', 'lib', 'scenekit.js'));
 
 const fontsCss = [
   fontFace('Nunito', 700, findModule('@fontsource/nunito/files/nunito-latin-700-normal.woff2')),
@@ -87,6 +88,7 @@ for (const game of GAMES) {
   html = inject(html, 'INTERACT_JS', interact);
   html = inject(html, 'MASCOT_JS', mascot);
   html = inject(html, 'EDUCORE_JS', educore);
+  html = inject(html, 'SCENEKIT_JS', scenekit);
   html = inject(html, 'GAME_JS', gameJs);
 
   const out = join(distDir, `${game}.html`);

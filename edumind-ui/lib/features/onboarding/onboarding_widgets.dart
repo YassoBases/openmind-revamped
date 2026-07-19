@@ -1,24 +1,25 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-/// OpenMind onboarding design tokens.
+/// OpenMind onboarding design tokens — the same fixed OpenMind brand palette
+/// as AppColors (token names historical; values are the teal/cream identity).
 ///
-/// Color hierarchy: blue = structure (headings, borders, trust), orange =
-/// action and progress (CTA, active step, completion), ivory/cream = warm
-/// surfaces, soft blue = calm selection surfaces. Green is reserved for
+/// Color hierarchy: teal = structure (headings, borders, trust), orange =
+/// action and progress (CTA, active step, completion), cream/sand = warm
+/// surfaces, soft sky = calm selection surfaces. Green is reserved for
 /// success states only. No purple, no neon, no heavy gradients, no
 /// near-black. The muted Syrian-inspired red/green appear ONLY as very
 /// low-alpha washes in the welcome background ([WelcomePatternPainter]).
 class OnbColors {
-  static const blue = Color(0xFF1C4E80);
-  static const blueInk = Color(0xFF14395C);
-  static const softBlue = Color(0xFFE9F1F8);
-  static const orange = Color(0xFFE8872E);
-  static const ivory = Color(0xFFFDFBF6);
-  static const cream = Color(0xFFF3EBDC);
-  static const outline = Color(0xFFDFE3E8);
-  static const body = Color(0xFF5B6B7C);
-  static const mutedGreen = Color(0xFF3E7C59);
+  static const blue = Color(0xFF079A90);
+  static const blueInk = Color(0xFF19725E);
+  static const softBlue = Color(0xFFCEEBF0);
+  static const orange = Color(0xFFEF9722);
+  static const ivory = Color(0xFFFDF2E2);
+  static const cream = Color(0xFFFAE9D0);
+  static const outline = Color(0xFFEAD9BF);
+  static const body = Color(0xFF4E6E64);
+  static const mutedGreen = Color(0xFF4D8C58);
   static const mutedRed = Color(0xFF9E4B47);
 }
 

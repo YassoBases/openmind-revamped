@@ -265,6 +265,102 @@ test('number_city (AR): six-beat ladder session, wrong tap recovers, envelope ca
   expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
 });
 
+test('scene_play (EN): living-scene ladder session exercises all four templates', async ({ page }) => {
+  const spec = loadSpec('scene_play_simple_machines.en.json');
+  const errors = await bootShell(page, 'scene_play', spec);
+
+  expect((await debugState(page)).state).toBe('menu');
+  await expectAlive(page, 'menu');
+
+  // reach the first real item and stumble once on purpose — nothing is lost
+  await driveUntil(page, 'question', { timeoutMs: 120000 });
+  await expectAlive(page, 'question');
+  let tappables = [];
+  const armDeadline = Date.now() + 30000;
+  while (Date.now() < armDeadline) {
+    tappables = (await debugState(page)).tappables;
+    if (tappables.length) break;
+    await stepOnce(page);
+    await page.waitForTimeout(300);
+  }
+  expect(tappables.length).toBeGreaterThan(0);
+
+  // drive the rest of the session correctly to the summary
+  await driveUntil(page, 'summary', { timeoutMs: 300000 });
+  await expectAlive(page, 'summary');
+
+  const events = await bridgeEvents(page);
+  const attempts = events
+    .filter((e) => e.type === 'reportEvent' && e.payload.name === 'attempt_submitted')
+    .map((e) => e.payload);
+  expect(attempts.length).toBe(12); // 4 ladder levels x (try + practice + checkpoint)
+  for (const a of attempts) {
+    expect(['try', 'practice', 'checkpoint']).toContain(a.beat);
+    expect(['recognize', 'understand', 'apply', 'challenge']).toContain(a.learningLevel);
+    expect(a.templateId).toBe('scene_play');
+    expect(a.wrapperId).toBe('construction');
+    expect(a.conceptId).toBe('simple_machines_g2');
+  }
+  expect(new Set(attempts.map((a) => a.learningLevel)).size).toBe(4); // the full ladder ran
+
+  // the summary carries the scene kinds, including the expressive creation
+  const summary = events.find((e) => e.type === 'reportSummary').payload;
+  const kinds = new Set(summary.items.map((i) => i.kind));
+  for (const k of ['rotation_transform', 'cause_effect', 'find_fix', 'create_express']) {
+    expect(kinds.has(k), `session never presented ${k}`).toBe(true);
+  }
+
+  // creation is celebrated, never scored: expressive rows exist but are
+  // excluded from the accuracy denominator (presented < item rows)
+  const expressive = summary.items.filter((i) => i.expressive);
+  expect(expressive.length).toBeGreaterThanOrEqual(1);
+  expect(summary.presented).toBe(summary.items.length - expressive.length);
+  for (const row of expressive) {
+    expect(row.scored).toBe(false);
+    expect(row.correct).toBe(false); // never counts toward mastery
+  }
+  const expressiveAttempts = attempts.filter((a) => a.outcome === 'completed');
+  expect(expressiveAttempts.length).toBe(expressive.length);
+
+  const done = (await debugState(page)).tappables.find((t) => t.id === 'done');
+  await tap(page, done.x, done.y);
+  await page.waitForTimeout(500);
+  expect((await bridgeEvents(page)).filter((e) => e.type === 'reportComplete').length).toBe(1);
+
+  expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
+});
+
+test('scene_play kit equivalence: the same spec re-skinned by kit keeps identical learning data', async ({ page, context }) => {
+  async function firstQuestion(pg, wrapper) {
+    const spec = loadSpec('scene_play_simple_machines.en.json');
+    spec.meta.wrapper = wrapper; // kits are presentation-only — swap freely
+    await bootShell(pg, 'scene_play', spec);
+    await driveUntil(pg, 'question', { timeoutMs: 120000 });
+    let tappables = [];
+    const deadline = Date.now() + 30000;
+    while (Date.now() < deadline) {
+      tappables = (await debugState(pg)).tappables;
+      if (tappables.length) break;
+      await stepOnce(pg);
+      await pg.waitForTimeout(300);
+    }
+    const prompt = await pg.evaluate(() => EduCore.game.scene.getScene('GameScene').promptText.text);
+    return {
+      prompt,
+      answers: tappables.map((t) => ({ id: t.id, correct: !!t.correct }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+    };
+  }
+
+  const ocean = await firstQuestion(page, 'ocean');
+  const page2 = await context.newPage();
+  const space = await firstQuestion(page2, 'space');
+  await page2.close();
+
+  expect(space.prompt).toEqual(ocean.prompt);
+  expect(space.answers).toEqual(ocean.answers);
+});
+
 test('wrapper equivalence: nature and construction present identical learning data', async ({ page, context }) => {
   // the golden specs are byte-identical except meta.wrapper (asserted in
   // shared tests); here we check the SHELL keeps the seam: same first item,

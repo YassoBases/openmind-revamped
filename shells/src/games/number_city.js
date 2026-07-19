@@ -263,29 +263,11 @@
     }
 
     buildAmbient(kind) {
-      // drifting leaves (nature) or site dust motes (construction)
-      for (let i = 0; i < 6; i++) {
-        const isLeaf = kind === 'leaves';
-        const fleck = isLeaf
-          ? this.add.ellipse(Math.random() * W, 200 + Math.random() * 700, 14, 8, 0x84a253, 0.5)
-          : this.add.circle(Math.random() * W, 300 + Math.random() * 600, 3, 0xb5702f, 0.3);
-        fleck.setDepth(1);
-        this.tweens.add({
-          targets: fleck,
-          y: fleck.y + 120 + Math.random() * 80,
-          x: fleck.x + (isLeaf ? 60 - Math.random() * 120 : 24 - Math.random() * 48),
-          angle: isLeaf ? 180 : 0,
-          alpha: 0,
-          duration: 5200 + Math.random() * 2800,
-          repeat: -1,
-          delay: Math.random() * 4000,
-          onRepeat: () => {
-            fleck.y = 200 + Math.random() * 500;
-            fleck.x = Math.random() * W;
-            fleck.alpha = kind === 'leaves' ? 0.5 : 0.3;
-          },
-        });
-      }
+      // drifting leaves (nature) or site dust motes (construction) — the
+      // shared SceneKit ambient system (≤6 tweened flecks, no particle pools)
+      SceneKit.spawnAmbient(this, {
+        ambient: { type: kind, color: kind === 'leaves' ? 0x84a253 : 0xb5702f, count: 6 },
+      });
     }
 
     // -------------------------------------------------- six-beat level flow
@@ -331,99 +313,42 @@
       }
     }
 
-    /** Observe: the district comes alive with shapes — just watch, no task. */
+    /** Observe: the district comes alive with shapes — just watch, no task.
+     *  The overlay machinery is SceneKit's; the shape parade stays ours. */
     observeBeat(level) {
-      if (!level.observe) return Promise.resolve();
-      EduCore.setState('observe');
-      return new Promise((resolve) => {
-        const c = this.add.container(0, 0).setDepth(this.uiDepth + 20);
-
-        // a soft parade of the four shapes drifting through the district
-        const parade = [];
-        const shapes = ['circle', 'square', 'triangle', 'rect'];
-        shapes.forEach((shape, i) => {
-          const sc = this.add.container(
-            EduCore.isRTL ? W + 90 + i * 150 : -90 - i * 150, 460 + (i % 2) * 150);
-          const g = this.add.graphics();
-          drawShape(g, shape, 104, this.wrapper.shapeFill[shape]);
-          drawDecor(g, shape, this.wrapper.decor[shape], 104, this.wrapper.shapeFill[shape]);
-          sc.add(g);
-          this.tweens.add({
-            targets: sc,
-            x: EduCore.isRTL ? -120 : W + 120,
-            duration: 7000,
-            delay: i * 350,
-            repeat: -1,
-            ease: 'Linear',
-          });
-          this.tweens.add({
-            targets: sc, y: sc.y - 26, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-          });
-          parade.push(sc);
-          c.add(sc);
-        });
-
-        const panel = GameFeel.cardPanel(this, W / 2, 940, 640, 200, {
-          color: P.sand, alpha: 0.97, stroke: EduCore.accentInt, strokeWidth: 3,
-        });
-        const caption = this.add.text(W / 2, 890, level.observe,
-          EduCore.textStyle(28, { color: '#19725E', align: 'center', wrap: 560, lineSpacing: 8 }))
-          .setOrigin(0.5, 0);
+      return SceneKit.observeBeat(this, level, {
         // wrapper flavor — one light line of scene dressing (presentation only)
-        const flavor = this.add.text(W / 2, 862, this.wrapper.flavor[EduCore.lang] || this.wrapper.flavor.en,
-          EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5);
-        const tapTxt = this.add.text(W / 2, 1000, EduCore.t('tapToContinue'),
-          EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5);
-        this.tweens.add({ targets: tapTxt, alpha: 0.4, duration: 600, yoyo: true, repeat: -1 });
-        c.add([panel, flavor, caption, tapTxt]);
-        c.setAlpha(0);
-        this.tweens.add({ targets: c, alpha: 1, duration: 260 });
-        GameFeel.audio.tick();
-
-        const zone = this.add.zone(W / 2, H / 2, W, H).setInteractive().setDepth(this.uiDepth + 21);
-        zone.once('pointerdown', () => {
-          zone.destroy();
-          this.tweens.add({
-            targets: c, alpha: 0, duration: 220,
-            onComplete: () => { c.destroy(); resolve(); },
+        flavor: this.wrapper.flavor,
+        showcase: (c) => {
+          // a soft parade of the four shapes drifting through the district
+          const shapes = ['circle', 'square', 'triangle', 'rect'];
+          shapes.forEach((shape, i) => {
+            const sc = this.add.container(
+              EduCore.isRTL ? W + 90 + i * 150 : -90 - i * 150, 460 + (i % 2) * 150);
+            const g = this.add.graphics();
+            drawShape(g, shape, 104, this.wrapper.shapeFill[shape]);
+            drawDecor(g, shape, this.wrapper.decor[shape], 104, this.wrapper.shapeFill[shape]);
+            sc.add(g);
+            this.tweens.add({
+              targets: sc,
+              x: EduCore.isRTL ? -120 : W + 120,
+              duration: 7000,
+              delay: i * 350,
+              repeat: -1,
+              ease: 'Linear',
+            });
+            this.tweens.add({
+              targets: sc, y: sc.y - 26, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+            });
+            c.add(sc);
           });
-        });
+        },
       });
     }
 
     /** Notice: name the pattern the learner just felt with their fingers. */
     noticeBeat(level) {
-      if (!level.notice) return Promise.resolve();
-      EduCore.setState('notice');
-      return new Promise((resolve) => {
-        const c = this.add.container(0, 0).setDepth(this.uiDepth + 20);
-        const panel = GameFeel.cardPanel(this, W / 2, 620, 620, 240, {
-          color: P.peach, alpha: 0.98, stroke: EduCore.accentInt, strokeWidth: 3,
-        });
-        const bulb = this.add.text(W / 2, 540, '💡',
-          EduCore.textStyle(40, { align: 'center' })).setOrigin(0.5);
-        const caption = this.add.text(W / 2, 590, level.notice,
-          EduCore.textStyle(28, { color: '#19725E', align: 'center', wrap: 540, lineSpacing: 8 }))
-          .setOrigin(0.5, 0);
-        const tapTxt = this.add.text(W / 2, 706, EduCore.t('tapToContinue'),
-          EduCore.textStyle(24, { color: '#B5702F', align: 'center' })).setOrigin(0.5);
-        this.tweens.add({ targets: tapTxt, alpha: 0.4, duration: 600, yoyo: true, repeat: -1 });
-        this.tweens.add({ targets: bulb, scale: { from: 0.6, to: 1 }, duration: 420, ease: 'Back.easeOut' });
-        c.add([panel, bulb, caption, tapTxt]);
-        c.setAlpha(0);
-        this.tweens.add({ targets: c, alpha: 1, duration: 260 });
-        this.guide.react('hint'); // the crest fans — an idea!
-        this.feel.sparkle(W / 2, 520, 0xef9722, 8);
-
-        const zone = this.add.zone(W / 2, H / 2, W, H).setInteractive().setDepth(this.uiDepth + 21);
-        zone.once('pointerdown', () => {
-          zone.destroy();
-          this.tweens.add({
-            targets: c, alpha: 0, duration: 220,
-            onComplete: () => { c.destroy(); resolve(); },
-          });
-        });
-      });
+      return SceneKit.noticeBeat(this, level, this.guide);
     }
 
     // ------------------------------------------------------------ mechanics
@@ -537,24 +462,7 @@
 
     /** Scatter positions across the play area (grid + jitter, no overlap). */
     scatterPositions(count, area) {
-      const a = area || { x: 90, y: 360, w: W - 180, h: 520 };
-      const cols = count <= 4 ? 2 : 3;
-      const rows = Math.ceil(count / cols);
-      const cells = [];
-      for (let i = 0; i < count; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        cells.push({
-          x: a.x + ((col + 0.5) / cols) * a.w + (Math.random() * 30 - 15),
-          y: a.y + ((row + 0.5) / rows) * a.h + (Math.random() * 24 - 12),
-        });
-      }
-      // shuffle cells so answers never live in a predictable corner
-      for (let i = cells.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [cells[i], cells[j]] = [cells[j], cells[i]];
-      }
-      return cells;
+      return SceneKit.scatterPositions(count, area);
     }
 
     exposeTappables(objs) {

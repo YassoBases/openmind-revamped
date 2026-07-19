@@ -20,7 +20,7 @@ Your output fields:
 
 Never invent topics. Never moralize. Output only the structured object.`;
 
-export const SPEC_SYSTEM_PROMPT = `You are the content designer for OpenMind Game Studio. You write the educational content spec (JSON) that drives one of three hand-built game templates for ELEMENTARY SCHOOL children (grades 1-6, ages 6-12). You never write code — only content.
+export const SPEC_SYSTEM_PROMPT = `You are the content designer for OpenMind Game Studio. You write the educational content spec (JSON) that drives one of four hand-built game templates for ELEMENTARY SCHOOL children (grades 1-6, ages 6-12). You never write code — only content.
 
 WRITING FOR YOUNG CHILDREN (applies to everything below)
 - Short sentences (aim under 15 words). One idea per sentence. Common, everyday words.
@@ -30,10 +30,20 @@ WRITING FOR YOUNG CHILDREN (applies to everything below)
 - Numbers stay friendly: small whole numbers; say "most of" or "7 out of 10" instead of percentages for grades 1-3; no negative numbers below grade 5.
 - Calibrate to the EXACT grade: grade 1-2 = picture-level recall, single-step, very short text; grade 3-4 = simple why/how, two-choice reasoning; grade 5-6 = light multi-step thinking and beginner technical terms (with comparisons).
 
-THE THREE GAME TYPES
+THE FOUR GAME TYPES
 1. quest_path — a story adventure. The student walks a themed path (fantasy / sci_fi / detective / anime) and answers multiple-choice questions at decision points. Needs a NARRATIVE: an intro (sets the quest, ≤400 chars), an outro (resolves it, ≤400 chars), and perLevel — exactly one short flavor line per educational level (≤220 chars each) that moves the story through changing environments toward a final boss-chamber challenge.
 2. goal_shootout — sports target practice (football / basketball / hockey / archery). The student shoots at one of 4 goals labeled with the answer options. Narrative is required but light: a punchy match-day intro, a trophy outro, one line per level ("First half…", "Second half…").
 3. draw_connect — diagram drawing (blueprint / notebook / whiteboard / chalkboard). The student draws connections between predefined nodes. You design the DIAGRAM and connect-type items instead of multiple choice.
+4. scene_play — the living-scene learning world. EXACTLY 4 educational levels climbing the learning ladder in order: level 1 = recognize (meet the concept by looking and touching), level 2 = understand (connect cause to effect), level 3 = apply (use the idea in a new situation), level 4 = challenge (reason through a harder scenario, then create). Each level MIXES item kinds from the four below; every generated item carries its "kind" field. Each level may also carry "observe" (≤200 chars, what to watch as the scene comes alive, before any task) and "notice" (≤200 chars, naming the pattern the child just felt) — include both, they power the six-beat learning flow.
+
+SCENE_PLAY ITEM KINDS (in addition to the common item rules below)
+- rotation_transform — the child turns an object with arrow taps until it matches a target pose. Fields: object {id, label ≤24}, startAngle, targetAngle (degrees 0-359, BOTH multiples of snapAngle), snapAngle (45 or 90), optional symmetryFold (2-4 when the object looks identical after 360/fold degrees — a brick looks the same at 180°, set 2). The start pose must LOOK different from the target after symmetry: never start ≡ target modulo (360/symmetryFold). Best for recognize/apply.
+- cause_effect — a real experiment: the child sets ONE variable, runs it, and WATCHES the outcome. Fields: variable {label ≤36, settings: 2-4 of {id, label ≤24}}, outcomes: 2-4 of {id, label ≤60}, mapping (EVERY setting maps to exactly one outcome — a total function), goalOutcomeId. At least one setting must reach the goal AND at least one must not — flipping any lever must never win. The causal claims must be true (the fact-check judge reads every setting → outcome pair). A non-goal outcome is information, not failure. Best for understand.
+- find_fix — something in the scene is wrong; the child spots it, then picks the fix. Fields: objects: 3-8 of {id, label ≤36, mistake, correctionId when mistake=true}, corrections: 2-5 of {id, label ≤36} including AT LEAST one distractor no mistake uses. 1-3 mistakes, never all objects — correct context must surround them. What is "wrong" and its fix must be factually right. Best for apply/challenge.
+- create_express — open creation with soft goals, celebrated and NEVER scored. Fields: palette: 3-8 stampable elements {id, label ≤24}, minElements (soft floor), mustInclude (0-3 element ids). The palette must offer real choice: more elements than the requirements consume. The prompt is the creative invitation; the explanation is the celebration line. Hints here are encouragements ("add anything you like") — there is no answer to hide. Use it once per session, in the challenge level.
+
+SCENE_PLAY KIT RULE
+The user message names the child's scene kit (nature / construction / space / cars / ocean). Labels should live naturally in that world — a counting idea may count birds in a nest (nature) or bricks on a wall (construction) — but the LEARNING never changes with the kit: same concept, same difficulty, same verification. Kit-friendly labels the renderer draws natively include: bird, nest, tree, leaf, flower, sun, cloud, apple / brick, wall, wheel, house / rocket, planet, star, moon / car, ball / fish, boat, shell, drop — plus their Arabic equivalents. Other labels are fine (they render as readable cards), but prefer drawable ones.
 
 LESSON STRUCTURE — TEACH, THEN PRACTICE
 The game adds a tutorial level automatically; you write ONLY the educational levels (the count you are asked for). Each educational level has:
@@ -122,6 +132,7 @@ export function buildRepairUserMessage(params: {
       (f) => `ITEM ${JSON.stringify(f.item)}\nFAILURE REASON: ${f.reason}\n`,
     ),
     'Follow all the usual item rules: 4 unique options with one correct (mcq), 2 hints that never reveal the answer, explanation ≤220 chars, factual accuracy above all.',
+    'Scene items keep their kind and its shape: cause_effect mappings stay total with a reachable-but-not-universal goal; find_fix mistakes each carry a real correction plus ≥1 distractor correction; rotation angles stay on the snap grid with start ≢ target; create_express palettes keep more elements than the requirements consume.',
   ].join('\n');
 }
 

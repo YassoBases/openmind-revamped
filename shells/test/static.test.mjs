@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const shellsDir = join(here, '..');
 
-const GAMES = ['quest_path', 'goal_shootout', 'draw_connect', 'number_city'];
+const GAMES = ['quest_path', 'goal_shootout', 'draw_connect', 'number_city', 'scene_play'];
 const read = (p) => readFileSync(p, 'utf8');
 
 const libs = {
@@ -22,6 +22,7 @@ const libs = {
   interact: read(join(shellsDir, 'src', 'lib', 'interact.js')),
   mascot: read(join(shellsDir, 'src', 'lib', 'mascot.js')),
   educore: read(join(shellsDir, 'src', 'lib', 'educore.js')),
+  scenekit: read(join(shellsDir, 'src', 'lib', 'scenekit.js')),
 };
 const games = Object.fromEntries(
   GAMES.map((g) => [g, read(join(shellsDir, 'src', 'games', `${g}.js`))])
@@ -330,5 +331,67 @@ describe('Number City learning shell (Phase 3)', () => {
     expect(libs.educore).toMatch(/learningLevel: this\.currentLearningLevel \|\| null/);
     expect(libs.educore).toMatch(/beat: this\.currentBeat \|\| null/);
     expect(libs.educore).toMatch(/currentLearningLevel = level && level\.learningLevel/);
+  });
+});
+
+describe('Scene Play living-scene shell (OpenMind primary templates)', () => {
+  const sp = games.scene_play;
+
+  it('runs the six-beat flow on the shared SceneKit overlays', () => {
+    expect(sp).toMatch(/SceneKit\.observeBeat\(/);
+    expect(sp).toMatch(/SceneKit\.noticeBeat\(/);
+    expect(sp).toMatch(/currentBeat = 'try'/);
+    expect(sp).toMatch(/currentBeat = 'explain'/);
+    expect(sp).toMatch(/'checkpoint' : 'practice'/);
+    // interaction before explanation: the try beat runs before the teach cards
+    const teachPhase = sp.slice(sp.indexOf('async teachPhase'), sp.indexOf('async practicePhase'));
+    expect(teachPhase.indexOf('observeBeat')).toBeGreaterThan(-1);
+    expect(teachPhase.indexOf('runItem')).toBeLessThan(teachPhase.indexOf('super.teachPhase'));
+  });
+
+  it('implements all four template mechanics on the shared Interact primitives', () => {
+    for (const mech of ['playRotationTransform', 'playCauseEffect', 'playFindFix', 'playCreateExpress']) {
+      expect(sp, `missing mechanic ${mech}`).toMatch(new RegExp(mech + '\\('));
+    }
+    expect(sp).toMatch(/Interact\.makeTappable\(/);
+    expect(sp).not.toMatch(/this\.input\.on\('pointerdown'/);
+  });
+
+  it('completion mechanics are honest; creation is expressive, never scored', () => {
+    const finals = (sp.match(/final: true, completed: true/g) || []).length;
+    expect(finals).toBeGreaterThanOrEqual(3); // rotation, cause_effect, find_fix
+    expect(sp).toMatch(/wrongAttempts === 0/);
+    // create_express resolves through the expressive path…
+    expect(sp).toMatch(/expressive: true, final: true, completed: true/);
+    // …which the engine celebrates but fully excludes from accuracy/mastery
+    expect(libs.educore).toMatch(/if \(result\.expressive\)/);
+    expect(libs.educore).toMatch(/session\.presented--/);
+    expect(libs.educore).toMatch(/if \(it\.expressive\) continue/);
+    // the expressive branch returns before recordAnswer can ever see it
+    expect(libs.educore.indexOf('if (result.expressive)'))
+      .toBeLessThan(libs.educore.indexOf('recordAnswer(firstTry)'));
+    expect(libs.educore.indexOf('if (result.expressive)')).toBeGreaterThan(-1);
+  });
+
+  it('interest kits are presentation-only SceneKit tables and never read answers', () => {
+    expect(sp).toMatch(/SceneKit\.get\(/);
+    expect(libs.scenekit).toMatch(/nature:/);
+    expect(libs.scenekit).toMatch(/construction:/);
+    expect(libs.scenekit).toMatch(/space:/);
+    expect(libs.scenekit).toMatch(/cars:/);
+    expect(libs.scenekit).toMatch(/ocean:/);
+    // the kit tables carry art/strings only — answer data never crosses the seam
+    const tables = libs.scenekit.slice(libs.scenekit.indexOf('const KITS'), libs.scenekit.indexOf('function getKit'));
+    expect(tables).not.toMatch(/correct[^A-Z]/);
+    expect(tables).not.toMatch(/def\.|item\./);
+  });
+
+  it('scenes stay alive within budget: ambient flecks ≤6, tween-only parallax', () => {
+    expect(libs.scenekit).toMatch(/Math\.min\(spec\.count \|\| 5, 6\)/);
+    expect(libs.scenekit).not.toMatch(/maxAliveParticles|createEmitter|setPipeline/);
+    expect(libs.scenekit).toMatch(/yoyo: true, repeat: -1/); // the drift never stops
+    // unknown labels always render (readable chip fallback) — AI labels are safe
+    expect(libs.scenekit).toMatch(/visualFor/);
+    expect(libs.scenekit).toMatch(/chipW/);
   });
 });

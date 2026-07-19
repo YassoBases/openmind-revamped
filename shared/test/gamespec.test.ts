@@ -351,6 +351,11 @@ describe('learning ladder + concept + wrapper', () => {
     spec.meta.conceptId = 'add_within_10';
     spec.meta.wrapper = 'nature';
     expect(() => GameSpecSchema.parse(spec)).not.toThrow();
+    // quest_path has no kit art tables (KITS_BY_GAME) — a wrapper there is
+    // meaningless and flagged, while the spec still parses structurally.
+    expect(validateGameSpec(GameSpecSchema.parse(spec)).issues.map((i) => i.code))
+      .toContain('WRAPPER_INVALID');
+    delete spec.meta.wrapper;
     expect(validateGameSpec(GameSpecSchema.parse(spec)).ok).toBe(true);
 
     const bad = { ...spec, meta: { ...spec.meta, wrapper: 'dinosaurs' } };

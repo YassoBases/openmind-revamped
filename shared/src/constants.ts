@@ -7,15 +7,17 @@
 
 export const SPEC_VERSION = 1 as const;
 
-export const GAME_TYPES = ['quest_path', 'goal_shootout', 'draw_connect', 'number_city'] as const;
+export const GAME_TYPES = ['quest_path', 'goal_shootout', 'draw_connect', 'number_city', 'scene_play'] as const;
 export type GameType = (typeof GAME_TYPES)[number];
 
 /**
  * Game types the LLM pipeline can generate content for. Number City ships
  * curated golden lessons (dedicated trail-home entry) until Phase 5 teaches
  * the generator the scene-kind spec shape — POST /games rejects it until then.
+ * scene_play is the first GENERATABLE scene-kind game type: its interaction
+ * templates are designed for AI-filled JSON from day one.
  */
-export const GENERATABLE_GAME_TYPES = ['quest_path', 'goal_shootout', 'draw_connect'] as const;
+export const GENERATABLE_GAME_TYPES = ['quest_path', 'goal_shootout', 'draw_connect', 'scene_play'] as const;
 
 export const THEMES: Record<GameType, readonly string[]> = {
   quest_path: ['fantasy', 'sci_fi', 'detective', 'anime'],
@@ -24,6 +26,9 @@ export const THEMES: Record<GameType, readonly string[]> = {
   // Number City themes are city DISTRICTS — each district is a curriculum
   // neighborhood (first: the Shapes District, the Grade-1 geometry MVP).
   number_city: ['shapes_district'],
+  // scene_play carries ONE theme — visual variety comes from interest KITS
+  // (KITS_BY_GAME below), mirroring how number_city launched one district.
+  scene_play: ['wonder_world'],
 } as const;
 
 /**
@@ -39,6 +44,10 @@ export const ITEM_KINDS = [
   'drag_collect', // drag the right objects into a container
   'sequence', // arrange pictured steps into order
   'build_complete', // fill the missing parts of a structure from options
+  'rotation_transform', // rotate an object until it matches the target pose
+  'cause_effect', // set a variable, run the experiment, observe the outcome
+  'find_fix', // spot the mistake in a scene, then pick the correction
+  'create_express', // open-ended creation — celebrated, never scored
 ] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 
@@ -48,6 +57,7 @@ export const KINDS_BY_GAME: Record<GameType, readonly ItemKind[]> = {
   goal_shootout: ['mcq'],
   draw_connect: ['connect'],
   number_city: ['tap_scene', 'drag_collect', 'sequence', 'build_complete'],
+  scene_play: ['rotation_transform', 'cause_effect', 'find_fix', 'create_express'],
 } as const;
 
 /** The four-level learning ladder (canonical order) for learning sessions. */
@@ -60,8 +70,34 @@ export type LearningLevel = (typeof LEARNING_LEVELS)[number];
  * presentation may differ. Rendered entirely from shell-side art/string
  * tables keyed by this id; the spec's canonical data never changes with it.
  */
-export const WRAPPERS = ['nature', 'construction'] as const;
+export const WRAPPERS = ['nature', 'construction', 'space', 'cars', 'ocean'] as const;
 export type Wrapper = (typeof WRAPPERS)[number];
+
+/** Which interest kits each shell has art tables for. Empty = kit-less shell. */
+export const KITS_BY_GAME: Record<GameType, readonly Wrapper[]> = {
+  quest_path: [],
+  goal_shootout: [],
+  draw_connect: [],
+  number_city: ['nature', 'construction'],
+  scene_play: ['nature', 'construction', 'space', 'cars', 'ocean'],
+} as const;
+
+/**
+ * Deterministic interest → kit mapping used at assembly time when the spec
+ * omits a wrapper. Server-side only — the LLM never picks the kit.
+ */
+export const KIT_BY_INTEREST: Record<InterestArchetype, Wrapper> = {
+  dinosaurs: 'nature',
+  space: 'space',
+  football: 'construction',
+  cats: 'nature',
+  robots: 'construction',
+  ocean: 'ocean',
+  cars: 'cars',
+  royalty: 'construction',
+  art: 'nature',
+  music: 'nature',
+} as const;
 
 export const LANGUAGES = ['en', 'ar'] as const;
 export type Language = (typeof LANGUAGES)[number];
@@ -160,7 +196,30 @@ export const LIMITS = {
   /** Six-beat learning flow (observe → try → notice → explain → practice →
    *  checkpoint): the observe/notice beat captions carried per level. */
   beatCaption: 200,
+  // scene_play kinds (rotation_transform / cause_effect / find_fix / create_express)
+  rotationLabel: 24,
+  causeVariableLabel: 36,
+  causeSettingLabel: 24,
+  causeOutcomeLabel: 60,
+  causeSettingsMin: 2,
+  causeSettingsMax: 4,
+  causeOutcomesMin: 2,
+  causeOutcomesMax: 4,
+  fixObjectLabel: 36,
+  fixObjectsMin: 3,
+  fixObjectsMax: 8,
+  fixCorrectionsMin: 2,
+  fixCorrectionsMax: 5,
+  fixMistakesMax: 3,
+  createElementLabel: 24,
+  createPaletteMin: 3,
+  createPaletteMax: 8,
+  createMinElementsMax: 6,
 } as const;
+
+/** rotation_transform arrow-step angles the shell can render. */
+export const ROTATION_SNAP_ANGLES = [45, 90] as const;
+export type RotationSnapAngle = (typeof ROTATION_SNAP_ANGLES)[number];
 
 /** Draw & Connect geometry rules (normalized coords on a 720x1280 canvas). */
 export const DIAGRAM_RULES = {

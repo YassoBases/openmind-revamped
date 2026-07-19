@@ -12,6 +12,8 @@ import type {
   Meta,
   NormalizedRequest,
   RepairItems,
+  RepairSceneItems,
+  ScenePlayContentSpec,
 } from '@edumind/shared';
 import {
   ConnectContentSpecSchema,
@@ -20,11 +22,14 @@ import {
   NormalizedRequestSchema,
   EnrichedFeedbackSchema,
   RepairItemsSchema,
+  RepairSceneItemsSchema,
+  ScenePlayContentSpecSchema,
   contentSpecJsonSchema,
   factCheckJsonSchema,
   normalizedRequestJsonSchema,
   enrichedFeedbackJsonSchema,
   repairItemsJsonSchema,
+  repairSceneItemsJsonSchema,
 } from '@edumind/shared';
 import { config } from '../config.js';
 import { structuredCall } from '../llm/anthropic.js';
@@ -89,7 +94,7 @@ export interface ContentProvider {
   generateContent(
     meta: Meta,
     opts: { escalated: boolean; notes?: string | null },
-  ): Promise<{ content: McqContentSpec | ConnectContentSpec; model: string }>;
+  ): Promise<{ content: McqContentSpec | ConnectContentSpec | ScenePlayContentSpec; model: string }>;
   factcheck(
     pieces: FactCheckPiece[],
     context: { topic: string; grade: number; language: string },
@@ -100,7 +105,7 @@ export interface ContentProvider {
     failures: Array<{ item: unknown; reason: string }>;
     diagramSummary?: string;
     escalated: boolean;
-  }): Promise<{ data: RepairItems; model: string }>;
+  }): Promise<{ data: RepairItems | RepairSceneItems; model: string }>;
   feedback(params: {
     language: string;
     name: string;
@@ -133,7 +138,6 @@ export class LiveProvider implements ContentProvider {
 
   async generateContent(meta: Meta, opts: { escalated: boolean; notes?: string | null }) {
     const model = opts.escalated ? config.modelEscalation : config.modelDefault;
-    const isConnect = meta.gameType === 'draw_connect';
     const user = JSON.stringify({
       gameType: meta.gameType,
       theme: meta.theme,
@@ -143,15 +147,30 @@ export class LiveProvider implements ContentProvider {
       grade: meta.grade,
       difficultyBaseline: meta.difficulty,
       educationalLevelCount: meta.sessionLength - 1,
+      // scene_play only: the child's interest kit — labels should live in this
+      // world (kit is picked server-side; learning logic never changes with it)
+      sceneKit: meta.gameType === 'scene_play' ? meta.wrapper ?? 'nature' : undefined,
       generatorNotes: opts.notes ?? null,
     });
-    if (isConnect) {
+    if (meta.gameType === 'draw_connect') {
       const res = await structuredCall({
         model,
         system: SPEC_SYSTEM_PROMPT,
         user,
         jsonSchema: contentSpecJsonSchema(meta.gameType),
         zodSchema: ConnectContentSpecSchema,
+        maxTokens: 16000,
+        stage: 'spec',
+      });
+      return { content: res.data, model: res.model };
+    }
+    if (meta.gameType === 'scene_play') {
+      const res = await structuredCall({
+        model,
+        system: SPEC_SYSTEM_PROMPT,
+        user,
+        jsonSchema: contentSpecJsonSchema(meta.gameType),
+        zodSchema: ScenePlayContentSpecSchema,
         maxTokens: 16000,
         stage: 'spec',
       });
@@ -189,18 +208,35 @@ export class LiveProvider implements ContentProvider {
     diagramSummary?: string;
     escalated: boolean;
   }) {
+    // scene_play repairs carry mechanic payloads (mapping, corrections,
+    // palette…), so they use their own lean schema — the classic repair
+    // schema stays small for mcq/connect.
+    const scene = params.meta.gameType === 'scene_play';
+    const user = buildRepairUserMessage({
+      gameType: params.meta.gameType,
+      language: params.meta.language,
+      grade: params.meta.grade,
+      topic: params.meta.topic,
+      teachCards: params.teachCards,
+      failures: params.failures,
+      diagramSummary: params.diagramSummary,
+    });
+    if (scene) {
+      const res = await structuredCall({
+        model: params.escalated ? config.modelEscalation : config.modelDefault,
+        system: REFINE_SYSTEM_PROMPT,
+        user,
+        jsonSchema: repairSceneItemsJsonSchema(),
+        zodSchema: RepairSceneItemsSchema,
+        maxTokens: 6000,
+        stage: 'repair',
+      });
+      return { data: res.data, model: res.model };
+    }
     const res = await structuredCall({
       model: params.escalated ? config.modelEscalation : config.modelDefault,
       system: REFINE_SYSTEM_PROMPT,
-      user: buildRepairUserMessage({
-        gameType: params.meta.gameType,
-        language: params.meta.language,
-        grade: params.meta.grade,
-        topic: params.meta.topic,
-        teachCards: params.teachCards,
-        failures: params.failures,
-        diagramSummary: params.diagramSummary,
-      }),
+      user,
       jsonSchema: repairItemsJsonSchema(),
       zodSchema: RepairItemsSchema,
       maxTokens: 4000,

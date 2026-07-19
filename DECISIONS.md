@@ -1,5 +1,60 @@
 # DECISIONS.md — OpenMind Game Studio v4
 
+## v4.4 — Scene Play: the generatable living-scene shell + brand palette unification
+
+Approved decisions: the OpenMind primary interactive templates land as a new
+GENERATABLE game type, and the app-wide Flutter theme adopts the fixed
+OpenMind brand palette.
+
+- **`scene_play` is a new game type, not a Number City extension.** Number
+  City's curated identity (districts, goldens, trail-home entry, pinned
+  tests) stays untouched; scene_play registers its own four kinds in
+  `KINDS_BY_GAME` — exactly what that table exists for — and is the first
+  scene-kind game type in `GENERATABLE_GAME_TYPES`. One theme
+  (`wonder_world`); visual variety comes from interest kits, not themes.
+- **Four new item kinds, AI fills JSON only** (`shared/src/gamespec.ts`):
+  `rotation_transform` (turn to match a target pose; check = angle modulo
+  360/symmetryFold), `cause_effect` (set ONE variable → run → watch; the
+  mapping is a total function, goal reachable but never universal),
+  `find_fix` (1-3 mistakes in correct context, each with a real correction
+  plus ≥1 distractor correction), `create_express` (open creation with soft
+  goals: palette must exceed what requirements consume). Stable issue codes
+  (ROTATION_TRIVIAL, CAUSE_MAPPING_INCOMPLETE, CAUSE_TRIVIAL,
+  FIX_NO_DISTRACTOR, CREATE_NO_CHOICE…) power targeted repair via a
+  SEPARATE lean scene repair schema, keeping the classic one small.
+- **Expressive results are celebrated, never scored.** create_express
+  resolves `{expressive: true}`: fixed +10 XP, always the celebratory
+  frame, and a full bypass of accuracy, mastery, strain and the
+  AdaptiveEngine (`session.presented--` heals every ratio downstream).
+  Evidence outcome is `explored` — never correct/incorrect. Static tests
+  pin the bypass.
+- **The ladder is stamped server-side.** scene_play sessions are ALWAYS
+  intro + recognize/understand/apply/challenge (sessionLength coerced to 5);
+  the assembler stamps `learningLevel` by index, so the LLM can't misorder
+  the ladder. The interest kit is picked server-side too
+  (`KIT_BY_INTEREST[student.interest]`, deterministic, part of the spec
+  cache key) and rides the user message as label flavor only.
+- **SceneKit (`shells/src/lib/scenekit.js`) is the living-scene layer** all
+  learning shells share: five interest kits (nature / construction / space /
+  cars / ocean — colors from the fixed palette only), kit backgrounds with
+  2-layer tween-only parallax, ≤6 ambient flecks (no new particle pools),
+  a canonical label→visual table (AR+EN keywords → ~29 drawn visuals,
+  readable-chip fallback so ANY AI label renders), idle/pulse helpers,
+  Hudhud's kit-commentary bubble, and the generic observe/notice beat
+  overlays extracted from number_city (which now delegates to them,
+  behavior-identical). Kits are presentation-only; their tables never read
+  answers.
+- **Evidence mapping uses the existing vocabulary** (no enum ripple):
+  rotation_transform → construction, cause_effect → prediction, find_fix →
+  transfer, create_express → exploration/`explored`.
+- **The app theme now carries the OpenMind brand palette.** AppColors /
+  MiddlePalette / OnbColors keep their historical token NAMES but hold the
+  brand values (Warm Cream #FDF2E2 surfaces, Soft Sand #FAE9D0, Deep Teal
+  #19725E ink, Main Teal #079A90 interactive, Bright Orange #EF9722, Soft
+  Peach, Deep Green, Soft Sky) — one identity across app chrome and game
+  shells, two registers, never two brands. Contrast: body-on-cream ≈4.7:1,
+  ink-on-cream ≈5.1:1 (AA).
+
 ## v4.3 — Celebration-only bee, game evidence, learning spec contract (primary Phase 2)
 
 Approved decisions: the bee leaves the persistent HUD, and game play feeds

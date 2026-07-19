@@ -857,7 +857,9 @@
         EduCore.reportLearning('attempt_submitted', {
           itemId: item.id,
           attempt,
-          outcome: result.correct ? 'correct' : 'incorrect',
+          // Expressive items (open creation) have no right answer — their
+          // only outcome is 'completed', never correct/incorrect.
+          outcome: result.expressive ? 'completed' : result.correct ? 'correct' : 'incorrect',
           hintsUsed,
           // Six-beat flow position (try/practice/checkpoint) when the shell
           // runs one — null for the classic teach → practice loop.
@@ -870,6 +872,47 @@
         await this.supportiveRetry(item, hintApi);
       }
       hintApi.destroy();
+
+      // Expressive items are celebrated, NEVER scored: fixed XP, always a
+      // warm frame, and a full bypass of accuracy, mastery, strain and the
+      // AdaptiveEngine — creative work must never inflate (or deflate)
+      // measured progress. presented-- heals every ratio downstream.
+      if (result.expressive) {
+        session.presented--;
+        session.expressive = (session.expressive || 0) + 1;
+        session.xp += XP.noHint; // fixed +10 — hints don't change creative XP
+        session.items.push({
+          id: item.id,
+          kind: item.kind,
+          levelIndex,
+          correct: false,
+          scored: false,
+          expressive: true,
+          recovered: false,
+          attempts: attempt,
+          hintsUsed,
+          beat: this.currentBeat || null,
+          concepts: item.concepts,
+          difficulty: item.difficulty,
+          prompt: item.prompt,
+        });
+        GameFeel.audio.correctChain(1);
+        this.feel.popText(W / 2, H * 0.42, '+' + EduCore.fmtNum(XP.noHint) + ' ' + EduCore.t('xp'), { color: '#EF9722' });
+        this.refreshHud();
+        EduCore.bridge.reportScore({
+          xp: session.xp,
+          correct: session.correct,
+          presented: session.presented,
+          combo: session.combo,
+          itemId: item.id,
+          wasCorrect: false,
+          expressive: true,
+          attempts: attempt,
+          hintsUsed,
+        });
+        await this.showExplanation(item, true); // always the celebratory frame
+        return;
+      }
 
       const solved = !!result.correct;
       const firstTry = solved && attempt === 1;
@@ -1210,6 +1253,7 @@
 
       const concepts = {};
       for (const it of s.items) {
+        if (it.expressive) continue; // creative items carry no correctness
         for (const cn of it.concepts) {
           concepts[cn] = concepts[cn] || { correct: 0, total: 0, hints: 0 };
           concepts[cn].total++;

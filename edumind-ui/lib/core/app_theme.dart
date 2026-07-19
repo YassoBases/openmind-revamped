@@ -1,38 +1,42 @@
 import 'package:flutter/material.dart';
 
-/// The one warm, Arabic-first design system for OpenMind.
+/// The one warm, Arabic-first design system for OpenMind — carrying the
+/// fixed OpenMind brand palette (the same Warm Cream / Main Teal / Deep Teal
+/// / Bright Orange system the game shells and `Palette` in core/palette.dart
+/// render), so a child moving between the app chrome and a game never feels
+/// like they changed products.
 ///
-/// Generalizes the onboarding palette (formerly `OnbColors`) and the
-/// middle-school palette (`MiddlePalette`) — which were the same calm system
-/// implemented twice — into a single token set, and builds the single
-/// [ThemeData] every screen inherits. M3 screens that read
-/// `Theme.of(context).colorScheme` heal automatically once this is applied.
+/// Token NAMES are historical (blueInk/blue predate the teal identity) and
+/// kept stable so the ~120 call sites heal by value: `blueInk` is now Deep
+/// Teal ink, `blue` is Main Teal, `softBlue` is Soft Sky. Builds the single
+/// [ThemeData] every screen inherits; M3 screens that read
+/// `Theme.of(context).colorScheme` heal automatically.
 ///
-/// Hierarchy: ink-blue = structure & primary action, orange = accent /
-/// selection / progress, ivory & cream = warm surfaces, soft blue = calm
+/// Hierarchy: deep-teal ink = structure & primary action, orange = accent /
+/// selection / progress, cream & sand = warm surfaces, soft sky = calm
 /// selection surface, muted green/amber = success/warning (never neon,
 /// never alarm-red — a wrong answer is a teaching moment, not an error).
 class AppColors {
   // Surfaces
-  static const ivory = Color(0xFFFDFBF6); // app background
-  static const cream = Color(0xFFF3EBDC); // secondary warm surface / surround
-  static const softBlue = Color(0xFFE9F1F8); // calm selection / fills
+  static const ivory = Color(0xFFFDF2E2); // app background — Warm Cream
+  static const cream = Color(0xFFFAE9D0); // secondary warm surface — Soft Sand
+  static const softBlue = Color(0xFFCEEBF0); // calm selection — Soft Sky Blue
   static const white = Color(0xFFFFFFFF);
 
   // Ink / text
-  static const blueInk = Color(0xFF14395C); // headings, primary structure
-  static const body = Color(0xFF5B6B7C); // secondary text
-  static const outline = Color(0xFFDFE3E8); // hairlines
+  static const blueInk = Color(0xFF19725E); // headings, structure — Deep Teal
+  static const body = Color(0xFF4E6E64); // secondary text — muted deep teal
+  static const outline = Color(0xFFEAD9BF); // hairlines — sand
 
   // Accents
-  static const blue = Color(0xFF1C4E80); // interactive structure / links
-  static const orange = Color(0xFFE8872E); // action highlight / progress
-  static const orangeSoft = Color(0xFFFBE7D4); // orange container
-  static const orangeInk = Color(0xFF8A4A16); // on orange container
+  static const blue = Color(0xFF079A90); // interactive elements — Main Teal
+  static const orange = Color(0xFFEF9722); // action highlight — Bright Orange
+  static const orangeSoft = Color(0xFFFADBB0); // orange container — Soft Peach
+  static const orangeInk = Color(0xFF8A5210); // on orange container — warm brown
 
   // Feedback (calm, not Duolingo-neon)
-  static const mutedGreen = Color(0xFF3E7C59); // success
-  static const mutedGreenSoft = Color(0xFFE1EDE6);
+  static const mutedGreen = Color(0xFF4D8C58); // success — Deep Green
+  static const mutedGreenSoft = Color(0xFFE6EFDF);
   // Warning / try-again — a muted ochre, deliberately not red: "try again"
   // reads as a nudge, not an alarm. Distinct hue from `orange` (the CTA
   // accent) so the two never get confused in the same view.
@@ -95,8 +99,8 @@ ThemeData buildAppTheme() {
     surfaceContainerHigh: AppColors.softBlue,
     surfaceContainerHighest: AppColors.softBlue,
     outline: AppColors.outline,
-    outlineVariant: const Color(0xFFE7EAEE),
-    shadow: const Color(0xFF14395C),
+    outlineVariant: const Color(0xFFF0E4CE),
+    shadow: const Color(0xFF19725E),
   );
 
   final buttonShape = RoundedRectangleBorder(

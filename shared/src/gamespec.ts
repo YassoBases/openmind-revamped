@@ -23,6 +23,7 @@ import {
   HEX_COLOR_RE,
   INTEREST_ARCHETYPES,
   KINDS_BY_GAME,
+  KITS_BY_GAME,
   LANGUAGES,
   LEARNING_LEVELS,
   LIMITS,
@@ -131,6 +132,92 @@ export const BuildCompleteItemSchema = z.object({
 });
 export type BuildCompleteItem = z.infer<typeof BuildCompleteItemSchema>;
 
+// ---- scene_play living-scene kinds ------------------------------------------
+// The four OpenMind primary templates the AI fills with pure JSON. Rendering
+// is 100% kit-drawn (SceneKit visual tables); evaluation is 100% programmatic.
+
+/** Rotate an object (by snapAngle taps) until it matches the target pose.
+ *  The match check is `angle ≡ targetAngle (mod 360/symmetryFold)`. */
+export const RotationTransformItemSchema = z.object({
+  kind: z.literal('rotation_transform'),
+  ...itemCommon,
+  object: z.object({
+    id: z.string().min(1),
+    /** SceneKit.visualFor(label) picks the drawn visual; unknown → chip. */
+    label: z.string().min(1).max(LIMITS.rotationLabel),
+  }),
+  /** Degrees, multiples of snapAngle. */
+  startAngle: z.number().int().min(0).max(359),
+  targetAngle: z.number().int().min(0).max(359),
+  /** One arrow tap rotates by this step. */
+  snapAngle: z.union([z.literal(45), z.literal(90)]),
+  /** Rotational symmetry: fold-2 looks identical every 180° (default 1). */
+  symmetryFold: z.number().int().min(1).max(4).optional(),
+});
+export type RotationTransformItem = z.infer<typeof RotationTransformItemSchema>;
+
+/** Set ONE variable, run the experiment, watch the mapped outcome play out.
+ *  Learning by experiment: a non-goal outcome is information, not failure. */
+export const CauseEffectItemSchema = z.object({
+  kind: z.literal('cause_effect'),
+  ...itemCommon,
+  variable: z.object({
+    label: z.string().min(1).max(LIMITS.causeVariableLabel),
+    settings: z.array(z.object({
+      id: z.string().min(1),
+      label: z.string().min(1).max(LIMITS.causeSettingLabel),
+    })).min(LIMITS.causeSettingsMin).max(LIMITS.causeSettingsMax),
+  }),
+  outcomes: z.array(z.object({
+    id: z.string().min(1),
+    label: z.string().min(1).max(LIMITS.causeOutcomeLabel),
+  })).min(LIMITS.causeOutcomesMin).max(LIMITS.causeOutcomesMax),
+  /** Total function: every setting maps to exactly one outcome. */
+  mapping: z.array(z.object({
+    settingId: z.string().min(1),
+    outcomeId: z.string().min(1),
+  })).min(LIMITS.causeSettingsMin).max(LIMITS.causeSettingsMax),
+  goalOutcomeId: z.string().min(1),
+});
+export type CauseEffectItem = z.infer<typeof CauseEffectItemSchema>;
+
+/** Spot the mistaken objects in a scene, then pick each one's correction.
+ *  Mistake objects MUST carry correctionId; correct objects must not. */
+export const FindFixItemSchema = z.object({
+  kind: z.literal('find_fix'),
+  ...itemCommon,
+  objects: z.array(z.object({
+    id: z.string().min(1),
+    label: z.string().min(1).max(LIMITS.fixObjectLabel),
+    mistake: z.boolean(),
+    correctionId: z.string().min(1).optional(),
+  })).min(LIMITS.fixObjectsMin).max(LIMITS.fixObjectsMax),
+  /** Fix options — includes ≥1 distractor beyond the real corrections. */
+  corrections: z.array(z.object({
+    id: z.string().min(1),
+    label: z.string().min(1).max(LIMITS.fixObjectLabel),
+  })).min(LIMITS.fixCorrectionsMin).max(LIMITS.fixCorrectionsMax),
+});
+export type FindFixItem = z.infer<typeof FindFixItemSchema>;
+
+/** Open-ended creation with soft goals. Celebrated, NEVER scored: the shell
+ *  resolves it with an `expressive` result that bypasses accuracy/mastery.
+ *  `prompt` is the creative goal; `explanation` the celebration line. */
+export const CreateExpressItemSchema = z.object({
+  kind: z.literal('create_express'),
+  ...itemCommon,
+  /** Stampable elements (kit-drawn). Creation must involve choice. */
+  palette: z.array(z.object({
+    id: z.string().min(1),
+    label: z.string().min(1).max(LIMITS.createElementLabel),
+  })).min(LIMITS.createPaletteMin).max(LIMITS.createPaletteMax),
+  /** Soft completion floor: FINISH enables at this many placed elements. */
+  minElements: z.number().int().min(1).max(LIMITS.createMinElementsMax),
+  /** Soft requirements: palette element ids that must appear at least once. */
+  mustInclude: z.array(z.string().min(1)).max(3).default([]),
+});
+export type CreateExpressItem = z.infer<typeof CreateExpressItemSchema>;
+
 export const ItemSchema = z.discriminatedUnion('kind', [
   McqItemSchema,
   ConnectItemSchema,
@@ -138,6 +225,10 @@ export const ItemSchema = z.discriminatedUnion('kind', [
   DragCollectItemSchema,
   SequenceItemSchema,
   BuildCompleteItemSchema,
+  RotationTransformItemSchema,
+  CauseEffectItemSchema,
+  FindFixItemSchema,
+  CreateExpressItemSchema,
 ]);
 export type Item = z.infer<typeof ItemSchema>;
 
@@ -299,6 +390,36 @@ export const ConnectContentSpecSchema = z.object({
 });
 export type ConnectContentSpec = z.infer<typeof ConnectContentSpecSchema>;
 
+// ---- scene_play generated content -------------------------------------------
+// Unlike mcq/connect content (single-kind, kind stamped at assembly),
+// scene_play levels MIX kinds, so generated items keep `kind` as the
+// discriminator and only omit `id`. The assembler stamps ids AND the
+// learning ladder (recognize → understand → apply → challenge, by index).
+
+export const GeneratedSceneItemSchema = z.discriminatedUnion('kind', [
+  RotationTransformItemSchema.omit({ id: true }),
+  CauseEffectItemSchema.omit({ id: true }),
+  FindFixItemSchema.omit({ id: true }),
+  CreateExpressItemSchema.omit({ id: true }),
+]);
+export type GeneratedSceneItem = z.infer<typeof GeneratedSceneItemSchema>;
+
+export const GeneratedSceneLevelSchema = z.object({
+  title: z.string().min(1).max(LIMITS.levelTitle),
+  observe: z.string().min(1).max(LIMITS.beatCaption).optional(),
+  notice: z.string().min(1).max(LIMITS.beatCaption).optional(),
+  teaching: z.array(GeneratedTeachCardSchema).min(LIMITS.teachCardsMin).max(LIMITS.teachCardsMax),
+  items: z.array(GeneratedSceneItemSchema).min(LIMITS.itemsPerLevelMin).max(LIMITS.itemsPerLevelMax),
+});
+
+/** LLM output for scene_play. Exactly 4 levels — the learning ladder. */
+export const ScenePlayContentSpecSchema = z.object({
+  narrative: NarrativeSchema.optional(),
+  levels: z.array(GeneratedSceneLevelSchema).length(LEARNING_LEVELS.length),
+  summaryHints: SummaryHintsSchema,
+});
+export type ScenePlayContentSpec = z.infer<typeof ScenePlayContentSpecSchema>;
+
 // ---------------------------------------------------------------------------
 // Semantic validation with stable issue codes (powers targeted repair)
 // ---------------------------------------------------------------------------
@@ -345,6 +466,16 @@ export function collectTextFields(spec: GameSpec): string[] {
       if (item.kind === 'build_complete') {
         out.push(...item.pieces.map((pc) => pc.label), ...item.options.map((o) => o.label));
       }
+      if (item.kind === 'rotation_transform') out.push(item.object.label);
+      if (item.kind === 'cause_effect') {
+        out.push(item.variable.label,
+          ...item.variable.settings.map((s) => s.label),
+          ...item.outcomes.map((o) => o.label));
+      }
+      if (item.kind === 'find_fix') {
+        out.push(...item.objects.map((o) => o.label), ...item.corrections.map((c) => c.label));
+      }
+      if (item.kind === 'create_express') out.push(...item.palette.map((p) => p.label));
     }
   }
   if (spec.diagram) for (const n of spec.diagram.nodes) out.push(n.label);
@@ -366,6 +497,15 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
   if (!themes.includes(meta.theme)) {
     pushIssue(issues, 'THEME_INVALID', 'meta.theme',
       `theme "${meta.theme}" is not one of [${themes.join(', ')}] for ${meta.gameType}`);
+  }
+
+  // Interest kit belongs to the game type (KITS_BY_GAME, one table).
+  if (meta.wrapper) {
+    const kits = KITS_BY_GAME[meta.gameType];
+    if (!kits.includes(meta.wrapper)) {
+      pushIssue(issues, 'WRAPPER_INVALID', 'meta.wrapper',
+        `wrapper "${meta.wrapper}" is not one of [${kits.join(', ')}] for ${meta.gameType}`);
+    }
   }
 
   // Level count matches sessionLength.
@@ -469,9 +609,42 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
           item.pieces.filter((pc) => pc.gap).map((pc) => pc.label));
       }
 
+      if (item.kind === 'rotation_transform') {
+        validateRotationTransform(issues, ip, item);
+      }
+
+      if (item.kind === 'cause_effect') {
+        validateCauseEffect(issues, ip, item);
+        // The winning setting's label must not leak through hints.
+        const winningLabels = item.variable.settings
+          .filter((s) => item.mapping.some((m) => m.settingId === s.id && m.outcomeId === item.goalOutcomeId))
+          .map((s) => s.label);
+        checkHintsDontReveal(issues, ip, item, winningLabels);
+      }
+
+      if (item.kind === 'find_fix') {
+        validateFindFix(issues, ip, item);
+        const correctionById = new Map(item.corrections.map((c) => [c.id, c.label]));
+        const revealing = item.objects
+          .filter((o) => o.mistake)
+          .flatMap((o) => [o.label, ...(o.correctionId ? [correctionById.get(o.correctionId) ?? ''] : [])]);
+        checkHintsDontReveal(issues, ip, item, revealing);
+      }
+
+      // create_express has no correct answer — nothing for hints to reveal.
+      if (item.kind === 'create_express') {
+        validateCreateExpress(issues, ip, item);
+      }
+
       // Language purity per item.
       const textBlob = [item.prompt, item.explanation, ...item.hints,
-        ...(item.kind === 'mcq' ? item.options : [])].join(' ');
+        ...(item.kind === 'mcq' ? item.options : []),
+        ...(item.kind === 'cause_effect'
+          ? [item.variable.label, ...item.variable.settings.map((s) => s.label),
+             ...item.outcomes.map((o) => o.label)] : []),
+        ...(item.kind === 'find_fix'
+          ? [...item.objects.map((o) => o.label), ...item.corrections.map((c) => c.label)] : []),
+        ...(item.kind === 'create_express' ? item.palette.map((p) => p.label) : [])].join(' ');
       if (meta.language === 'ar' && !hasArabic(textBlob)) {
         pushIssue(issues, 'LANGUAGE_PURITY', ip, 'Arabic spec item contains no Arabic script', item.id);
       }
@@ -591,10 +764,132 @@ function validateBuildComplete(issues: SpecIssue[], ip: string, item: BuildCompl
   }
 }
 
+/** rotation_transform: angles on the snap grid, and actually something to do
+ *  once rotational symmetry is accounted for. */
+function validateRotationTransform(issues: SpecIssue[], ip: string, item: RotationTransformItem) {
+  if (item.startAngle % item.snapAngle !== 0 || item.targetAngle % item.snapAngle !== 0) {
+    pushIssue(issues, 'ROTATION_NOT_ON_SNAP', `${ip}`,
+      `startAngle/targetAngle must be multiples of snapAngle ${item.snapAngle}`, item.id);
+  }
+  const fold = item.symmetryFold ?? 1;
+  const period = 360 / fold;
+  const delta = ((item.targetAngle - item.startAngle) % period + period) % period;
+  if (delta === 0) {
+    pushIssue(issues, 'ROTATION_TRIVIAL', `${ip}`,
+      `start and target poses look identical (symmetryFold ${fold}) — nothing to rotate`, item.id);
+  }
+}
+
+/** cause_effect: mapping is a total function over settings, goal exists, is
+ *  reachable, and is NOT reached by every setting (flipping any lever must
+ *  not win — the experiment has to discriminate). */
+function validateCauseEffect(issues: SpecIssue[], ip: string, item: CauseEffectItem) {
+  const settingIds = new Set(item.variable.settings.map((s) => s.id));
+  const outcomeIds = new Set(item.outcomes.map((o) => o.id));
+  if (settingIds.size !== item.variable.settings.length || outcomeIds.size !== item.outcomes.length) {
+    pushIssue(issues, 'DUPLICATE_ID', `${ip}`, 'setting and outcome ids must be unique', item.id);
+  }
+  const mappedSettings = new Set<string>();
+  for (const m of item.mapping) {
+    if (!settingIds.has(m.settingId) || !outcomeIds.has(m.outcomeId)) {
+      pushIssue(issues, 'CAUSE_MAPPING_INCOMPLETE', `${ip}.mapping`,
+        `mapping references unknown id ("${m.settingId}" → "${m.outcomeId}")`, item.id);
+    }
+    if (mappedSettings.has(m.settingId)) {
+      pushIssue(issues, 'CAUSE_MAPPING_INCOMPLETE', `${ip}.mapping`,
+        `setting "${m.settingId}" is mapped more than once`, item.id);
+    }
+    mappedSettings.add(m.settingId);
+  }
+  for (const s of item.variable.settings) {
+    if (!mappedSettings.has(s.id)) {
+      pushIssue(issues, 'CAUSE_MAPPING_INCOMPLETE', `${ip}.mapping`,
+        `setting "${s.id}" has no outcome — the mapping must cover every setting`, item.id);
+    }
+  }
+  if (!outcomeIds.has(item.goalOutcomeId)) {
+    pushIssue(issues, 'CAUSE_GOAL_UNKNOWN', `${ip}.goalOutcomeId`,
+      `goal outcome "${item.goalOutcomeId}" is not one of the outcomes`, item.id);
+    return;
+  }
+  const goalHits = item.mapping.filter((m) => m.outcomeId === item.goalOutcomeId).length;
+  if (goalHits === 0) {
+    pushIssue(issues, 'CAUSE_GOAL_UNREACHABLE', `${ip}.mapping`,
+      'no setting reaches the goal outcome', item.id);
+  }
+  if (goalHits >= item.variable.settings.length) {
+    pushIssue(issues, 'CAUSE_TRIVIAL', `${ip}.mapping`,
+      'every setting reaches the goal — the experiment must discriminate', item.id);
+  }
+}
+
+/** find_fix: ≥1 mistake but never all (correct context must exist), every
+ *  mistake carries a known correction, corrections include ≥1 distractor. */
+function validateFindFix(issues: SpecIssue[], ip: string, item: FindFixItem) {
+  const objIds = new Set(item.objects.map((o) => o.id));
+  const corrIds = new Set(item.corrections.map((c) => c.id));
+  if (objIds.size !== item.objects.length || corrIds.size !== item.corrections.length) {
+    pushIssue(issues, 'DUPLICATE_ID', `${ip}`, 'object and correction ids must be unique', item.id);
+  }
+  const mistakes = item.objects.filter((o) => o.mistake);
+  if (mistakes.length === 0) {
+    pushIssue(issues, 'FIX_NO_MISTAKE', `${ip}.objects`,
+      'find_fix needs at least one mistaken object', item.id);
+  }
+  if (mistakes.length > LIMITS.fixMistakesMax || mistakes.length === item.objects.length) {
+    pushIssue(issues, 'FIX_ALL_MISTAKES', `${ip}.objects`,
+      `at most ${LIMITS.fixMistakesMax} mistakes and never all objects — the scene needs correct context`, item.id);
+  }
+  const usedCorrections = new Set<string>();
+  for (const o of item.objects) {
+    if (o.mistake) {
+      if (!o.correctionId || !corrIds.has(o.correctionId)) {
+        pushIssue(issues, 'FIX_CORRECTION_UNKNOWN', `${ip}.objects`,
+          `mistake "${o.id}" must carry a correctionId that exists in corrections`, item.id);
+      } else {
+        usedCorrections.add(o.correctionId);
+      }
+    } else if (o.correctionId) {
+      pushIssue(issues, 'FIX_CORRECTION_ON_OK', `${ip}.objects`,
+        `object "${o.id}" is not a mistake and must not carry a correctionId`, item.id);
+    }
+  }
+  if (usedCorrections.size >= item.corrections.length) {
+    pushIssue(issues, 'FIX_NO_DISTRACTOR', `${ip}.corrections`,
+      'corrections must include at least one distractor beyond the real fixes', item.id);
+  }
+}
+
+/** create_express: goals stay soft AND satisfiable, and creation means
+ *  choice — the palette must offer more than the requirements consume. */
+function validateCreateExpress(issues: SpecIssue[], ip: string, item: CreateExpressItem) {
+  const paletteIds = new Set(item.palette.map((p) => p.id));
+  if (paletteIds.size !== item.palette.length) {
+    pushIssue(issues, 'DUPLICATE_ID', `${ip}.palette`, 'palette element ids must be unique', item.id);
+  }
+  if (item.minElements > item.palette.length) {
+    pushIssue(issues, 'CREATE_MIN_TOO_HIGH', `${ip}.minElements`,
+      `minElements ${item.minElements} exceeds the palette size ${item.palette.length}`, item.id);
+  }
+  for (const id of item.mustInclude) {
+    if (!paletteIds.has(id)) {
+      pushIssue(issues, 'CREATE_MUST_INCLUDE_UNKNOWN', `${ip}.mustInclude`,
+        `mustInclude "${id}" is not a palette element`, item.id);
+    }
+  }
+  if (item.palette.length <= Math.max(item.minElements, item.mustInclude.length)) {
+    pushIssue(issues, 'CREATE_NO_CHOICE', `${ip}.palette`,
+      'the palette must offer more elements than the requirements consume — creation means choice', item.id);
+  }
+}
+
+/** Learning shells whose whole session is the four-level ladder climb. */
+const LADDER_REQUIRED_GAMES: ReadonlySet<GameType> = new Set(['number_city', 'scene_play']);
+
 /** When a session uses the learning ladder, its educational levels carry
  *  exactly recognize → understand → apply → challenge, in order. The
- *  Number City learning shell REQUIRES the ladder — its whole session is
- *  the four-level climb. */
+ *  Number City and Scene Play learning shells REQUIRE the ladder — their
+ *  whole session is the four-level climb. */
 function validateLearningLadder(issues: SpecIssue[], spec: GameSpec) {
   const edu = spec.levels.filter((l) => !l.isIntro);
   const tagged = edu.filter((l) => l.learningLevel != null);
@@ -604,9 +899,9 @@ function validateLearningLadder(issues: SpecIssue[], spec: GameSpec) {
       'the intro level never carries a learning level');
   }
   if (tagged.length === 0) {
-    if (spec.meta.gameType === 'number_city') {
+    if (LADDER_REQUIRED_GAMES.has(spec.meta.gameType)) {
       pushIssue(issues, 'LEARNING_LEVELS_REQUIRED', 'levels',
-        'number_city sessions climb the learning ladder — every educational level needs a learningLevel');
+        `${spec.meta.gameType} sessions climb the learning ladder — every educational level needs a learningLevel`);
     }
     return; // classic game session
   }

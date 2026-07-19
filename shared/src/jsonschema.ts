@@ -8,7 +8,7 @@
  * structured outputs guarantee syntax, our validators guarantee meaning.
  */
 import { z } from 'zod';
-import { ConnectContentSpecSchema, McqContentSpecSchema } from './gamespec.js';
+import { ConnectContentSpecSchema, McqContentSpecSchema, ScenePlayContentSpecSchema } from './gamespec.js';
 import type { GameType } from './constants.js';
 
 /**
@@ -42,9 +42,9 @@ function toLeanJsonSchema(schema: z.ZodType): Record<string, unknown> {
 }
 
 export function contentSpecJsonSchema(gameType: GameType): Record<string, unknown> {
-  return gameType === 'draw_connect'
-    ? toLeanJsonSchema(ConnectContentSpecSchema)
-    : toLeanJsonSchema(McqContentSpecSchema);
+  if (gameType === 'draw_connect') return toLeanJsonSchema(ConnectContentSpecSchema);
+  if (gameType === 'scene_play') return toLeanJsonSchema(ScenePlayContentSpecSchema);
+  return toLeanJsonSchema(McqContentSpecSchema);
 }
 
 /** Schema for targeted item repair: the model returns replacement items only. */
@@ -70,6 +70,57 @@ export type RepairItems = z.infer<typeof RepairItemsSchema>;
 
 export function repairItemsJsonSchema(): Record<string, unknown> {
   return toLeanJsonSchema(RepairItemsSchema);
+}
+
+/**
+ * Targeted repair for scene_play items. Kept as a SEPARATE schema (selected
+ * by gameType) so the classic repair schema stays lean — the scene kinds'
+ * payload fields would otherwise fatten every repair call. All fields beyond
+ * the common ones are optional; semantic validators re-run on the result.
+ */
+const idLabel = z.object({ id: z.string(), label: z.string() });
+
+export const RepairSceneItemsSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        /** Id of the item being replaced (server keeps ids stable). */
+        replacesId: z.string(),
+        /** Item kind — must match the kind being replaced. */
+        kind: z.enum(['rotation_transform', 'cause_effect', 'find_fix', 'create_express']),
+        prompt: z.string(),
+        explanation: z.string(),
+        hints: z.array(z.string()).min(1).max(2),
+        concepts: z.array(z.string()).min(1),
+        difficulty: z.number().int().min(1).max(5),
+        // rotation_transform
+        object: idLabel.optional(),
+        startAngle: z.number().int().optional(),
+        targetAngle: z.number().int().optional(),
+        snapAngle: z.number().int().optional(),
+        symmetryFold: z.number().int().optional(),
+        // cause_effect
+        variable: z.object({ label: z.string(), settings: z.array(idLabel) }).optional(),
+        outcomes: z.array(idLabel).optional(),
+        mapping: z.array(z.object({ settingId: z.string(), outcomeId: z.string() })).optional(),
+        goalOutcomeId: z.string().optional(),
+        // find_fix
+        objects: z
+          .array(z.object({ id: z.string(), label: z.string(), mistake: z.boolean(), correctionId: z.string().optional() }))
+          .optional(),
+        corrections: z.array(idLabel).optional(),
+        // create_express
+        palette: z.array(idLabel).optional(),
+        minElements: z.number().int().optional(),
+        mustInclude: z.array(z.string()).optional(),
+      }),
+    )
+    .min(1),
+});
+export type RepairSceneItems = z.infer<typeof RepairSceneItemsSchema>;
+
+export function repairSceneItemsJsonSchema(): Record<string, unknown> {
+  return toLeanJsonSchema(RepairSceneItemsSchema);
 }
 
 /** Normalizer output: raw questionnaire text → structured request. */

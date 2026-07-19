@@ -97,14 +97,21 @@ export async function recordSession(
  * learn engine uses for recovered-after-error).
  */
 /** Item kind → evidence kind: manipulation/assembly kinds are construction
- *  evidence; recognition kinds (tap a choice, tap objects) are recall. */
-const EVIDENCE_KIND_BY_ITEM: Record<string, 'construction' | 'recall'> = {
+ *  evidence; recognition kinds (tap a choice, tap objects) are recall;
+ *  scene_play kinds map onto the richer shared vocabulary (evidence.ts) —
+ *  experiments are prediction, find-the-mistake is transfer, open creation
+ *  is exploration (its outcome is always `explored`, never correctness). */
+const EVIDENCE_KIND_BY_ITEM: Record<string, 'construction' | 'recall' | 'prediction' | 'transfer' | 'exploration'> = {
   mcq: 'recall',
   tap_scene: 'recall',
   connect: 'construction',
   drag_collect: 'construction',
   sequence: 'construction',
   build_complete: 'construction',
+  rotation_transform: 'construction',
+  cause_effect: 'prediction',
+  find_fix: 'transfer',
+  create_express: 'exploration',
 };
 
 export function gameEvidenceFromSummary(
@@ -128,6 +135,9 @@ export function gameEvidenceFromSummary(
     if (!itemId || !concept) continue;
     const firstTry = it.correct === true;
     const recovered = it.recovered === true;
+    // Expressive rows (create_express) carry no correctness by design —
+    // they are recorded as `explored`, never as incorrect.
+    const expressive = it.expressive === true;
     // Newer shells report the item kind per row; fall back to the game-level
     // mapping for summaries recorded before the kind field existed.
     const kind = (typeof it.kind === 'string' && EVIDENCE_KIND_BY_ITEM[it.kind]) || gameKind;
@@ -140,11 +150,11 @@ export function gameEvidenceFromSummary(
       context: it.beat === 'checkpoint' ? 'checkpoint' : null,
       source: 'game_item',
       kind,
-      outcome: firstTry ? 'correct' : 'incorrect',
+      outcome: expressive ? 'explored' : firstTry ? 'correct' : 'incorrect',
       verification: 'client_reported',
       attempt: Math.max(1, Math.min(99, Number(it.attempts) || 1)),
       hints: Math.max(0, Math.min(99, Number(it.hintsUsed) || 0)),
-      recovered,
+      recovered: expressive ? false : recovered,
       errorPattern: null,
       toolId: gameType,
       pathId: null,

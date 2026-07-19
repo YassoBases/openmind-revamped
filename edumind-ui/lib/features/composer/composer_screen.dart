@@ -209,6 +209,7 @@ class _ComposerScreenState extends State<ComposerScreen> {
     final selected = _gameType == gt;
     final names = {
       'quest_path': 'Quest\nPath', 'goal_shootout': 'Goal\nShootout', 'draw_connect': 'Draw &\nConnect',
+      'scene_play': 'Wonder\nWorld',
     };
     return GestureDetector(
       onTap: () => setState(() => _gameType = gt),
