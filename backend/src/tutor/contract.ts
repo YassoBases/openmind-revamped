@@ -157,6 +157,22 @@ export function tutorReplyJsonSchema(): Record<string, unknown> {
 }
 
 /**
+ * Future study programs (تحضير سبر، فهم درس، تراكم، ساعدني أحل، مراجعة سريعة).
+ * STABLE wire ids — program logic keys on these, never on Arabic button text.
+ * None is implemented yet: today the id may ride TutorContext.mode as a
+ * routing signal only; each program's own prompt/flow lands behind its id
+ * later without a contract change.
+ */
+export const STUDY_MODES = [
+  'exam_prep', // حضّرني لسبر — prioritize topics against a date + time budget
+  'lesson_discovery', // خلّيني أفهم درس — interest-driven interactive discovery
+  'backlog_plan', // عندي تراكم — split the backlog into short tasks + points
+  'solve_diagnose', // ساعدني أحل — diagnose the attempt, guide with hints
+  'quick_review', // راجع معي بسرعة — review only the missing prerequisites
+] as const;
+export type StudyMode = (typeof STUDY_MODES)[number];
+
+/**
  * Learning context the CLIENT may attach. Everything is optional — the "Ask
  * OpenMind" page sends little, the in-experience help button sends a lot.
  * Identity (grade, language, name) always comes from the authenticated
@@ -164,6 +180,8 @@ export function tutorReplyJsonSchema(): Record<string, unknown> {
  */
 export const TutorContextSchema = z.object({
   source: z.enum(['ask', 'experience']).default('ask'),
+  /** Reserved: the study program this question belongs to (see STUDY_MODES). */
+  mode: z.enum(STUDY_MODES).optional(),
   subject: z.string().max(80).optional(),
   pathId: z.string().max(80).optional(),
   pathTitle: z.string().max(160).optional(),

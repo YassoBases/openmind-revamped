@@ -20,6 +20,9 @@ class SortBucketsBlock extends StatefulWidget {
     required this.enabled,
     required this.answered,
     required this.onResult,
+    this.resetEpoch = 0,
+    this.acked = true,
+    this.priorAttempts = 0,
   });
 
   final InteractivePayload payload;
@@ -29,6 +32,11 @@ class SortBucketsBlock extends StatefulWidget {
   final bool answered;
 
   final TutorBlockResultCallback onResult;
+
+  /// See tutor_block_registry: failed-submit reset / server ack / attempts.
+  final int resetEpoch;
+  final bool acked;
+  final int priorAttempts;
 
   @override
   State<SortBucketsBlock> createState() => _SortBucketsBlockState();
@@ -85,6 +93,27 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
     });
   }
 
+  @override
+  void didUpdateWidget(covariant SortBucketsBlock old) {
+    super.didUpdateWidget(old);
+    // Failed submit: nothing reached the server — full fresh run.
+    if (widget.resetEpoch != old.resetEpoch) _retry();
+  }
+
+  /// A fresh run at the same items (the mistakes were already reported; the
+  /// server records the retry as a new attempt on the same instance).
+  void _retry() {
+    _flashTimer?.cancel();
+    setState(() {
+      _index = 0;
+      _correct = 0;
+      _mistakes.clear();
+      _placements.clear();
+      _flashBucketId = null;
+      _outcome = null;
+    });
+  }
+
   void _finish() {
     final l = AppLocalizations.of(context)!;
     final p = widget.payload;
@@ -127,7 +156,9 @@ class _SortBucketsBlockState extends State<SortBucketsBlock> {
       title: p.title,
       instructions: p.instructions,
       outcome: _outcome,
-      sent: finished,
+      sent: finished && widget.acked,
+      onRetry: widget.enabled && finished ? _retry : null,
+      priorAttempts: widget.priorAttempts,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

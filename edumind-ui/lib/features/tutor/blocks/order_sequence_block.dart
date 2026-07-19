@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
 import '../../../app_localizations.dart';
@@ -18,6 +19,9 @@ class OrderSequenceBlock extends StatefulWidget {
     required this.enabled,
     required this.answered,
     required this.onResult,
+    this.resetEpoch = 0,
+    this.acked = true,
+    this.priorAttempts = 0,
   });
 
   final InteractivePayload payload;
@@ -28,6 +32,11 @@ class OrderSequenceBlock extends StatefulWidget {
 
   final TutorBlockResultCallback onResult;
 
+  /// See tutor_block_registry: failed-submit reset / server ack / attempts.
+  final int resetEpoch;
+  final bool acked;
+  final int priorAttempts;
+
   @override
   State<OrderSequenceBlock> createState() => _OrderSequenceBlockState();
 }
@@ -36,16 +45,51 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
   final List<String> _picked = [];
   InteractiveOutcome? _outcome;
 
-  bool get _active => widget.enabled && _outcome == null;
+  /// The last order actually submitted — a re-check requires a different
+  /// arrangement, never a same-answer resubmission.
+  List<String>? _lastSubmitted;
+
+  bool get _changedSinceSubmit =>
+      _lastSubmitted == null || !listEquals(_picked, _lastSubmitted);
+
+  // Correct freezes; a miss keeps the sequence editable for another try while
+  // the parent keeps the instance open (same convention as the shared cores).
+  bool get _active => widget.enabled && _outcome != InteractiveOutcome.correct;
   InteractiveItem _item(String id) =>
       widget.payload.items.firstWhere((i) => i.id == id);
+
+  /// Any edit after a miss clears the marks — the learner is on a new try.
+  void _edit(VoidCallback change) {
+    setState(() {
+      if (_outcome != null && _outcome != InteractiveOutcome.correct) {
+        _outcome = null;
+      }
+      change();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant OrderSequenceBlock old) {
+    super.didUpdateWidget(old);
+    // Failed submit: clear the local verdict, keep the built sequence. The
+    // same order MAY be resubmitted — the server never received it.
+    if (widget.resetEpoch != old.resetEpoch) {
+      setState(() {
+        _outcome = null;
+        _lastSubmitted = null;
+      });
+    }
+  }
 
   void _check() {
     final l = AppLocalizations.of(context)!;
     final p = widget.payload;
     final outcome = orderOutcome(_picked, p.correctOrder);
     final n = orderCorrectPositions(_picked, p.correctOrder);
-    setState(() => _outcome = outcome);
+    setState(() {
+      _outcome = outcome;
+      _lastSubmitted = List<String>.of(_picked);
+    });
     final summary = l
         .translate('ir_order')
         .replaceFirst('{list}', _picked.map((id) => _item(id).label).join(' ← '));
@@ -81,7 +125,10 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
       title: p.title,
       instructions: p.instructions,
       outcome: _outcome,
-      sent: _outcome != null,
+      sent: _outcome != null && widget.acked,
+      // Retry = clear the marks; the learner then reorders and re-checks.
+      onRetry: widget.enabled && _outcome != null ? () => setState(() => _outcome = null) : null,
+      priorAttempts: widget.priorAttempts,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -97,7 +144,7 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
                 for (final item in remaining)
                   OutlinedButton(
                     onPressed:
-                        _active ? () => setState(() => _picked.add(item.id)) : null,
+                        _active ? () => _edit(() => _picked.add(item.id)) : null,
                     style: OutlinedButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                       shape: RoundedRectangleBorder(
@@ -113,7 +160,15 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.tonal(
-              onPressed: _active && _picked.length == p.items.length ? _check : null,
+              // A re-check requires a DIFFERENT arrangement — never a
+              // same-answer resubmission (edits clear the marks; the retry
+              // button clears them too, but the order must still change).
+              onPressed: _active &&
+                      _outcome == null &&
+                      _picked.length == p.items.length &&
+                      _changedSinceSubmit
+                  ? _check
+                  : null,
               child: Text(
                 l.translate('blk_check'),
                 style: const TextStyle(fontWeight: FontWeight.w800),
@@ -137,7 +192,7 @@ class _OrderSequenceBlockState extends State<OrderSequenceBlock> {
       padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadii.button),
-        onTap: _active ? () => setState(() => _picked.removeAt(i)) : null,
+        onTap: _active ? () => _edit(() => _picked.removeAt(i)) : null,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

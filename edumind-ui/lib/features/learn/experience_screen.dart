@@ -27,10 +27,17 @@ class ExperienceScreen extends StatefulWidget {
     required this.experience,
     this.initialStep = 0,
     this.isCheckpoint = false,
+    this.subject,
   });
 
   final LearnPath path;
   final LearnExperience experience;
+
+  /// The owning catalog's subject («الرياضيات», «الاجتماعيات», …) — rides the
+  /// tutor context so Hudhud knows the real subject; null when the caller
+  /// could not resolve it (the context then simply omits the subject rather
+  /// than guessing one).
+  final String? subject;
 
   /// Resume position (from the persisted [LearnProgressStore.resume]).
   final int initialStep;
@@ -58,15 +65,24 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     super.initState();
     _step = widget.initialStep.clamp(0, widget.experience.steps.length - 1);
     _checkPicked = List<int?>.filled(_current.checkItems.length, null);
+    _checkWrong = List.generate(_current.checkItems.length, (_) => <int>{});
   }
 
-  // Per-step interaction state, reset on advance.
+  // Per-step interaction state, reset on advance. A wrong pick never freezes
+  // an item: the tried options disable individually and the learner keeps
+  // going until the right one — the mistakes stay recorded (retry pedagogy).
   LearnWidgetStatus _widgetStatus = const LearnWidgetStatus();
   int? _picked;
+  final Set<int> _wrongPicks = {}; // choice/apply: options already tried wrong
+  bool _choiceEmitted = false; // first-attempt evidence written
+  bool _choiceRecovered = false; // recovery evidence written
 
-  // Check-step state: one answer slot per item, walked one item at a time.
+  // Check-step state: one answer slot per item, walked one item at a time,
+  // plus the wrong options already tried per item.
   int _checkIndex = 0;
   List<int?> _checkPicked = const [];
+  List<Set<int>> _checkWrong = const [];
+  final Set<int> _checkRecovered = {}; // items whose recovery was recorded
 
   // What the student tried across the experience — tutor-help context.
   final List<String> _attempts = [];
@@ -88,17 +104,31 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   /// widgets, choices, targets and completion rules never depend on it.
   String? get _lens => Session.instance.learningContext;
 
+  /// A choice-bearing step is passable once RESOLVED — the right option was
+  /// found, possibly after retries. Wrong picks never dead-end the learner:
+  /// tried options disable one by one, so resolution is always reachable, and
+  /// the first attempt (plus the recovery) is what the evidence records.
+  bool _choiceResolved(LearnChoice? c) => c == null || _picked == c.correctIndex;
+
+  bool _checkItemResolved(int i) =>
+      _checkPicked[i] == _current.checkItems[i].correctIndex;
+
+  bool get _allCheckResolved {
+    for (var i = 0; i < _current.checkItems.length; i++) {
+      if (!_checkItemResolved(i)) return false;
+    }
+    return true;
+  }
+
   bool get _canContinue {
     final s = _current;
     return switch (s.kind) {
       LearnStepKind.scene => true,
       LearnStepKind.explore => _widgetStatus.interacted,
-      LearnStepKind.choice => _picked != null,
+      LearnStepKind.choice => _choiceResolved(s.choice),
       LearnStepKind.challenge => _widgetStatus.targetMet,
-      LearnStepKind.apply => s.choice == null || _picked != null,
-      // Answered-all, never all-correct: like `choice`, a wrong pick teaches
-      // through its feedback instead of blocking the finish.
-      LearnStepKind.check => !_checkPicked.contains(null),
+      LearnStepKind.apply => _choiceResolved(s.choice),
+      LearnStepKind.check => _allCheckResolved,
     };
   }
 
@@ -123,7 +153,9 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
       context,
       context_: TutorContext(
         source: 'experience',
-        subject: 'الرياضيات',
+        // The REAL owning-catalog subject (social studies must not arrive as
+        // math); omitted when the caller could not resolve it.
+        subject: widget.subject,
         pathId: widget.path.id,
         pathTitle: widget.path.title,
         experienceId: widget.experience.id,
@@ -166,8 +198,13 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         _step++;
         _widgetStatus = const LearnWidgetStatus();
         _picked = null;
+        _wrongPicks.clear();
+        _choiceEmitted = false;
+        _choiceRecovered = false;
         _checkIndex = 0;
         _checkPicked = List<int?>.filled(_current.checkItems.length, null);
+        _checkWrong = List.generate(_current.checkItems.length, (_) => <int>{});
+        _checkRecovered.clear();
         _stepStartedAt = DateTime.now();
         _stepHints = 0;
         _hintRung = 0;
@@ -190,8 +227,20 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
     if (mounted) setState(() { _stars += earned; _done = true; });
   }
 
+  /// First-try successes this check step (retry means everything is
+  /// eventually resolved — the honest score is what landed unaided).
+  int get _checkFirstTryCorrect {
+    var n = 0;
+    for (var i = 0; i < _current.checkItems.length; i++) {
+      if (_checkItemResolved(i) && _checkWrong[i].isEmpty) n++;
+    }
+    return n;
+  }
+
   /// Stars for the step being left, read directly off this step's own
   /// interaction state (never the evidence store) — see lesson_scoring.dart.
+  /// With retry, "correct" means correct on the FIRST try; a recovered answer
+  /// still finishes the step but does not earn the correctness star.
   int _starsForCurrentStep() {
     final step = _current;
     return switch (step.kind) {
@@ -203,14 +252,12 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
       LearnStepKind.choice || LearnStepKind.apply => step.choice == null
           ? kSceneStars
           : starsFor(
-              correct: _picked == step.choice!.correctIndex,
+              correct:
+                  _picked == step.choice!.correctIndex && _wrongPicks.isEmpty,
               hintRung: _hintRung,
             ),
       LearnStepKind.check => starsForCheck(
-          correct: [
-            for (var i = 0; i < step.checkItems.length; i++)
-              if (_checkPicked[i] == step.checkItems[i].correctIndex) i,
-          ].length,
+          correct: _checkFirstTryCorrect,
           total: step.checkItems.length,
         ),
     };
@@ -218,16 +265,14 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
 
   /// Records the leaving step's check score (last write wins on replay).
   /// Recorded, never gated — the score only feeds أنا and tutor context.
+  /// First-try successes only: a recovered item already left its own
+  /// incorrect-then-recovered evidence trail.
   Future<void> _recordCheckIfAny() async {
     final s = _current;
     if (s.kind != LearnStepKind.check || s.checkItems.isEmpty) return;
-    var correct = 0;
-    for (var i = 0; i < s.checkItems.length; i++) {
-      if (_checkPicked[i] == s.checkItems[i].correctIndex) correct++;
-    }
     final store = await LearnProgressStore.load();
-    await store.saveCheckResult(
-        widget.path.id, widget.experience.id, correct, s.checkItems.length);
+    await store.saveCheckResult(widget.path.id, widget.experience.id,
+        _checkFirstTryCorrect, s.checkItems.length);
   }
 
   /// Appends one evidence event per tagged skill for the current step's
@@ -604,7 +649,10 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         ],
         if (step.widget != null) ...[
           const SizedBox(height: 14),
-          buildLearnWidget(step.widget!, _onWidgetStatus),
+          // Lens-resolved: the manipulative's TEXT labels may be reworded to
+          // the learner's context; targets/ranges structurally cannot change
+          // (see LearnStep.widgetFor).
+          buildLearnWidget(step.widgetFor(_lens)!, _onWidgetStatus),
           if (step.kind == LearnStepKind.challenge &&
               _widgetStatus.targetMet &&
               successText != null) ...[
@@ -709,19 +757,18 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   }
 
   /// «تحقق من الفهم»: the step's items one at a time, with a sub-progress
-  /// line. Feedback teaches either way; the score is summarized at the end
-  /// and a weak one offers the tutor — it never blocks finishing.
+  /// line. A wrong pick never freezes an item — the tried option disables,
+  /// the feedback guides (without revealing), and the learner keeps trying;
+  /// the recovery is recorded as its own evidence. The end-of-check score is
+  /// first-try successes; a weak one offers the tutor.
   Widget _checkBlock(LearnStep step) {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final items = step.checkItems;
     final item = items[_checkIndex];
-    final answered = _checkPicked[_checkIndex] != null;
-    final allAnswered = !_checkPicked.contains(null);
-    var correct = 0;
-    for (var i = 0; i < items.length; i++) {
-      if (_checkPicked[i] == items[i].correctIndex) correct++;
-    }
+    final itemResolved = _checkItemResolved(_checkIndex);
+    final allResolved = _allCheckResolved;
+    final firstTry = _checkFirstTryCorrect;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -747,7 +794,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
                 margin: const EdgeInsetsDirectional.only(start: 5),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _checkPicked[i] != null
+                  color: _checkItemResolved(i)
                       ? MiddlePalette.discovery
                       : cs.surfaceContainerHighest,
                 ),
@@ -758,31 +805,53 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
         _itemBlock(
           item,
           picked: _checkPicked[_checkIndex],
+          wrongTries: _checkWrong[_checkIndex],
           onPick: (i) {
             final idx = _checkIndex;
+            final step = _current;
+            final correct = i == item.correctIndex;
             setState(() {
               _checkPicked[idx] = i;
-              if (i != item.correctIndex) {
-                _attempts.add('${item.prompt} → ${item.options[i]}');
+              if (!correct) {
+                _checkWrong[idx].add(i);
+                _attempts
+                    .add('${item.promptFor(_lens)} → ${item.optionsFor(_lens)[i]}');
+                final pattern = item.patternFor(i);
+                if (pattern != null) _checkWrongPatterns.add(pattern);
+                // Progressive support: a second miss on the same item opens
+                // the next rung of the step's hint ladder by itself.
+                if (_checkWrong[idx].length >= 2 &&
+                    _hintRung < step.hints.length) {
+                  _hintRung++;
+                }
               }
             });
             if (_checkEmitted.add(idx)) {
-              final step = _current;
-              final correct = i == item.correctIndex;
-              final pattern = correct ? null : item.patternFor(i);
-              if (pattern != null) _checkWrongPatterns.add(pattern);
+              // The FIRST attempt is the readiness evidence for this item.
               _emitEvidence(
                 // A check item may narrow to its own skills; else inherit.
                 skills: item.skills.isNotEmpty ? item.skills : step.skills,
                 rep: item.rep ?? step.representation,
                 kind: step.evidenceKind,
                 outcome: correct ? 'correct' : 'incorrect',
-                errorPattern: pattern,
+                errorPattern: correct ? null : item.patternFor(i),
+              );
+            } else if (correct &&
+                _checkWrong[idx].isNotEmpty &&
+                _checkRecovered.add(idx)) {
+              // Later success after a recorded miss: one recovery event.
+              _emitEvidence(
+                skills: item.skills.isNotEmpty ? item.skills : step.skills,
+                rep: item.rep ?? step.representation,
+                kind: step.evidenceKind,
+                outcome: 'correct',
+                attempt: _checkWrong[idx].length + 1,
+                recovered: true,
               );
             }
           },
         ),
-        if (answered && _checkIndex < items.length - 1) ...[
+        if (itemResolved && _checkIndex < items.length - 1) ...[
           const SizedBox(height: 10),
           Align(
             alignment: AlignmentDirectional.centerEnd,
@@ -792,12 +861,12 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
             ),
           ),
         ],
-        if (allAnswered) ...[
+        if (allResolved) ...[
           const SizedBox(height: 14),
           Text(
             l
                 .translate('learn_check_score')
-                .replaceFirst('{c}', '$correct')
+                .replaceFirst('{c}', '$firstTry')
                 .replaceFirst('{m}', '${items.length}'),
             style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
           ),
@@ -806,7 +875,7 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
             const SizedBox(height: 8),
             _supportHint(action, l),
           ],
-          if (correct * 2 < items.length)
+          if (firstTry * 2 < items.length)
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(
@@ -862,50 +931,85 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   Widget _choiceBlock(LearnChoice choice) => _itemBlock(
         choice,
         picked: _picked,
+        wrongTries: _wrongPicks,
         onPick: (i) {
-          setState(() {
-            _picked = i;
-            if (i != choice.correctIndex) {
-              _attempts.add('${choice.prompt} → ${choice.options[i]}');
-            }
-          });
           final step = _current;
           final correct = i == choice.correctIndex;
+          setState(() {
+            _picked = i;
+            if (!correct) {
+              _wrongPicks.add(i);
+              _attempts
+                  .add('${choice.promptFor(_lens)} → ${choice.optionsFor(_lens)[i]}');
+              // Progressive support: a second miss opens the next rung of
+              // the step's hint ladder by itself.
+              if (_wrongPicks.length >= 2 && _hintRung < step.hints.length) {
+                _hintRung++;
+              }
+            }
+          });
           // The step kind sets the evidence kind: a `choice` step is a
-          // prediction, an `apply` step's choice is transfer evidence.
-          _emitEvidence(
-            skills: step.skills,
-            rep: choice.rep ?? step.representation,
-            kind: step.evidenceKind,
-            outcome: correct ? 'correct' : 'incorrect',
-            errorPattern: correct ? null : choice.patternFor(i),
-          );
+          // prediction, an `apply` step's choice is transfer evidence. The
+          // FIRST attempt is the readiness signal; a later success after a
+          // recorded miss adds one recovery event.
+          if (!_choiceEmitted) {
+            _choiceEmitted = true;
+            _emitEvidence(
+              skills: step.skills,
+              rep: choice.rep ?? step.representation,
+              kind: step.evidenceKind,
+              outcome: correct ? 'correct' : 'incorrect',
+              errorPattern: correct ? null : choice.patternFor(i),
+            );
+          } else if (correct && _wrongPicks.isNotEmpty && !_choiceRecovered) {
+            _choiceRecovered = true;
+            _emitEvidence(
+              skills: step.skills,
+              rep: choice.rep ?? step.representation,
+              kind: step.evidenceKind,
+              outcome: 'correct',
+              attempt: _wrongPicks.length + 1,
+              recovered: true,
+            );
+          }
         },
       );
 
   /// One answerable question: prompt, options, feedback either way. Shared
   /// by the step-level choice and the check items — same look, same rules.
+  /// Wording is lens-resolved (promptFor/optionsFor); the correct slot is
+  /// identical across every lens by construction. A wrong pick disables that
+  /// option and invites another try — the correct answer is never revealed
+  /// by the feedback, only found.
   Widget _itemBlock(
     LearnChoice choice, {
     required int? picked,
+    required Set<int> wrongTries,
     required ValueChanged<int> onPick,
   }) {
-    final answered = picked != null;
-    final correct = picked == choice.correctIndex;
+    final l = AppLocalizations.of(context)!;
+    final resolved = picked == choice.correctIndex;
+    final missed = !resolved && wrongTries.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          choice.prompt,
+          choice.promptFor(_lens),
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, height: 1.6),
         ),
         const SizedBox(height: 10),
         for (var i = 0; i < choice.options.length; i++)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: _option(choice, i, picked: picked, onPick: onPick),
+            child: _option(
+              choice,
+              i,
+              resolved: resolved,
+              wrongTries: wrongTries,
+              onPick: onPick,
+            ),
           ),
-        if (answered) ...[
+        if (resolved || missed) ...[
           const SizedBox(height: 4),
           Container(
             width: double.infinity,
@@ -914,30 +1018,49 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
               // Correct stays the one true success green; anything else is
               // the soft learning-yellow retry treatment — never red/amber/
               // orange, a wrong pick is a teaching moment, not an alarm.
-              color: correct
+              color: resolved
                   ? AppColors.mutedGreen.withValues(alpha: 0.12)
                   : AppColors.retryYellowSoft,
               borderRadius: BorderRadius.circular(Palette.radiusButton),
             ),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  correct ? Icons.check_circle_rounded : Icons.refresh_rounded,
-                  size: 18,
-                  color: correct ? AppColors.mutedGreen : AppColors.retryYellowInk,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      resolved ? Icons.check_circle_rounded : Icons.refresh_rounded,
+                      size: 18,
+                      color: resolved ? AppColors.mutedGreen : AppColors.retryYellowInk,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        resolved
+                            ? choice.correctFeedbackFor(_lens)
+                            : choice.wrongFeedbackFor(_lens),
+                        style: TextStyle(
+                          height: 1.6,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              resolved ? AppColors.mutedGreen : AppColors.retryYellowInk,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    correct ? choice.correctFeedback : choice.wrongFeedback,
-                    style: TextStyle(
-                      height: 1.6,
-                      fontWeight: FontWeight.w600,
-                      color: correct ? AppColors.mutedGreen : AppColors.retryYellowInk,
+                if (missed) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    l.translate('learn_try_again'),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.retryYellowInk,
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -949,27 +1072,29 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
   Widget _option(
     LearnChoice choice,
     int i, {
-    required int? picked,
+    required bool resolved,
+    required Set<int> wrongTries,
     required ValueChanged<int> onPick,
   }) {
     final cs = Theme.of(context).colorScheme;
-    final answered = picked != null;
-    final isPicked = picked == i;
     final isRight = i == choice.correctIndex;
+    final triedWrong = wrongTries.contains(i);
 
+    // The right option shows green only once the learner FOUND it — a wrong
+    // pick never reveals it; the tried option turns retry-yellow and locks.
     Color border = cs.outlineVariant;
     Color? fill;
-    if (answered && isRight) {
+    if (resolved && isRight) {
       border = AppColors.mutedGreen;
       fill = AppColors.mutedGreen.withValues(alpha: 0.10);
-    } else if (answered && isPicked) {
+    } else if (triedWrong) {
       border = AppColors.retryYellow;
       fill = AppColors.retryYellowSoft;
     }
 
     return InkWell(
       borderRadius: BorderRadius.circular(Palette.radiusButton),
-      onTap: answered ? null : () => onPick(i),
+      onTap: resolved || triedWrong ? null : () => onPick(i),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -982,13 +1107,13 @@ class _ExperienceScreenState extends State<ExperienceScreen> {
           children: [
             Expanded(
               child: Text(
-                choice.options[i],
+                choice.optionsFor(_lens)[i],
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, height: 1.5),
               ),
             ),
-            if (answered && isRight)
+            if (resolved && isRight)
               const Icon(Icons.check_circle_rounded, size: 20, color: AppColors.mutedGreen)
-            else if (answered && isPicked)
+            else if (triedWrong)
               const Icon(Icons.cancel_rounded, size: 20, color: AppColors.retryYellowInk),
           ],
         ),

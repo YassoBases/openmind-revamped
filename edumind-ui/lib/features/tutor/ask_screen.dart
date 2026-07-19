@@ -4,6 +4,7 @@ import '../../app_localizations.dart';
 import '../../core/session.dart';
 import '../../core/stage.dart';
 import '../../widgets/mascot.dart';
+import '../context/interests_sheet.dart' show interestLabel;
 import 'tutor_chat.dart';
 import 'tutor_models.dart';
 
@@ -38,14 +39,16 @@ class _AskScreenState extends State<AskScreen> {
     final ar = Session.instance.language == 'ar';
     final middle =
         Session.instance.stage == LearningStage.middleInteractiveLearning;
-    final lens = Session.instance.learningContext;
-    // «أعطني مثالًا من سياقي» names the learner's real saved lens when one
-    // exists, so the question the backend receives is specific and honest.
-    final exampleAction = lens == null
+    final interests = Session.instance.interests;
+    // «أعطني مثالًا من عالمي» names one of the learner's real saved
+    // interests when set, so the question the backend receives is specific
+    // and honest — interests are the AI's personalization signal now, not
+    // the legacy lens.
+    final exampleAction = interests.isEmpty
         ? l.translate('qa_example_ctx')
         : (ar
-            ? 'أعطني مثالًا من عالم ${l.translate('ctx_$lens')}'
-            : 'Give me an example from the world of ${l.translate('ctx_$lens')}');
+            ? 'أعطني مثالًا من عالم ${interestLabel(l, interests.first)}'
+            : 'Give me an example from the world of ${interestLabel(l, interests.first)}');
 
     return Scaffold(
       body: SafeArea(
@@ -67,11 +70,6 @@ class _AskScreenState extends State<AskScreen> {
                           l.translate('tutor_title'),
                           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          l.translate('tutor_subtitle'),
-                          style: TextStyle(fontSize: 14, height: 1.6, color: cs.onSurfaceVariant),
-                        ),
                       ],
                     ),
                   ),
@@ -88,6 +86,10 @@ class _AskScreenState extends State<AskScreen> {
                 key: _chatKey,
                 context_: TutorContext(source: 'ask'),
                 persistThread: true,
+                // The five study programs, offered before the conversation
+                // starts — the main Ask Hudhud surface only; the in-lesson
+                // help sheet keeps its contextual quick actions instead.
+                showStudyModes: middle,
                 quickActions: middle
                     ? [
                         l.translate('qa_simpler'),

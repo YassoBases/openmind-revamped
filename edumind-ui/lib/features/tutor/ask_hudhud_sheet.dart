@@ -81,6 +81,7 @@ Future<void> openAskHudhud(
                 context_: context_,
                 seedQuestions: seedQuestions,
                 quickActions: quickActions,
+                isHelpSheet: true,
               ),
             ),
           ],

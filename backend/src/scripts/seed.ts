@@ -18,8 +18,10 @@ const student = await store.createStudent({
   color: '#1CB0F6',
   interest: 'space',
   learningContext: null,
+  interests: ['nature_environment'],
   dailyGoal: 3,
   tokenHash: hash,
+  installationId: null,
 });
 
 console.log('--- demo student seeded ---');

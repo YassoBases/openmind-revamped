@@ -180,8 +180,10 @@ describe('middle-school learningContext preference', () => {
       payload: { question: 'كيف أحسب مساحة المثلث؟' },
     });
     expect(res.statusCode).toBe(201);
-    // mock provider embeds the lens it received from the authenticated row
-    expect(res.json().reply.message).toContain('water_energy');
+    // mock provider embeds the lens it received from the authenticated row —
+    // as its LOCALIZED name, never the raw wire id inside an Arabic sentence.
+    expect(res.json().reply.message).toContain('الماء والطاقة');
+    expect(res.json().reply.message).not.toContain('water_energy');
   });
 
   it('a primary student gets the younger game-framed tutor voice', async () => {

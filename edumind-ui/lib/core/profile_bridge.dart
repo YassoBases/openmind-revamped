@@ -1,5 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'api_client.dart';
+import 'registration_sync.dart';
 import 'session.dart';
 import 'stage.dart';
 
@@ -17,14 +17,15 @@ class ProfileBridge {
   static const _classGrade = {'خامس': 5, 'سادس': 6, 'سابع': 7, 'ثامن': 8};
 
   // Redesigned onboarding interest ids (`user_interests_v2`) → companion
-  // archetype (palette.dart kInterests).
+  // archetype (palette.dart kInterests) — primary-stage game shells only.
   static const _interestIdArchetype = {
-    'science': 'space', // علوم واختراعات
-    'tech': 'robots', // تقنية ومستقبل
-    'sport': 'football', // رياضة وحركة
-    'art': 'art', // رسم وتصميم
-    'stories': 'royalty', // قصص وتاريخ
-    'nature': 'ocean', // طبيعة وبيئة
+    'tech_robotics': 'robots', // تكنولوجيا وروبوتات
+    'games_challenges': 'cars', // ألعاب وتحديات
+    'drawing_design': 'art', // رسم وتصميم
+    'sports_movement': 'football', // رياضة وحركة
+    'reading_stories': 'royalty', // قراءة وقصص
+    'helping_people': 'cats', // مساعدة الناس
+    'nature_environment': 'ocean', // طبيعة وبيئة
   };
 
   // Legacy interest index (old profilesetup order) → companion archetype.
@@ -52,52 +53,50 @@ class ProfileBridge {
     final grade = prefs.getInt('user_grade') ??
         _classGrade[prefs.getString('user_class')] ??
         5;
+    final gender = prefs.getString('user_gender');
 
-    // Elementary game archetypes are a primary-stage concept; middle-school
-    // learners pick a real-life learning lens instead (`user_learning_context`,
-    // seeded during onboarding — see OnboardingFlow._lensStep). The in-app
-    // «عدستي» sheet (context_sheet.dart) remains how either is changed later.
+    // Personal interests (1-2, both stages) — the primary AI-flavor signal.
+    // See OnboardingFlow._interestsStep.
+    final interests = prefs.getStringList('user_interests_v2') ?? const [];
+
+    // Elementary companion-sprite archetype — a primary-stage-only concept,
+    // derived from the first selected interest so the game shells' companion
+    // keeps working unchanged.
     String? interest;
-    String? learningContext;
     if (stageForGrade(grade) == LearningStage.primaryGames) {
-      for (final id in prefs.getStringList('user_interests_v2') ?? const []) {
+      for (final id in interests) {
         interest = _interestIdArchetype[id];
         if (interest != null) break;
       }
       if (interest == null) {
-        final interests = prefs.getStringList('user_interests') ?? const [];
-        if (interests.isNotEmpty) {
-          final idx = int.tryParse(interests.first);
+        final legacy = prefs.getStringList('user_interests') ?? const [];
+        if (legacy.isNotEmpty) {
+          final idx = int.tryParse(legacy.first);
           if (idx != null && idx >= 0 && idx < _interestArchetype.length) {
             interest = _interestArchetype[idx];
           }
         }
       }
-    } else {
-      learningContext = prefs.getString('user_learning_context');
     }
 
     final profile = <String, dynamic>{
       'name': name,
+      if (gender != null) 'gender': gender,
       'grade': grade,
       'stage': stageForGrade(grade).wire, // offline fallback; server overwrites
       'language': language,
       'color': colorHex,
       if (interest != null) 'interest': interest,
-      if (learningContext != null) 'learningContext': learningContext,
+      if (interests.isNotEmpty) 'interests': interests,
       'dailyGoal': 3,
     };
 
-    // Save first so the app works offline, then register; the backend's
-    // student view (trusted grade/stage) overwrites the local guess.
+    // Save first so the app works offline, then register through the same
+    // retry path used at app startup and app resume (RegistrationSync) — a
+    // flaky connection here just leaves the account pending, never lost,
+    // and the backend's student view (trusted grade/stage) overwrites the
+    // local guess once it lands.
     await Session.instance.setProfile(profile);
-    try {
-      final res = await Api.createStudent(profile);
-      await Session.instance.setAuth(res['studentId'] as String, res['token'] as String);
-      final student = res['student'];
-      if (student is Map<String, dynamic>) {
-        await Session.instance.applyStudentView(student);
-      }
-    } catch (_) {/* offline — generation needs a server, everything else works */}
+    await RegistrationSync.retry();
   }
 }

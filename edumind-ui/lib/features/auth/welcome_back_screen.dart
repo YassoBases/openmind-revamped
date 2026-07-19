@@ -82,12 +82,6 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  l.translate('welcome_back_sub'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, height: 1.7, color: cs.onSurfaceVariant),
-                ),
                 const SizedBox(height: 28),
                 FilledButton(
                   onPressed: _checking ? null : _continue,

@@ -59,8 +59,12 @@ export interface TutorReplyParams {
     stage: LearningStage;
     language: string;
     interest: string | null;
-    /** Middle-school context lens chosen by the student (server-stored). */
+    /** Middle-school context lens chosen by the student (server-stored). Legacy — a fallback flavor only when interests is empty. */
     learningContext: string | null;
+    /** Personal interests chosen at onboarding (1-2, both stages) — the primary source for real-life examples/activities. */
+    interests: string[];
+    /** 'm' | 'f' | null — used ONLY for Arabic grammatical addressing. Never anything else. */
+    gender: string | null;
   };
   question: string;
   context: TutorContext | null;

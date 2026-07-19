@@ -113,7 +113,41 @@ Forward-compatible by construction: `suggestedInteraction` is a server-consumed
 signal, so the Flutter client needs no change — its `TutorReply.fromMap` already
 ignores fields it doesn't read.
 
-## 5. What is verified here vs. what needs a live key
+## 5. Retry after mistakes (supportive-retry pedagogy)
+
+A wrong answer never freezes a block. The server (`tutor/result.ts`) owns the
+attempt state per block instance:
+
+- an accepted `correct`/`explored` result **closes** the instance — any further
+  submission is rejected as `duplicate` (success can never be farmed);
+- a wrong answer leaves the instance **open** for up to
+  `MAX_ATTEMPTS_PER_INSTANCE = 3` accepted attempts, then `attempt_limit`;
+- a later success is recorded with `recovered: true` and its real `attempt`
+  number — in the learning signal AND the per-skill evidence row;
+- rejected/tampered submissions are never persisted and never consume the
+  budget;
+- the POST response echoes an `assessment`
+  (`{verification, outcome, attempt, recovered, closed, rejectReason?}`) so the
+  client freezes exactly what the server closed — a restored thread freezes
+  only genuinely completed/exhausted/superseded instances.
+
+The same pedagogy applies inside lesson experiences (`experience_screen.dart`):
+a wrong option disables individually and invites another try, the feedback
+guides without revealing, a second miss auto-opens the next hint-ladder rung,
+and stars/check scores count first-try successes while recoveries are recorded
+as their own evidence.
+
+## 6. Future study modes (reserved, not implemented)
+
+`STUDY_MODES` (tutor/contract.ts) reserves the five program ids as stable wire
+values — program logic keys on these, never on Arabic button text:
+`exam_prep` (حضّرني لسبر) · `lesson_discovery` (خلّيني أفهم درس) ·
+`backlog_plan` (عندي تراكم) · `solve_diagnose` (ساعدني أحل) ·
+`quick_review` (راجع معي بسرعة). A client may already send
+`context.mode`; each program's prompt/flow lands behind its id later without
+a contract change.
+
+## 7. What is verified here vs. what needs a live key
 
 This environment has **no `ANTHROPIC_API_KEY`**, so the backend runs in mock mode
 (`backend/src/llm/mock.ts`). The mock routes real registry specs by keyword and

@@ -14,13 +14,17 @@ export interface StudentRow {
   color: string;
   /** Elementary game-engine archetype (primary stage). */
   interest: string | null;
-  /** Middle-school context lens (middle stage) — separate domain from interest. */
+  /** Middle-school context lens (middle stage) — legacy; fallback only when interests is empty. */
   learningContext: string | null;
+  /** Personal interests chosen at onboarding (1-2, both stages) — the primary AI-flavor signal. */
+  interests: string[];
   dailyGoal: number;
   xp: number;
   streakCount: number;
   streakLastPlayedAt: Date | null;
   tokenHash: string;
+  /** Client-generated per-install idempotency key for POST /students — see routes/students.ts. */
+  installationId: string | null;
   createdAt: Date;
 }
 
@@ -132,7 +136,9 @@ export interface Store {
   createStudent(data: Omit<StudentRow, 'id' | 'createdAt' | 'xp' | 'streakCount' | 'streakLastPlayedAt'>): Promise<StudentRow>;
   getStudentByToken(tokenHash: string): Promise<StudentRow | null>;
   getStudent(id: string): Promise<StudentRow | null>;
-  updateStudent(id: string, patch: Partial<Pick<StudentRow, 'name' | 'color' | 'interest' | 'learningContext' | 'language' | 'dailyGoal' | 'grade' | 'gender' | 'xp' | 'streakCount' | 'streakLastPlayedAt'>>): Promise<StudentRow>;
+  /** Idempotent-retry lookup for POST /students — see routes/students.ts. */
+  getStudentByInstallationId(installationId: string): Promise<StudentRow | null>;
+  updateStudent(id: string, patch: Partial<Pick<StudentRow, 'name' | 'color' | 'interest' | 'learningContext' | 'interests' | 'language' | 'dailyGoal' | 'grade' | 'gender' | 'xp' | 'streakCount' | 'streakLastPlayedAt' | 'tokenHash'>>): Promise<StudentRow>;
 
   createGame(data: Omit<GameRow, 'createdAt' | 'deletedAt' | 'bestScore' | 'playCount' | 'lastPlayedAt'>): Promise<GameRow>;
   getGame(id: string): Promise<GameRow | null>;

@@ -59,7 +59,10 @@ void main() {
               case LearnStepKind.check:
                 // Verification needs items, and stays lens-invariant like
                 // mechanics: check steps never carry narrative variants.
-                expect(step.checkItems.length, inInclusiveRange(2, 3),
+                // 2-4: short by design (the 4th slot exists so a station's
+                // apply-skill — e.g. verification by substitution — is
+                // actually checked, see content_lint_test).
+                expect(step.checkItems.length, inInclusiveRange(2, 4),
                     reason: '${path.id}/${exp.id}');
                 expect(step.variants, isEmpty,
                     reason: 'check is identical across lenses');

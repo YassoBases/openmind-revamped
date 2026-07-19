@@ -6,8 +6,12 @@
  *  1. The result must match a real, still-open block instance the tutor
  *     offered in THIS conversation (found in the persisted thread — the same
  *     source of truth restoration uses). No match → rejected.
- *  2. One attempt per instance is enforced HERE, not just in the client UI:
- *     a second result for an already-answered instance → rejected.
+ *  2. Attempts per instance are bounded HERE, not just in the client UI:
+ *     a mistake may be retried (supportive-retry pedagogy) up to
+ *     MAX_ATTEMPTS_PER_INSTANCE accepted attempts, but an instance whose
+ *     accepted result was already correct/explored is CLOSED — any further
+ *     result → rejected (duplicate protection), so a success can never be
+ *     farmed or replayed.
  *  3. When the structured answer is present, the tool's descriptor recomputes
  *     the outcome against the ORIGINAL instance data; a wrong claim is
  *     overridden. An answer that does not fit the instance → rejected.
@@ -27,9 +31,18 @@ import type { ToolDataView } from './tools/types.js';
 
 export type ResultVerification = 'server_verified' | 'client_reported' | 'rejected';
 
+/**
+ * Retry budget per block instance. A wrong answer never freezes the block —
+ * the learner may try again — but the budget keeps the duplicate protection
+ * meaningful and matches the hint-first pedagogy (after the last attempt the
+ * tutor explains fully instead of letting the learner grind).
+ */
+export const MAX_ATTEMPTS_PER_INSTANCE = 3;
+
 export type ResultRejectReason =
   | 'no_open_block' // no unanswered block of this type was ever offered here
-  | 'duplicate' // that instance already has a result (one attempt only)
+  | 'duplicate' // that instance was already completed (correct/explored)
+  | 'attempt_limit' // the per-instance retry budget is spent
   | 'version_mismatch' // instance predates a tool version bump
   | 'unknown_tool' // type not in the registry / tool switched off
   | 'invalid_answer'; // answer supplied but does not fit the instance
@@ -56,8 +69,10 @@ export interface LearningSignal {
   /** Present only when the server overrode a wrong client claim. */
   claimedOutcome?: string;
   rejectReason?: ResultRejectReason;
-  /** v1 blocks allow exactly one attempt; stored for future multi-attempt tools. */
+  /** Which accepted attempt on this instance this is (1 = first try). */
   attempt: number;
+  /** True when a correct outcome followed earlier wrong attempts on this instance. */
+  recovered?: boolean;
   /** The micro-skill this block evidenced (from the client context), when known. */
   skillId?: string;
   /** The representation the learner worked in (from the client context). */
@@ -70,25 +85,42 @@ export interface AssessedResult {
   /** What may continue to the LLM and persistence — null when rejected. */
   result: InteractiveResult | null;
   signal: LearningSignal;
+  /**
+   * True when this instance can accept no further attempt (completed, budget
+   * spent, or unmatchable) — the client uses it to freeze the block. False
+   * means "still open: the learner may retry".
+   */
+  closed: boolean;
 }
 
-/** Newest unanswered payload of the result's type in this thread, if any. */
+/** An outcome that completes an instance — no retry after these. */
+function completes(outcome: string | undefined): boolean {
+  return outcome === 'correct' || outcome === 'explored';
+}
+
+/**
+ * Newest payload of the result's type in this thread with its attempt state.
+ * Accepted results after that instance count as prior attempts: a completing
+ * one (correct/explored) closes the instance; MAX_ATTEMPTS_PER_INSTANCE
+ * accepted attempts exhaust its retry budget. Rejected submissions are never
+ * persisted as interactiveResult, so they can not consume the budget.
+ */
 function findOpenInstance(
   messages: TutorMessageRow[],
   blockType: string,
-): { payload: InteractivePayload } | { reject: 'no_open_block' | 'duplicate' } {
+): { payload: InteractivePayload; attempt: number } | { reject: 'no_open_block' | 'duplicate' | 'attempt_limit' } {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]!;
     const payload = m.context?.interactivePayload as InteractivePayload | undefined;
     if (m.role !== 'tutor' || payload?.type !== blockType) continue;
-    const answered = messages
+    const prior = messages
       .slice(i + 1)
-      .some(
-        (later) =>
-          later.role === 'student' &&
-          (later.context?.interactiveResult as InteractiveResult | undefined)?.blockType === blockType,
-      );
-    return answered ? { reject: 'duplicate' } : { payload };
+      .filter((later) => later.role === 'student')
+      .map((later) => later.context?.interactiveResult as InteractiveResult | undefined)
+      .filter((r): r is InteractiveResult => r?.blockType === blockType);
+    if (prior.some((r) => completes(r.correctnessOrOutcome))) return { reject: 'duplicate' };
+    if (prior.length >= MAX_ATTEMPTS_PER_INSTANCE) return { reject: 'attempt_limit' };
+    return { payload, attempt: prior.length + 1 };
   }
   return { reject: 'no_open_block' };
 }
@@ -123,7 +155,9 @@ export function assessInteractiveResult(
   };
   const reject = (reason: ResultRejectReason): AssessedResult => {
     signal.rejectReason = reason;
-    return { result: null, signal };
+    // invalid_answer leaves the instance open (an honest client may retry);
+    // every other rejection means no further attempt can ever land.
+    return { result: null, signal, closed: reason !== 'invalid_answer' };
   };
 
   if (!tool || !tool.available) return reject('unknown_tool');
@@ -133,6 +167,14 @@ export function assessInteractiveResult(
   // An instance from before a tool version bump can no longer be interpreted
   // under current semantics — same rule the offer path applies.
   if (match.payload.version !== tool.version) return reject('version_mismatch');
+  signal.attempt = match.attempt;
+
+  /** Accepted: the instance closes on completion or when the budget is spent. */
+  const accept = (result: InteractiveResult): AssessedResult => ({
+    result,
+    signal,
+    closed: completes(signal.outcome ?? undefined) || match.attempt >= MAX_ATTEMPTS_PER_INSTANCE,
+  });
 
   const verdict = tool.verifyResult(
     match.payload.data as unknown as ToolDataView,
@@ -145,12 +187,16 @@ export function assessInteractiveResult(
     // flows through) but the signal records that nothing was verified.
     signal.verification = 'client_reported';
     signal.outcome = submitted.correctnessOrOutcome;
-    return { result: submitted, signal };
+    if (signal.outcome === 'correct' && match.attempt > 1) signal.recovered = true;
+    return accept(submitted);
   }
 
   // Deterministic verification ran — the server's outcome is the outcome.
   signal.verification = 'server_verified';
   signal.outcome = verdict;
+  // A correct answer after earlier wrong attempts on this instance is
+  // recovery — a stronger learning signal than unaided success is a weaker one.
+  if (verdict === 'correct' && match.attempt > 1) signal.recovered = true;
   // Diagnose a verified miss so the readiness signal (and any evidence row the
   // route writes from it) carries a specific error pattern, not just "wrong".
   if ((verdict === 'incorrect' || verdict === 'partially_correct') && tool.diagnoseError) {
@@ -159,7 +205,7 @@ export function assessInteractiveResult(
   }
   if (submitted.correctnessOrOutcome !== verdict) {
     signal.claimedOutcome = submitted.correctnessOrOutcome;
-    return { result: { ...submitted, correctnessOrOutcome: verdict }, signal };
+    return accept({ ...submitted, correctnessOrOutcome: verdict });
   }
-  return { result: submitted, signal };
+  return accept(submitted);
 }

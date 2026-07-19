@@ -6,13 +6,13 @@ import '../../core/api_client.dart';
 import '../../core/palette.dart';
 import '../../core/session.dart';
 import '../../languageswitchertile.dart';
-import '../context/context_sheet.dart';
+import '../context/interests_sheet.dart';
 import '../learn/journey_logic.dart';
 import '../learn/learn_catalog.dart';
 import '../learn/learn_progress_store.dart';
 
-/// "أنا" — the middle-school Me tab: identity, real learning stats, the
-/// context lens, and the merged settings/about entries. Profile + Settings +
+/// "أنا" — the middle-school Me tab: identity, real learning stats,
+/// interests, and the merged settings/about entries. Profile + Settings +
 /// About collapsed into one calm screen; no elementary games surface here.
 class MeScreen extends StatefulWidget {
   const MeScreen({super.key});
@@ -56,16 +56,23 @@ class _MeScreenState extends State<MeScreen> {
     final store = await LearnProgressStore.load();
     final completed = store.completed;
     var pathsDone = 0, pathsTotal = 0;
+    // Only real experiences count as "experiences completed" — checkpoint
+    // completions and legacy/stale keys share the same store but are not
+    // experiences the student finished.
+    final experienceKeys = <String>{};
     for (final c in catalogs) {
       for (final p in c.paths) {
         pathsTotal++;
         final (done, ready) = pathProgress(p, completed);
         if (ready > 0 && done == ready) pathsDone++;
+        for (final e in p.experiences) {
+          experienceKeys.add('${p.id}/${e.id}');
+        }
       }
     }
     if (mounted) {
       setState(() {
-        _experiencesDone = completed.length;
+        _experiencesDone = completed.where(experienceKeys.contains).length;
         _pathsDone = pathsDone;
         _pathsTotal = pathsTotal;
       });
@@ -94,6 +101,7 @@ class _MeScreenState extends State<MeScreen> {
         6 => l.translate('grade_6'),
         7 => l.translate('grade_7'),
         8 => l.translate('grade_8'),
+        9 => l.translate('grade_9'),
         _ => '${l.translate('profile_grade')} $grade',
       };
 
@@ -102,7 +110,6 @@ class _MeScreenState extends State<MeScreen> {
     final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final name = Session.instance.name;
-    final lens = Session.instance.learningContext;
 
     return Scaffold(
       body: SafeArea(
@@ -183,17 +190,16 @@ class _MeScreenState extends State<MeScreen> {
             const SizedBox(height: 14),
             Card(
               child: ListTile(
-                leading: Text(contextEmoji(lens), style: const TextStyle(fontSize: 22)),
+                leading: Icon(Icons.favorite_rounded, color: cs.primary),
                 title: Text(
-                  l.translate('ctx_chip_label'),
+                  l.translate('int_chip_label'),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: Text(
-                  lens == null ? l.translate('ctx_none') : l.translate('ctx_$lens'),
-                ),
+                subtitle: Text(interestsSummary(l, Session.instance.interests,
+                    pending: Session.instance.interestsSyncPending)),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () async {
-                  if (await showContextSheet(context) && mounted) setState(() {});
+                  if (await showInterestsSheet(context) && mounted) setState(() {});
                 },
               ),
             ),

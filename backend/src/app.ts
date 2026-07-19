@@ -21,7 +21,10 @@ import type { Store } from './store/types.js';
 export const VERSION = '4.0.0';
 const startedAt = Date.now();
 
-export async function buildApp(deps: { store: Store; provider: ContentProvider }): Promise<FastifyInstance> {
+export async function buildApp(deps: {
+  store: Store;
+  provider: ContentProvider;
+}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',

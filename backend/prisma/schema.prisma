@@ -20,12 +20,19 @@ model Student {
   language            String    @default("en")
   color               String    @default("#58CC02")
   interest            String? // elementary game archetype (primary stage)
-  learningContext     String? // middle-school context lens (grades 7-9)
+  learningContext     String? // middle-school context lens — legacy, fallback only
+  interests           String[]  @default([]) // onboarding interests (1-2, both stages) — primary AI-flavor signal
   dailyGoal           Int       @default(3)
   xp                  Int       @default(0)
   streakCount         Int       @default(0)
   streakLastPlayedAt  DateTime?
   tokenHash           String    @unique
+  // Client-generated, persisted per device install — the idempotency key for
+  // POST /students. Nullable: older rows (and any caller that doesn't send
+  // one) never populate it, and Postgres unique indexes allow any number of
+  // NULLs. A retry with a matching id reissues a token for the SAME row
+  // instead of creating a duplicate account (see routes/students.ts).
+  installationId      String?   @unique
   createdAt           DateTime  @default(now())
   games               Game[]
   xpEvents            XpEvent[]

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
 import '../../app_localizations.dart';
@@ -64,8 +65,16 @@ class TimelineCore extends StatefulWidget {
 class TimelineCoreState extends State<TimelineCore> {
   final List<String> _picked = [];
 
+  /// The last order actually checked — a re-check requires a DIFFERENT
+  /// arrangement, never a same-answer resubmission (matches number_line's
+  /// "_moved" rule and order_sequence's edit rule).
+  List<String>? _lastChecked;
+
   bool get _active =>
       widget.enabled && !widget.checking && widget.outcome != InteractiveOutcome.correct;
+
+  bool get _changedSinceCheck =>
+      _lastChecked == null || !listEquals(_picked, _lastChecked);
 
   InteractiveItem _item(String id) => widget.items.firstWhere((i) => i.id == id);
 
@@ -110,8 +119,11 @@ class TimelineCoreState extends State<TimelineCore> {
         SizedBox(
           width: double.infinity,
           child: FilledButton.tonal(
-            onPressed: _active && _picked.length == widget.items.length
-                ? () => widget.onCheck(List<String>.of(_picked))
+            onPressed: _active && _picked.length == widget.items.length && _changedSinceCheck
+                ? () {
+                    _lastChecked = List<String>.of(_picked);
+                    widget.onCheck(List<String>.of(_picked));
+                  }
                 : null,
             child: widget.checking
                 ? const SizedBox(

@@ -13,13 +13,20 @@ import { moderate } from '../llm/moderation.js';
 import { metrics } from '../pipeline/metrics.js';
 import type { ContentProvider } from '../pipeline/provider.js';
 import { AskTutorBody } from '../schemas.js';
-import { validateInteractivePayload } from '../tutor/contract.js';
+import { STUDY_MODES, validateInteractivePayload } from '../tutor/contract.js';
 import { assessInteractiveResult } from '../tutor/result.js';
 import { TOOL_REGISTRY, eligibleTools, subjectFromLabel } from '../tutor/tools/registry.js';
 import type { Store } from '../store/types.js';
 
 /** How many prior turns ride along as conversation memory. */
 const HISTORY_TURNS = 12;
+
+/**
+ * Study programs need the collected inputs (exam date, time budget…) to stay
+ * in the model's window across the whole program — a wider slice for mode
+ * turns is the cost-bounded interim until real server-side program state.
+ */
+const HISTORY_TURNS_MODE = 24;
 
 /**
  * How far back the result-integrity gate looks for the offered block
@@ -34,6 +41,16 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
 
   // simple per-student rate limit, same in-process pattern as game generation
   const messageTimestamps = new Map<string, number[]>();
+  // Lazy sweep so entries for students who never return don't accumulate
+  // forever (the map previously only shrank when the same student posted).
+  let sweepCountdown = 500;
+  function sweepStale(now: number) {
+    if (--sweepCountdown > 0) return;
+    sweepCountdown = 500;
+    for (const [id, ts] of messageTimestamps) {
+      if (ts.length === 0 || now - ts[ts.length - 1]! > 3_600_000) messageTimestamps.delete(id);
+    }
+  }
 
   app.post('/api/v1/tutor/messages', { preHandler: auth }, async (req, reply) => {
     const parsed = AskTutorBody.safeParse(req.body);
@@ -46,6 +63,7 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
     const body = parsed.data;
 
     const now = Date.now();
+    sweepStale(now);
     const stamps = (messageTimestamps.get(student.id) ?? []).filter((t) => now - t < 3_600_000);
     if (stamps.length >= config.maxTutorMessagesPerHour) {
       return reply.code(429).send({
@@ -67,10 +85,12 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
     const recentMessages = body.conversationId
       ? await store.listTutorMessages(student.id, conversationId, RESULT_WINDOW)
       : [];
-    const history = recentMessages.slice(-HISTORY_TURNS).map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const history = recentMessages
+      .slice(-(body.context?.mode ? HISTORY_TURNS_MODE : HISTORY_TURNS))
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
     // Interaction Result Integrity (tutor/result.ts): a submitted result must
     // match a real, still-open block instance in THIS thread; when the
@@ -80,6 +100,9 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
     // and every submission leaves one structured learning signal.
     let interactiveResult = body.interactiveResult ?? null;
     let learningSignal = null;
+    // Whether this block instance can accept another attempt (drives the
+    // client's freeze/retry state; echoed in the response assessment).
+    let interactiveClosed = true;
     if (body.interactiveResult) {
       const assessed = assessInteractiveResult(body.interactiveResult, recentMessages, {
         subjectLabel: body.context?.subject,
@@ -88,6 +111,7 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
       });
       interactiveResult = assessed.result;
       learningSignal = assessed.signal;
+      interactiveClosed = assessed.closed;
       if (!assessed.result) {
         req.log.warn(
           { type: body.interactiveResult.blockType, reason: assessed.signal.rejectReason },
@@ -136,6 +160,8 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
           language: student.language,
           interest: student.interest,
           learningContext: student.learningContext,
+          interests: student.interests,
+          gender: student.gender,
         },
         question: body.question,
         context: body.context ?? null,
@@ -258,7 +284,7 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
             verification: 'server_verified',
             attempt: learningSignal.attempt,
             hints: 0,
-            recovered: false,
+            recovered: learningSignal.recovered ?? false,
             errorPattern: learningSignal.errorPattern ?? null,
             toolId: learningSignal.tool,
             pathId: body.context?.pathId ?? null,
@@ -273,15 +299,48 @@ export async function tutorRoutes(app: FastifyInstance, opts: { store: Store; pr
       }
     }
 
-    return reply.code(201).send({ conversationId, reply: result.data, model: result.model });
+    // When a result rode this message, echo the server's verdict so the
+    // client can freeze a completed block or keep it open for a retry. Never
+    // more than the signal already persisted — no instance data leaks here.
+    const assessment = body.interactiveResult && learningSignal
+      ? {
+          verification: learningSignal.verification,
+          outcome: learningSignal.outcome,
+          attempt: learningSignal.attempt,
+          recovered: learningSignal.recovered ?? false,
+          closed: interactiveClosed,
+          ...(learningSignal.rejectReason ? { rejectReason: learningSignal.rejectReason } : {}),
+        }
+      : null;
+
+    return reply.code(201).send({
+      conversationId,
+      reply: result.data,
+      model: result.model,
+      ...(assessment ? { assessment } : {}),
+    });
   });
 
   // Conversation history — lets the client restore a thread after a reload.
   app.get('/api/v1/tutor/conversations/:id', { preHandler: auth }, async (req) => {
     const { id } = req.params as { id: string };
     const messages = await store.listTutorMessages(req.student!.id, id, 100);
+    // The active study program: the last student turn's context.mode,
+    // echoed ONLY when it is a known stable id (never arbitrary stored
+    // strings) — lets a restored thread resume its program.
+    let mode: string | null = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i]!;
+      if (m.role !== 'student') continue;
+      const stored = m.context?.mode;
+      if (typeof stored === 'string' && (STUDY_MODES as readonly string[]).includes(stored)) {
+        mode = stored;
+      }
+      break; // only the newest student turn decides
+    }
     return {
       conversationId: id,
+      mode,
       messages: messages.map((m) => ({
         id: m.id,
         role: m.role,

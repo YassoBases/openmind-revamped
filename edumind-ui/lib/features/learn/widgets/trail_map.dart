@@ -63,7 +63,7 @@ class TrailMap extends StatelessWidget {
                 ),
               ),
               for (var i = 0; i < n; i++) ..._station(
-                context, l, cs, path.experiences[i], states[i], centers[i]),
+                context, l, cs, path.experiences[i], states[i], centers[i], w),
             ],
           ),
         );
@@ -78,10 +78,17 @@ class TrailMap extends StatelessWidget {
     LearnExperience e,
     JourneyNodeState state,
     Offset c,
+    double w,
   ) {
     final openable =
         state == JourneyNodeState.completed || state == JourneyNodeState.current;
     final current = state == JourneyNodeState.current;
+
+    // Label width adapts to the available width and its position clamps
+    // inside the map, so wave stations near an edge never clip on ~320px
+    // phones (the fixed 132px used to overflow at fractions 0.2/0.8).
+    final labelW = _labelW.clamp(0.0, w * 0.42);
+    final labelLeft = (c.dx - labelW / 2).clamp(4.0, (w - labelW - 4).clamp(4.0, w));
 
     final circle = switch (state) {
       JourneyNodeState.completed => Container(
@@ -179,9 +186,9 @@ class TrailMap extends StatelessWidget {
         ),
       ),
       Positioned(
-        left: c.dx - _labelW / 2,
+        left: labelLeft,
         top: c.dy + _node / 2 + 6,
-        width: _labelW,
+        width: labelW,
         child: GestureDetector(
           onTap: openable ? () => onOpen(e) : null,
           child: Column(

@@ -90,8 +90,11 @@ class _PathScreenState extends State<PathScreen> {
     await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            ExperienceScreen(path: widget.path, experience: experience),
+        builder: (_) => ExperienceScreen(
+          path: widget.path,
+          experience: experience,
+          subject: _catalog?.subject,
+        ),
       ),
     );
     if (mounted) await _load();
@@ -100,14 +103,24 @@ class _PathScreenState extends State<PathScreen> {
   Future<void> _openCheckpoint(LearnCheckpoint checkpoint) async {
     final catalog = _catalog;
     if (catalog == null) return;
+    final l = AppLocalizations.of(context)!;
     // Assembled fresh from the learner's current readiness — drills for weak
-    // skills, revisits for developing ones (see checkpoint_logic).
+    // skills, revisits for developing ones (see checkpoint_logic). The
+    // scaffolding wording follows the app language.
     final synthetic = buildCheckpointExperience(
       checkpoint,
       catalog,
       widget.path,
       _readiness,
       seed: DateTime.now().millisecondsSinceEpoch & 0x7fffffff,
+      strings: (
+        title: l.translate('checkpoint_title'),
+        subtitle: l.translate('checkpoint_sub_short'),
+        sceneBody: l.translate('cp_scene_body'),
+        drillBody: l.translate('cp_drill_body'),
+        drillSuccess: l.translate('cp_drill_success'),
+        checkTitle: l.translate('cp_check_title'),
+      ),
     );
     await Navigator.push<bool>(
       context,
@@ -116,6 +129,7 @@ class _PathScreenState extends State<PathScreen> {
           path: widget.path,
           experience: synthetic,
           isCheckpoint: true,
+          subject: catalog.subject,
         ),
       ),
     );

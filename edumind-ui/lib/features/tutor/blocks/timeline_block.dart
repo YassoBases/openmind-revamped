@@ -19,6 +19,9 @@ class TimelineBlock extends StatefulWidget {
     required this.enabled,
     required this.answered,
     required this.onResult,
+    this.resetEpoch = 0,
+    this.acked = true,
+    this.priorAttempts = 0,
   });
 
   final InteractivePayload payload;
@@ -29,12 +32,26 @@ class TimelineBlock extends StatefulWidget {
 
   final TutorBlockResultCallback onResult;
 
+  /// See tutor_block_registry: failed-submit reset / server ack / attempts.
+  final int resetEpoch;
+  final bool acked;
+  final int priorAttempts;
+
   @override
   State<TimelineBlock> createState() => _TimelineBlockState();
 }
 
 class _TimelineBlockState extends State<TimelineBlock> {
   InteractiveOutcome? _outcome;
+
+  @override
+  void didUpdateWidget(covariant TimelineBlock old) {
+    super.didUpdateWidget(old);
+    // Failed submit: clear the local verdict (the core keeps the built order).
+    if (widget.resetEpoch != old.resetEpoch) {
+      setState(() => _outcome = null);
+    }
+  }
 
   void _check(List<String> order) {
     final l = AppLocalizations.of(context)!;
@@ -76,7 +93,11 @@ class _TimelineBlockState extends State<TimelineBlock> {
       title: p.title,
       instructions: p.instructions,
       outcome: _outcome,
-      sent: _outcome != null,
+      sent: _outcome != null && widget.acked,
+      // Retry = clear the banner; the core's own must-change guard still
+      // requires a different order before the next check.
+      onRetry: widget.enabled && _outcome != null ? () => setState(() => _outcome = null) : null,
+      priorAttempts: widget.priorAttempts,
       child: TimelineCore(
         items: p.items,
         correctOrder: p.correctOrder,

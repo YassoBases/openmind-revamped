@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'app_localizations.dart';
 import 'core/session.dart';
 import 'data/game_store.dart';
+import 'features/context/interests_sheet.dart';
 import 'widgets/mascot.dart';
 
 /// The student profile — real data only: nickname, grade, language, and live
@@ -64,6 +65,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ]),
                 ),
               ]),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.favorite_rounded, color: cs.primary),
+              title: Text(
+                l.translate('int_chip_label'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(interestsSummary(l, Session.instance.interests,
+                  pending: Session.instance.interestsSyncPending)),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () async {
+                if (await showInterestsSheet(context) && mounted) setState(() {});
+              },
             ),
           ),
           const SizedBox(height: 16),

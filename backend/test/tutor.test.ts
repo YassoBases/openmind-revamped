@@ -469,6 +469,144 @@ describe('tutor', () => {
       });
     });
 
+    it('allows a retry after a wrong answer and records the success as recovery', async () => {
+      const conversationId = await openOrderBlock();
+      const wrong = await ri({
+        question: 'رتبت المراحل',
+        conversationId,
+        interactiveResult: {
+          blockType: 'order_sequence',
+          attempted: true,
+          answerOrState: 'رتبت ترتيبًا معكوسًا',
+          correctnessOrOutcome: 'incorrect',
+          answer: { order: ['flow', 'evap', 'cond', 'rain'] },
+        },
+      });
+      expect(wrong.statusCode).toBe(201);
+      // The block is NOT frozen: the server invites another attempt.
+      expect(wrong.json().assessment).toMatchObject({
+        verification: 'server_verified',
+        outcome: 'incorrect',
+        attempt: 1,
+        recovered: false,
+        closed: false,
+      });
+
+      const retry = await ri({
+        question: 'أعدت الترتيب',
+        conversationId,
+        interactiveResult: {
+          blockType: 'order_sequence',
+          attempted: true,
+          answerOrState: 'رتبت: تبخر → تكاثف → هطول → جريان',
+          correctnessOrOutcome: 'correct',
+          answer: { order: CORRECT },
+        },
+      });
+      expect(retry.statusCode).toBe(201);
+      expect(retry.json().reply.responseType).toBe('encouragement');
+      // Second accepted attempt on the same instance, verified and closed.
+      expect(retry.json().assessment).toMatchObject({
+        verification: 'server_verified',
+        outcome: 'correct',
+        attempt: 2,
+        recovered: true,
+        closed: true,
+      });
+      expect(await signalOf(conversationId)).toMatchObject({
+        outcome: 'correct',
+        verification: 'server_verified',
+        attempt: 2,
+        recovered: true,
+      });
+
+      // Both attempts are preserved on the thread — the mistake is history,
+      // not something overwritten.
+      const hist = await app.inject({
+        method: 'GET',
+        url: `/api/v1/tutor/conversations/${conversationId}`,
+        headers: { authorization: `Bearer ${riToken}` },
+      });
+      const results = hist.json().messages.filter(
+        (m: { interactiveResult: unknown }) => m.interactiveResult != null,
+      );
+      expect(results).toHaveLength(2);
+      expect(results[0].interactiveResult.correctnessOrOutcome).toBe('incorrect');
+      expect(results[1].interactiveResult.correctnessOrOutcome).toBe('correct');
+    });
+
+    it('a recovered block result writes a recovered evidence row', async () => {
+      const first = await ri({ question: 'رتب لي مراحل دورة الماء' });
+      const conversationId = first.json().conversationId as string;
+      const submit = (order: string[], claim: string) =>
+        ri({
+          question: 'رتبت',
+          conversationId,
+          context: { source: 'experience', skills: ['sci.water_cycle_order'] },
+          interactiveResult: {
+            blockType: 'order_sequence',
+            attempted: true,
+            answerOrState: 'رتبت المراحل',
+            correctnessOrOutcome: claim,
+            answer: { order },
+          },
+        });
+      await submit(['flow', 'evap', 'cond', 'rain'], 'incorrect');
+      await submit(CORRECT, 'correct');
+
+      const log = await app.inject({
+        method: 'GET',
+        url: '/api/v1/learn/evidence',
+        headers: { authorization: `Bearer ${riToken}` },
+      });
+      const rows = log
+        .json()
+        .items.filter((r: { skillId?: string }) => r.skillId === 'sci.water_cycle_order');
+      // One row per accepted attempt: the miss, then the recovery.
+      expect(rows.some((r: { outcome: string; recovered: boolean }) => r.outcome === 'incorrect' && !r.recovered)).toBe(true);
+      expect(
+        rows.some(
+          (r: { outcome: string; recovered: boolean; attempt: number }) =>
+            r.outcome === 'correct' && r.recovered && r.attempt === 2,
+        ),
+      ).toBe(true);
+    });
+
+    it('exhausts the retry budget and rejects the extra attempt', async () => {
+      const conversationId = await openOrderBlock();
+      const wrong = () =>
+        ri({
+          question: 'رتبت',
+          conversationId,
+          interactiveResult: {
+            blockType: 'order_sequence',
+            attempted: true,
+            answerOrState: 'رتبت ترتيبًا معكوسًا',
+            correctnessOrOutcome: 'incorrect',
+            answer: { order: ['flow', 'evap', 'cond', 'rain'] },
+          },
+        });
+      const a1 = await wrong();
+      expect(a1.json().assessment).toMatchObject({ attempt: 1, closed: false });
+      const a2 = await wrong();
+      expect(a2.json().assessment).toMatchObject({ attempt: 2, closed: false });
+      const a3 = await wrong();
+      // The final allowed attempt closes the instance.
+      expect(a3.json().assessment).toMatchObject({ attempt: 3, closed: true });
+
+      const a4 = await wrong();
+      expect(a4.statusCode).toBe(201); // the conversation never breaks
+      expect(a4.json().assessment).toMatchObject({
+        verification: 'rejected',
+        rejectReason: 'attempt_limit',
+        closed: true,
+      });
+      expect(await signalOf(conversationId)).toMatchObject({
+        verification: 'rejected',
+        rejectReason: 'attempt_limit',
+      });
+    });
+
     it('blocks a duplicate submission for an already-answered instance', async () => {
       const conversationId = await openOrderBlock();
       const submit = () =>

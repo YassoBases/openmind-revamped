@@ -229,7 +229,7 @@ live:
 | --- | --- |
 | `ANTHROPIC_API_KEY` | live generation — `claude-haiku-4-5` default, `claude-sonnet-4-6` escalation |
 | `OPENAI_API_KEY` | content moderation (omni-moderation-latest); skipped with a warning if unset |
-| `DATABASE_URL` / `DIRECT_URL` | Postgres 16 (Neon: pooled + direct URLs; local: `docker compose up -d`) then `npm run prisma:migrate` |
+| `DATABASE_URL` / `DIRECT_URL` | Postgres 16 (Neon: pooled + direct URLs; local: `docker compose up -d`) then `npm run prisma:migrate` (fresh DB) — see [`backend/prisma/MIGRATIONS.md`](backend/prisma/MIGRATIONS.md) before running against an existing/production database |
 | `IMAGE_PROVIDER_API_KEY` + `IMAGE_PROVIDER_URL` | Tier-2 AI thumbnails (Flux Schnell); otherwise programmatic SVG thumbnails |
 
 - **API docs:** Swagger UI at `http://localhost:8080/api/docs` (OpenAPI 3.1

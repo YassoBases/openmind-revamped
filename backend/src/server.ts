@@ -17,6 +17,22 @@ async function main() {
     bootLog.info(`[llm] live: ${config.modelDefault} (escalation: ${config.modelEscalation}, cache ttl: ${config.promptCacheTtl})`);
   }
 
+  // A live model serving minors REQUIRES a working moderation provider.
+  // MODERATION_DISABLED=1 is the explicit dev-only escape hatch; every
+  // skipped request still bumps the moderation_skipped metric.
+  const liveModel = !config.mockLlm && !!config.anthropicApiKey;
+  if (liveModel && !config.moderationApiKey) {
+    if (config.moderationDisabled) {
+      bootLog.warn('[moderation] MODERATION_DISABLED=1 — live model WITHOUT moderation (development only; never ship this)');
+    } else {
+      console.error(
+        '[moderation] refusing to start: a live model is configured but no moderation provider is.\n' +
+        `  Set MODERATION_API_KEY (provider: ${config.moderationProvider}), or set MODERATION_DISABLED=1 for local development only.`,
+      );
+      process.exit(1);
+    }
+  }
+
   const store = await createStore(bootLog);
   ensureShellData(bootLog);
 
