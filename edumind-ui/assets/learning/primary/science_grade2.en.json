@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "science",
+  "subjectTitle": "Science",
+  "grade": 2,
+  "language": "en",
+  "lessons": [
+    { "id": "g2_sci_life_cycles", "title": "Life Cycles", "focusConcepts": ["butterfly life cycle", "plant life cycle"] },
+    { "id": "g2_sci_food", "title": "Healthy Food", "focusConcepts": ["food groups", "a balanced meal"] },
+    { "id": "g2_sci_matter", "title": "States of Matter", "focusConcepts": ["solid", "liquid", "gas"] },
+    { "id": "g2_sci_water_cycle", "title": "The Water's Journey", "focusConcepts": ["evaporation", "condensation", "rain"] },
+    { "id": "g2_sci_animal_homes", "title": "Animal Homes and Food", "focusConcepts": ["where animals live", "what animals eat"] },
+    { "id": "g2_sci_earth_sky", "title": "Earth and Sky", "focusConcepts": ["the sun is a star", "moon and stars"] },
+    { "id": "g2_sci_weather", "title": "The Weather", "focusConcepts": ["weather types", "simple weather measuring"] },
+    { "id": "g2_sci_safety", "title": "Safety at Home and School", "focusConcepts": ["safety rules", "safe and dangerous tools"] }
+  ]
+}

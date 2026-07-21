@@ -36,6 +36,7 @@ export interface Config {
   escalateArabic: boolean;
   corsOrigins: string | boolean;
   maxGenerationsPerHour: number;
+  maxWorldsPerHour: number;
   maxTutorMessagesPerHour: number;
   /** Stateless tool-verify calls (lesson-experience grading) — cheap, no LLM, so a per-minute budget fits better than per-hour. */
   maxToolVerifyPerMinute: number;
@@ -81,6 +82,7 @@ export function loadConfig(env = process.env): Config {
     escalateArabic: bool(env.ESCALATE_ARABIC, false),
     corsOrigins: env.CORS_ORIGINS ? env.CORS_ORIGINS : true, // permissive in dev
     maxGenerationsPerHour: Number(env.MAX_GENERATIONS_PER_HOUR) || 20,
+    maxWorldsPerHour: Number(env.MAX_WORLDS_PER_HOUR) || 6,
     maxTutorMessagesPerHour: Number(env.MAX_TUTOR_MESSAGES_PER_HOUR) || 60,
     maxToolVerifyPerMinute: Number(env.MAX_TOOL_VERIFY_PER_MINUTE) || 120,
   };

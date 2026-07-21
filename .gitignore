@@ -27,6 +27,14 @@ playwright-report/
 test-results/
 shells/test/__screenshots__/tmp/
 shells/tools/out/
+# ad-hoc local driver/diagnostic scripts (not product code)
+shells/tools/*.cjs
+shells/tools/check_*.mjs
+shells/tools/drive_*.mjs
+shells/tools/shot_*.mjs
+shells/tools/trace_*.mjs
+shells/tools/test_*.mjs
+shells/tools/verify_*.mjs
 flutter_module/tool/web_smoke.png
 flutter_module/tool/live_check.png
 flutter_module/tool/mascot_check.png

@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "science",
+  "subjectTitle": "Science",
+  "grade": 3,
+  "language": "en",
+  "lessons": [
+    { "id": "g3_sci_plant_parts", "title": "Plant Parts and Their Jobs", "focusConcepts": ["roots", "stem", "leaves", "flower"] },
+    { "id": "g3_sci_food_chains", "title": "Food Chains", "focusConcepts": ["producers and consumers", "a simple food chain"] },
+    { "id": "g3_sci_states_change", "title": "Matter Changes", "focusConcepts": ["melting", "freezing", "evaporation"] },
+    { "id": "g3_sci_forces", "title": "Push and Pull", "focusConcepts": ["simple forces", "motion"] },
+    { "id": "g3_sci_light_sound", "title": "Light and Sound", "focusConcepts": ["light sources", "how sound travels"] },
+    { "id": "g3_sci_habitats", "title": "Natural Habitats", "focusConcepts": ["desert", "forest", "sea"] },
+    { "id": "g3_sci_human_body", "title": "Body Systems", "focusConcepts": ["digestion", "heart and breathing"] },
+    { "id": "g3_sci_environment", "title": "Protecting Our Environment", "focusConcepts": ["waste and recycling", "saving water"] }
+  ]
+}

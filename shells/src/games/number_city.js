@@ -59,25 +59,45 @@
     },
   };
 
-  // Beat chips (canonical UI copy — NOT wrapper content).
+  // Beat chips — build-site moments (canonical UI copy, NOT wrapper content).
+  // My Town: the child is the town builder; every beat is a building step.
   const BEAT_CHIP = {
-    try: { en: 'TRY IT!', ar: 'جرّب!' },
-    practice: { en: 'PRACTICE', ar: 'تدرّب' },
-    checkpoint: { en: 'SHOW WHAT YOU KNOW!', ar: 'لنتأكد!' },
+    try: { en: 'LAY THE FIRST BRICK!', ar: 'ضع أول حجر!' },
+    practice: { en: 'BUILD!', ar: 'ابنِ!' },
+    checkpoint: { en: 'SHOW YOUR TOWN!', ar: 'أرِنا بلدتك!' },
   };
 
   const TUTORIAL = {
     en: {
-      intro: 'Welcome to Number City! In the Shapes District, you learn by touching.',
-      prompt: 'Tap the circle!',
-      done: 'That is how it works — look, then tap. Off we go!',
+      intro: 'Welcome to My Town! I am Hudhud the foreman — every answer you get right builds our town, brick by brick.',
+      prompt: 'Tap the circle to place it!',
+      done: 'That is how builders work — look at the plan, then place the piece. To the site!',
     },
     ar: {
-      intro: 'أهلًا بك في مدينة الأعداد! في حي الأشكال نتعلم باللمس.',
-      prompt: 'اضغط على الدائرة!',
-      done: 'هكذا نلعب — انظر ثم اضغط. هيا بنا!',
+      intro: 'أهلًا بك في بلدتي! أنا هدهد رئيس الورشة — كل إجابة صحيحة تبني بلدتنا حجرًا فوق حجر.',
+      prompt: 'اضغط على الدائرة لتضعها!',
+      done: 'هكذا يعمل البنّاؤون — انظر إلى المخطط ثم ضع القطعة. إلى الورشة!',
     },
   };
+
+  /** One little skyline building for the My Town strip (pure Graphics). */
+  function drawTownBuilding(g, kind, w, h, color, windowColor) {
+    g.fillStyle(color, 1);
+    if (kind === 'tower') {
+      g.fillRoundedRect(-w / 2, -h, w, h, 4);
+      g.fillTriangle(-w / 2, -h, 0, -h - 16, w / 2, -h);
+    } else if (kind === 'dome') {
+      g.fillRect(-w / 2, -h * 0.6, w, h * 0.6);
+      g.fillCircle(0, -h * 0.6, w / 2);
+    } else {
+      g.fillRoundedRect(-w / 2, -h, w, h, 4);
+    }
+    g.fillStyle(windowColor, 0.9);
+    for (let r = 0; r < Math.max(1, Math.floor(h / 26)); r++) {
+      g.fillRect(-w / 4 - 3, -h + 12 + r * 24, 8, 10);
+      g.fillRect(w / 4 - 5, -h + 12 + r * 24, 8, 10);
+    }
+  }
 
   /** Canonical shape from a (canonical, wrapper-independent) label. */
   function shapeFromLabel(label) {
@@ -187,6 +207,12 @@
         accent: EduCore.accentInt, scale: 0.52,
       });
       this.guide.setDepth(8);
+
+      // My Town: the skyline strip. Every completed item raises one more
+      // little building — the child WATCHES their town grow as they learn.
+      // Recovered answers build too (a stumble never un-builds a town).
+      this.townStrip = this.add.container(0, 0).setDepth(4);
+      this.townCount = 0;
 
       this.teachStyle = { panelColor: P.sand };
       this._plan = [];
@@ -361,7 +387,38 @@
       else if (item.kind === 'sequence') result = await this.playSequence(item, hintApi);
       else result = await this.playBuildComplete(item, hintApi);
       this.clearPlayArea();
+      // My Town: every finished piece of work raises a building on the
+      // skyline — recovered answers build too (learning happened either way).
+      if (result && result.completed) this.townGrow();
       return result;
+    }
+
+    /** One more building rises on the town strip, with a proud little pop. */
+    townGrow() {
+      const i = this.townCount++;
+      const slots = 9;
+      const slot = i % slots;
+      const x = 46 + slot * ((W - 92) / (slots - 1));
+      const y = 328; // the district's horizon line
+      const kinds = ['house', 'tower', 'dome'];
+      const palette = [P.teal, P.orange, P.deepGreen, P.brown];
+      const c = this.add.container(x, y + 40).setAlpha(0);
+      const g = this.add.graphics();
+      drawTownBuilding(
+        g,
+        kinds[i % kinds.length],
+        30 + (i % 3) * 8,
+        44 + (i % 4) * 14,
+        palette[i % palette.length],
+        P.cream,
+      );
+      c.add(g);
+      this.townStrip.add(c);
+      this.tweens.add({
+        targets: c, y, alpha: 0.85, duration: 460, ease: 'Back.easeOut',
+        onComplete: () => this.feel.sparkle(x, y - 40, 0xef9722, 5),
+      });
+      GameFeel.audio.pop();
     }
 
     clearPlayArea() {
@@ -950,7 +1007,7 @@
     }
   }
 
-  EduCore.boot(window.__EDUMIND_SPEC__, {
+  EduCore.register({
     gameType: 'number_city',
     createGameScene: () => NumberCityScene,
     buildMenuBackdrop(scene) {

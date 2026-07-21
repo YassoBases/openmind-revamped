@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "math",
+  "subjectTitle": "Math",
+  "grade": 1,
+  "language": "en",
+  "lessons": [
+    { "id": "g1_math_count_10", "title": "Numbers 1 to 10", "focusConcepts": ["counting to 10", "reading numbers", "ordering numbers"] },
+    { "id": "g1_math_count_20", "title": "Numbers up to 20", "focusConcepts": ["counting to 20", "first tens and ones"] },
+    { "id": "g1_math_compare", "title": "Bigger, Smaller, Equal", "focusConcepts": ["comparing numbers", "greater than", "less than"] },
+    { "id": "g1_math_add_10", "title": "Adding within 10", "focusConcepts": ["simple addition", "addition stories"] },
+    { "id": "g1_math_sub_10", "title": "Subtracting within 10", "focusConcepts": ["simple subtraction", "subtraction stories"] },
+    { "id": "g1_math_shapes", "title": "Shapes Around Us", "focusConcepts": ["circle", "square", "triangle", "rectangle"] },
+    { "id": "g1_math_patterns", "title": "Patterns and Sequences", "focusConcepts": ["completing patterns", "sequences"] },
+    { "id": "g1_math_measure", "title": "Longer, Shorter, Heavier", "focusConcepts": ["comparing lengths", "comparing weights"] }
+  ]
+}

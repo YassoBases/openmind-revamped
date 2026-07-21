@@ -23,17 +23,18 @@
   const P = EduCore.PALETTE;
 
   // Beat chips (canonical UI copy — NOT kit content).
+  // Beat chips — lab moments: the Wonder Lab frames every beat as science.
   const BEAT_CHIP = {
-    try: { en: 'TRY IT!', ar: 'جرّب!' },
-    practice: { en: 'PRACTICE', ar: 'تدرّب' },
-    checkpoint: { en: 'SHOW WHAT YOU KNOW!', ar: 'لنتأكد!' },
+    try: { en: 'FIRST EXPERIMENT!', ar: 'أول تجربة!' },
+    practice: { en: 'EXPERIMENT!', ar: 'جرّب في المختبر!' },
+    checkpoint: { en: 'SHOW YOUR DISCOVERY!', ar: 'أرِنا اكتشافك!' },
   };
 
   // Mechanic UI strings (canonical, minimal — the brief says few words).
   const UI = {
     check: { en: 'DOES IT FIT?', ar: 'هل يطابق؟' },
-    tryIt: { en: 'TRY IT!', ar: 'جرّب!' },
-    finish: { en: 'FINISH!', ar: 'انتهيت!' },
+    tryIt: { en: 'RUN IT!', ar: 'شغّلها!' },
+    finish: { en: 'INVENTED!', ar: 'اخترعتها!' },
     target: { en: 'Match this', ar: 'طابق هذا' },
     fixWith: { en: 'Fix it with…', ar: 'أصلحه بماذا؟' },
   };
@@ -41,14 +42,14 @@
 
   const TUTORIAL = {
     en: {
-      intro: 'Welcome to Wonder World! Here you learn with your hands — touch, turn, try.',
+      intro: 'Welcome to the Wonder Lab! I am Hudhud, your lab partner — here we discover by experimenting: touch, turn, run it, see what happens.',
       prompt: 'Turn the kite until it stands up!',
-      done: 'Beautiful! Look, try, discover. Off we go!',
+      done: 'A real scientist! Observe, experiment, discover. To the lab bench!',
     },
     ar: {
-      intro: 'أهلًا بك في عالم العجائب! هنا نتعلم بأيدينا — المس وجرّب.',
+      intro: 'أهلًا بك في مختبر العجائب! أنا هدهد رفيقك في المختبر — هنا نكتشف بالتجربة: المس وأدر وشغّل وانظر ماذا يحدث.',
       prompt: 'أدر الطائرة الورقية حتى تقف مستقيمة!',
-      done: 'رائع! انظر، جرّب، اكتشف. هيا بنا!',
+      done: 'عالم حقيقي! لاحظ، جرّب، اكتشف. إلى طاولة المختبر!',
     },
   };
 
@@ -898,7 +899,7 @@
     }
   }
 
-  EduCore.boot(window.__EDUMIND_SPEC__, {
+  EduCore.register({
     gameType: 'scene_play',
     createGameScene: () => ScenePlayScene,
     buildMenuBackdrop(scene) {

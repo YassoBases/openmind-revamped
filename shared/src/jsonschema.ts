@@ -9,6 +9,7 @@
  */
 import { z } from 'zod';
 import { ConnectContentSpecSchema, McqContentSpecSchema, ScenePlayContentSpecSchema } from './gamespec.js';
+import { WorldCreateContentSchema, stageContentSchemaFor } from './worldspec.js';
 import type { GameType } from './constants.js';
 
 /**
@@ -45,6 +46,16 @@ export function contentSpecJsonSchema(gameType: GameType): Record<string, unknow
   if (gameType === 'draw_connect') return toLeanJsonSchema(ConnectContentSpecSchema);
   if (gameType === 'scene_play') return toLeanJsonSchema(ScenePlayContentSpecSchema);
   return toLeanJsonSchema(McqContentSpecSchema);
+}
+
+/** Combined world-creation output: WorldPlan + stage-1 content (MCQ-shaped). */
+export function worldCreateJsonSchema(): Record<string, unknown> {
+  return toLeanJsonSchema(WorldCreateContentSchema);
+}
+
+/** Per-family stage-content schema for the per-stage generation call. */
+export function stageContentJsonSchema(gameType: GameType): Record<string, unknown> {
+  return toLeanJsonSchema(stageContentSchemaFor(gameType) as z.ZodType);
 }
 
 /** Schema for targeted item repair: the model returns replacement items only. */

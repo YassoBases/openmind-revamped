@@ -159,4 +159,55 @@ class Api {
     }
     throw ApiException(408, 'TIMEOUT', 'generation timed out');
   }
+
+  // ---- Lesson Worlds ------------------------------------------------------
+
+  /// One request: plan + playable stage-1 spec (or a clarifying question).
+  /// Longer timeout than plain posts — the combined plan+stage-1 LLM call is
+  /// the one wait a world ever shows, and weak links deserve the slack.
+  static Future<Map<String, dynamic>> createWorld(Map<String, dynamic> body) async =>
+      (await _decode(await http
+          .post(Uri.parse('$_base/api/v1/worlds'),
+              headers: _headers(withBody: true), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 75)))) as Map<String, dynamic>;
+
+  static Future<Map<String, dynamic>> listWorlds() async =>
+      (await get('/api/v1/worlds')) as Map<String, dynamic>;
+
+  /// World + per-stage map state (status, stars, plan info per stage).
+  static Future<Map<String, dynamic>> worldState(String id) async =>
+      (await get('/api/v1/worlds/$id')) as Map<String, dynamic>;
+
+  /// One attempt at a stage spec: the spec (200) or null while generating
+  /// (202 body `{status:'generating'}`). Fetching stage N also prefetches
+  /// stage N+1 server-side.
+  static Future<Map<String, dynamic>?> stageSpecOnce(String worldId, int index) async {
+    final body = (await get('/api/v1/worlds/$worldId/stages/$index/spec'))
+        as Map<String, dynamic>?;
+    if (body == null || body['status'] == 'generating') return null;
+    return body;
+  }
+
+  /// Idempotent generation kick (used by the building screen / failed stages).
+  static Future<Map<String, dynamic>> kickStage(String worldId, int index) async =>
+      (await post('/api/v1/worlds/$worldId/stages/$index/generate'))
+          as Map<String, dynamic>;
+
+  /// Polls the stage spec until ready (building-screen rhythm).
+  static Future<Map<String, dynamic>> waitForStageSpec(String worldId, int index,
+      {Duration interval = const Duration(seconds: 2), Duration timeout = const Duration(seconds: 90)}) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final spec = await stageSpecOnce(worldId, index);
+      if (spec != null) return spec;
+      await Future<void>.delayed(interval);
+    }
+    throw ApiException(408, 'TIMEOUT', 'stage generation timed out');
+  }
+
+  /// Records a stage run; returns stars + XP + streak + enriched feedback.
+  static Future<Map<String, dynamic>> postStageSession(
+          String worldId, int index, Map<String, dynamic> summary) async =>
+      (await post('/api/v1/worlds/$worldId/stages/$index/sessions',
+          {'summary': summary})) as Map<String, dynamic>;
 }

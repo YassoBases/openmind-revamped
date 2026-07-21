@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "math",
+  "subjectTitle": "الرياضيات",
+  "grade": 3,
+  "language": "ar",
+  "lessons": [
+    { "id": "g3_math_count_1000", "title": "الأعداد حتى ١٠٠٠", "focusConcepts": ["المئات والعشرات والآحاد", "القيمة المنزلية"] },
+    { "id": "g3_math_mult_tables", "title": "جداول الضرب", "focusConcepts": ["جداول الضرب حتى 10", "خصائص الضرب"] },
+    { "id": "g3_math_div_intro", "title": "مدخل إلى القسمة", "focusConcepts": ["القسمة كتوزيع", "علاقة القسمة بالضرب"] },
+    { "id": "g3_math_fractions", "title": "الكسور البسيطة", "focusConcepts": ["النصف", "الثلث", "الربع"] },
+    { "id": "g3_math_perimeter", "title": "المحيط", "focusConcepts": ["محيط المربع", "محيط المستطيل"] },
+    { "id": "g3_math_time_min", "title": "الساعة والدقائق", "focusConcepts": ["قراءة الدقائق", "حساب الزمن"] },
+    { "id": "g3_math_data", "title": "قراءة البيانات", "focusConcepts": ["الجداول", "الرسوم البيانية البسيطة"] },
+    { "id": "g3_math_word_problems", "title": "المسائل الكلامية", "focusConcepts": ["فهم المسألة", "اختيار العملية"] }
+  ]
+}

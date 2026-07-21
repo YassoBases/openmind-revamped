@@ -1,7 +1,7 @@
 /** Prisma-backed store (Postgres 16 / Neon). */
 import { randomUUID } from 'node:crypto';
-import type { GameSpec } from '@edumind/shared';
-import type { GameRow, GameStatus, LearnEvidenceInput, LearnEvidenceRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, XpEventRow } from './types.js';
+import type { GameSpec, WorldPlanContent } from '@edumind/shared';
+import type { GameRow, GameStatus, LearnEvidenceInput, LearnEvidenceRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, WorldRow, WorldStageRow, WorldStageStatus, WorldStatus, XpEventRow } from './types.js';
 
 // PrismaClient is loaded lazily so the backend can boot (memory mode) even if
 // `prisma generate` has never run.
@@ -32,6 +32,34 @@ export async function createPrismaStore(): Promise<Store> {
     lastPlayedAt: g.lastPlayedAt,
     createdAt: g.createdAt,
     deletedAt: g.deletedAt,
+  });
+
+  const toWorld = (w: AnyPrisma): WorldRow => ({
+    id: w.id,
+    studentId: w.studentId,
+    lessonId: w.lessonId,
+    subject: w.subject,
+    topic: w.topic,
+    language: w.language,
+    grade: w.grade,
+    status: w.status as WorldStatus,
+    error: w.error,
+    title: w.title,
+    plan: (w.plan as WorldPlanContent | null) ?? null,
+    createdAt: w.createdAt,
+    deletedAt: w.deletedAt,
+  });
+
+  const toWorldStage = (s: AnyPrisma): WorldStageRow => ({
+    worldId: s.worldId,
+    index: s.index,
+    status: s.status as WorldStageStatus,
+    error: s.error,
+    spec: (s.spec as GameSpec | null) ?? null,
+    stars: s.stars,
+    bestAccuracy: s.bestAccuracy,
+    completedAt: s.completedAt,
+    generatedAt: s.generatedAt,
   });
 
   const store: Store = {
@@ -86,6 +114,59 @@ export async function createPrismaStore(): Promise<Store> {
         prisma.game.count({ where }),
       ]);
       return { items: items.map(toGame), total };
+    },
+
+    async createWorld(data) {
+      return toWorld(await prisma.world.create({ data: { ...data, plan: data.plan ?? undefined } }));
+    },
+    async getWorld(id) {
+      const w = await prisma.world.findUnique({ where: { id } });
+      return w && !w.deletedAt ? toWorld(w) : null;
+    },
+    async updateWorld(id, patch) {
+      const data: AnyPrisma = { ...patch };
+      if ('plan' in data && data.plan === null) data.plan = undefined;
+      return toWorld(await prisma.world.update({ where: { id }, data }));
+    },
+    async listWorlds(studentId, opts) {
+      const where = { studentId, deletedAt: null };
+      const [items, total] = await Promise.all([
+        prisma.world.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          take: opts.limit,
+          skip: opts.offset,
+        }),
+        prisma.world.count({ where }),
+      ]);
+      return { items: items.map(toWorld), total };
+    },
+
+    async upsertWorldStage(data) {
+      const { worldId, index, ...rest } = data;
+      const clean: AnyPrisma = { ...rest };
+      if (clean.spec === null) clean.spec = undefined;
+      return toWorldStage(await prisma.worldStage.upsert({
+        where: { worldId_index: { worldId, index } },
+        update: clean,
+        create: { worldId, index, ...clean },
+      }));
+    },
+    async getWorldStage(worldId, index) {
+      const s = await prisma.worldStage.findUnique({ where: { worldId_index: { worldId, index } } });
+      return s ? toWorldStage(s) : null;
+    },
+    async updateWorldStage(worldId, index, patch) {
+      const data: AnyPrisma = { ...patch };
+      if ('spec' in data && data.spec === null) data.spec = undefined;
+      return toWorldStage(await prisma.worldStage.update({
+        where: { worldId_index: { worldId, index } },
+        data,
+      }));
+    },
+    async listWorldStages(worldId) {
+      const rows = await prisma.worldStage.findMany({ where: { worldId }, orderBy: { index: 'asc' } });
+      return rows.map(toWorldStage);
     },
 
     async createPlaySession(data) {

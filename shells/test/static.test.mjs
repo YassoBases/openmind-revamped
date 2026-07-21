@@ -31,26 +31,36 @@ const template = read(join(shellsDir, 'src', 'template.html'));
 const allOurCode = Object.values(libs).join('\n') + Object.values(games).join('\n');
 
 describe('built artifacts', () => {
-  it('every shell is built single-file HTML with the spec slot', () => {
+  it('the unified shell is built single-file HTML with the spec slot and every game module', () => {
+    const p = join(shellsDir, 'dist', 'edumind.html');
+    expect(existsSync(p), 'edumind.html missing — run build').toBe(true);
+    const html = read(p);
+    expect(html).toContain('/*__EDUMIND_SPEC_JSON__*/null');
+    expect(html.length).toBeGreaterThan(500_000); // phaser inlined
+    // every game module is inlined and registered
     for (const g of GAMES) {
-      const p = join(shellsDir, 'dist', `${g}.html`);
-      expect(existsSync(p), `${g}.html missing — run build`).toBe(true);
-      const html = read(p);
-      expect(html).toContain('/*__EDUMIND_SPEC_JSON__*/null');
-      expect(html.length).toBeGreaterThan(500_000); // phaser inlined
-      // no external resource loads in the document
-      expect(html).not.toMatch(/<script[^>]+src=/i);
-      expect(html).not.toMatch(/<link[^>]+href=/i);
-      expect(html).not.toMatch(/url\(\s*['"]?https?:/i);
+      expect(html, `${g} module missing from unified shell`).toContain(`/* ==== game module: ${g} ==== */`);
+      expect(html).toContain(`gameType: '${g}'`);
+    }
+    // the boot call runs after all registrations
+    expect(html).toContain('EduCore.bootFromRegistry(window.__EDUMIND_SPEC__)');
+    // no external resource loads in the document
+    expect(html).not.toMatch(/<script[^>]+src=/i);
+    expect(html).not.toMatch(/<link[^>]+href=/i);
+    expect(html).not.toMatch(/url\(\s*['"]?https?:/i);
+    // the pre-unified per-game artifacts are gone
+    for (const g of GAMES) {
+      expect(existsSync(join(shellsDir, 'dist', `${g}.html`)), `stale ${g}.html in dist`).toBe(false);
     }
   });
 
-  it('manifest carries a shellVersion hash per game', () => {
+  it('manifest carries the unified shellVersion hash and the game list', () => {
     const manifest = JSON.parse(read(join(shellsDir, 'dist', 'manifest.json')));
     expect(manifest.phaserVersion).toBe('4.1.0');
-    for (const g of GAMES) {
-      expect(manifest.shells[g].shellVersion).toMatch(/^[0-9a-f]{16}$/);
-    }
+    expect(manifest.unifiedShell).toBe('edumind');
+    expect(manifest.games).toEqual(GAMES);
+    expect(manifest.shells.edumind.shellVersion).toMatch(/^[0-9a-f]{16}$/);
+    expect(manifest.shells.edumind.games).toEqual(GAMES);
   });
 });
 
@@ -80,11 +90,15 @@ describe('scene contract', () => {
     expect(new Set(sceneKeys)).toEqual(new Set(['IntroScene', 'GameScene', 'EndScene']));
   });
 
-  it('every game extends EduCore.BaseGameScene and boots through EduCore', () => {
+  it('every game extends EduCore.BaseGameScene and registers with EduCore', () => {
     for (const g of GAMES) {
       expect(games[g]).toMatch(/extends EduCore\.BaseGameScene/);
-      expect(games[g]).toMatch(/EduCore\.boot\(window\.__EDUMIND_SPEC__/);
+      expect(games[g]).toMatch(/EduCore\.register\(\{/);
+      expect(games[g]).toContain(`gameType: '${g}'`);
     }
+    // the unified template boots the registry exactly once, after all modules
+    expect(template).toContain('EduCore.bootFromRegistry(window.__EDUMIND_SPEC__)');
+    expect(libs.educore).toMatch(/bootFromRegistry\(rawSpec\)/);
   });
 
   it('AdaptiveEngine drives item selection, fed by first-try correctness only', () => {

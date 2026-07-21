@@ -7,7 +7,7 @@ void main() {
   test('bundled demo specs assemble into playable shells', () async {
     final specs = await SpecAssembler.demoSpecs();
 
-    expect(specs, hasLength(6));
+    expect(specs, hasLength(11)); // 6 classics + 5 mechanic variants
     final gameTypes = <String>{};
     for (final spec in specs) {
       final meta = spec['meta'] as Map<String, dynamic>;

@@ -17,7 +17,8 @@ export function loadSpec(specFile) {
 }
 
 export function buildHtml(game, spec) {
-  const shell = readFileSync(join(shellsDir, 'dist', `${game}.html`), 'utf8');
+  // The unified shell hosts every game; spec.meta.gameType selects the module.
+  const shell = readFileSync(join(shellsDir, 'dist', 'edumind.html'), 'utf8');
   return shell.replace(SPEC_MARKER, JSON.stringify(spec).replace(/</g, '\\u003c'));
 }
 

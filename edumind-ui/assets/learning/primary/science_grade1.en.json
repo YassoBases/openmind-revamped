@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "science",
+  "subjectTitle": "Science",
+  "grade": 1,
+  "language": "en",
+  "lessons": [
+    { "id": "g1_sci_senses", "title": "My Five Senses", "focusConcepts": ["sight", "hearing", "smell", "taste", "touch"] },
+    { "id": "g1_sci_body", "title": "Parts of My Body", "focusConcepts": ["main body parts", "what they do"] },
+    { "id": "g1_sci_animals", "title": "Animals Around Us", "focusConcepts": ["pets and wild animals", "animal sounds and homes"] },
+    { "id": "g1_sci_plants", "title": "Plants Around Us", "focusConcepts": ["parts of a plant", "what plants need"] },
+    { "id": "g1_sci_day_night", "title": "Day and Night", "focusConcepts": ["sun and moon", "day and night activities"] },
+    { "id": "g1_sci_seasons", "title": "The Seasons", "focusConcepts": ["the four seasons", "clothes for each season"] },
+    { "id": "g1_sci_water", "title": "Water in Our Lives", "focusConcepts": ["uses of water", "why water matters"] },
+    { "id": "g1_sci_clean", "title": "Staying Clean and Healthy", "focusConcepts": ["washing hands", "clean food"] }
+  ]
+}

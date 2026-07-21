@@ -17,8 +17,12 @@ import type {
   NormalizedRequest,
   RepairItems,
   ScenePlayContentSpec,
+  StageContent,
+  WorldCreateContent,
+  WorldPlanContent,
+  WorldStagePlan,
 } from '@edumind/shared';
-import type { ContentProvider, FactCheckPiece, TutorReplyParams } from '../pipeline/provider.js';
+import type { ContentProvider, FactCheckPiece, StageGenParams, TutorReplyParams } from '../pipeline/provider.js';
 import type { InteractivePayload, TutorReply } from '../tutor/contract.js';
 import { matchGolden } from '../tutor/tools/registry.js';
 
@@ -232,6 +236,97 @@ export class MockProvider implements ContentProvider {
       all.find((s) => s.meta.gameType === meta.gameType);
     if (!match) throw new Error(`no golden sample for gameType ${meta.gameType}`);
     return { content: toContent(match, meta.sessionLength - 1), model: 'mock' };
+  }
+
+  async planWorld(params: {
+    subject: string;
+    topic: string;
+    language: string;
+    grade: number;
+    focusConcepts?: string[];
+    notes?: string | null;
+    escalated: boolean;
+  }): Promise<{ data: WorldCreateContent; model: string }> {
+    await sleep(Math.min(2000, MOCK_LATENCY_MS / 2));
+    const ar = params.language === 'ar';
+    // Only families with a golden sample in the requested language can serve
+    // stages (LANGUAGE_PURITY would fail otherwise).
+    const all = loadSamples();
+    const has = (g: string) => all.some((s) => s.meta.gameType === g && s.meta.language === params.language);
+    const families = (['quest_path', 'goal_shootout', 'draw_connect', 'scene_play', 'number_city'] as const).filter(has);
+    const first = families.find((g) => g === 'quest_path' || g === 'goal_shootout') ?? 'quest_path';
+
+    const mkStage = (i: number): WorldStagePlan => {
+      // Rotate families for variety; scene stages walk the ladder forward.
+      const pool = families.length > 0 ? families : (['quest_path'] as const);
+      const gameType = i === 0 ? first : pool[i % pool.length]!;
+      const ramp = (i < 2 ? 1 : i < 4 ? 2 : 3) as 1 | 2 | 3;
+      const stage: WorldStagePlan = {
+        focus: ar ? `${params.topic} — الخطوة ${i + 1}` : `${params.topic} — step ${i + 1}`,
+        beat: ar
+          ? `تتقدم الرحلة نحو فهم ${params.topic} (المرحلة ${i + 1}).`
+          : `The journey moves deeper into ${params.topic} (stage ${i + 1}).`,
+        gameType,
+        variant: 'classic',
+        ramp,
+      };
+      if (gameType === 'scene_play' || gameType === 'number_city') {
+        stage.learningLevel = i < 2 ? 'recognize' : i < 4 ? 'understand' : 'apply';
+      }
+      return stage;
+    };
+
+    const stages = Array.from({ length: 6 }, (_, i) => mkStage(i));
+    const plan: WorldPlanContent = {
+      title: ar ? `عالم ${params.topic}` : `The World of ${params.topic}`,
+      arc: {
+        intro: ar
+          ? `مرحبًا بك في رحلة ${params.topic}! كل مرحلة تفتح الباب للمرحلة التالية.`
+          : `Welcome to the journey of ${params.topic}! Every stage unlocks the next.`,
+        outro: ar
+          ? `أكملت رحلة ${params.topic} كاملة — أنت بطل هذا العالم!`
+          : `You completed the whole ${params.topic} journey — you are this world's hero!`,
+      },
+      stages,
+      summaryHints: {
+        concepts: params.focusConcepts?.length ? params.focusConcepts.slice(0, 8) : [params.topic.toLowerCase()],
+        nextTopics: ar ? ['موضوع جديد'] : ['a new topic'],
+      },
+    };
+    return { data: { plan, stage1: this.liftStage(stages[0]!, params.language) as McqContentSpec['levels'][number] }, model: 'mock' };
+  }
+
+  async generateStage(params: StageGenParams): Promise<{ data: StageContent; model: string }> {
+    await sleep(Math.min(1500, MOCK_LATENCY_MS / 3));
+    return { data: this.liftStage(params.stagePlan, params.world.language), model: 'mock' };
+  }
+
+  /** Lift one educational level of a golden sample into stage content. */
+  private liftStage(stagePlan: WorldStagePlan, language: string): StageContent {
+    const all = loadSamples();
+    const match =
+      all.find((s) => s.meta.gameType === stagePlan.gameType && s.meta.language === language) ??
+      all.find((s) => s.meta.gameType === stagePlan.gameType);
+    if (!match) throw new Error(`no golden sample for gameType ${stagePlan.gameType}`);
+    const edu = match.levels.filter((l) => !l.isIntro);
+    const scene = stagePlan.gameType === 'scene_play' || stagePlan.gameType === 'number_city';
+    // Ladder stages pick the level matching the planned rung.
+    const level =
+      (scene && stagePlan.learningLevel
+        ? edu.find((l) => l.learningLevel === stagePlan.learningLevel)
+        : undefined) ?? edu[0]!;
+    const content: Record<string, unknown> = {
+      title: level.title,
+      teaching: level.teaching.map(({ id: _id, ...t }) => t),
+      items: level.items.map((item) => {
+        const { id: _id, kind, ...rest } = item as Record<string, unknown> & { id: string; kind: string };
+        return scene ? { kind, ...rest } : rest;
+      }),
+    };
+    if (stagePlan.gameType === 'draw_connect') content.diagram = match.diagram;
+    if (level.observe) content.observe = level.observe;
+    if (level.notice) content.notice = level.notice;
+    return content as unknown as StageContent;
   }
 
   async factcheck(pieces: FactCheckPiece[]): Promise<{ data: FactCheckReport; model: string }> {

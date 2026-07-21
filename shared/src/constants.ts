@@ -19,6 +19,14 @@ export type GameType = (typeof GAME_TYPES)[number];
  */
 export const GENERATABLE_GAME_TYPES = ['quest_path', 'goal_shootout', 'draw_connect', 'scene_play'] as const;
 
+/**
+ * Families a Lesson-Worlds STAGE may use. Superset of the session list:
+ * number_city (My Town) generates per-stage — one level of city mechanics is
+ * a natural stage — while whole-session generation for it stays curated
+ * (the legacy composer keeps its gate).
+ */
+export const STAGE_GENERATABLE_GAME_TYPES = [...GENERATABLE_GAME_TYPES, 'number_city'] as const;
+
 export const THEMES: Record<GameType, readonly string[]> = {
   quest_path: ['fantasy', 'sci_fi', 'detective', 'anime'],
   goal_shootout: ['football', 'basketball', 'hockey', 'archery'],
@@ -29,6 +37,28 @@ export const THEMES: Record<GameType, readonly string[]> = {
   // scene_play carries ONE theme — visual variety comes from interest KITS
   // (KITS_BY_GAME below), mirroring how number_city launched one district.
   scene_play: ['wonder_world'],
+} as const;
+
+/**
+ * Mechanic variants per game family. A variant changes how a stage's items
+ * are PRESENTED (the interaction staging) within the family's shell module —
+ * the pedagogy layer (item kinds, answers, difficulty) is untouched, so the
+ * same generated content can play as different games. 'classic' is each
+ * family's original presentation; new variants land in Phase 3+ of the
+ * Lesson Worlds rework (e.g. goal_shootout 'draw_pass', quest_path
+ * 'bridge_builder', draw_connect 'sort_streams').
+ */
+export const VARIANTS_BY_GAME: Record<GameType, readonly string[]> = {
+  // 'bridge_builder': the answer plank bridges the gap in the path.
+  // 'lantern_lights': the options hang as lanterns — light the true one.
+  quest_path: ['classic', 'bridge_builder', 'lantern_lights'],
+  // 'draw_pass': DRAW the pass line from the ball to the answer goal.
+  // 'keeper_save': BE the keeper — catch the ball with the right answer.
+  goal_shootout: ['classic', 'draw_pass', 'keeper_save'],
+  // 'sort_streams': drag each part chip into its matching bin.
+  draw_connect: ['classic', 'sort_streams'],
+  number_city: ['classic'],
+  scene_play: ['classic'],
 } as const;
 
 /**

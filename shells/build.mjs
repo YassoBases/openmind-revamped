@@ -1,16 +1,21 @@
 /**
- * Shell build: inlines Phaser 4.1.0 + fonts + libs + game code into three
- * single-file HTML template shells, hashes them (shellVersion), and copies
- * the artifacts everywhere they're consumed:
+ * Shell build: inlines Phaser 4.1.0 + fonts + libs + ALL game modules into
+ * ONE single-file unified HTML shell (dist/edumind.html), hashes it
+ * (shellVersion), and copies the artifact everywhere it's consumed:
  *   - shells/dist/            (preview harness, tests)
  *   - backend/src/data/shells (server-side assembly)
- *   - flutter_module/assets/  (bundled offline shells + demo specs)
+ *   - flutter_module/assets/  (bundled offline shell + demo specs)
+ *
+ * Every game registers via EduCore.register(); the template's final script
+ * calls EduCore.bootFromRegistry(spec), which selects the module named by
+ * spec.meta.gameType. One artifact hosts every game — one WebView path for
+ * any stage type, and ~6.5MB less app weight than five per-game shells.
  *
  * The spec slot marker `/*__EDUMIND_SPEC_JSON__*\/null` stays in the built
  * file — hosts replace it with the (escaped) GameSpec JSON at serve time.
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -72,45 +77,55 @@ function inject(tpl, marker, code) {
 const distDir = join(here, 'dist');
 mkdirSync(distDir, { recursive: true });
 
+const UNIFIED = 'edumind';
+
+const gamesJs = GAMES
+  .map((game) => `/* ==== game module: ${game} ==== */\n${read(join(here, 'src', 'games', `${game}.js`))}`)
+  .join('\n');
+
+let html = template;
+html = html.split('{{GAME_NAME}}').join('Games');
+html = inject(html, 'FONTS_CSS', fontsCss);
+html = inject(html, 'PHASER_JS', `${kenneyNote}\n${phaser}`);
+html = inject(html, 'GAMEFEEL_JS', gamefeel);
+html = inject(html, 'INTERACT_JS', interact);
+html = inject(html, 'MASCOT_JS', mascot);
+html = inject(html, 'EDUCORE_JS', educore);
+html = inject(html, 'SCENEKIT_JS', scenekit);
+html = inject(html, 'GAME_JS', gamesJs);
+
+writeFileSync(join(distDir, `${UNIFIED}.html`), html);
+const hash = createHash('sha256').update(html).digest('hex').slice(0, 16);
 const manifest = {
   builtAt: new Date().toISOString(),
   phaserVersion,
-  shells: {},
+  unifiedShell: UNIFIED,
+  games: GAMES,
+  shells: {
+    [UNIFIED]: {
+      file: `${UNIFIED}.html`,
+      shellVersion: hash,
+      bytes: Buffer.byteLength(html),
+      games: GAMES,
+    },
+  },
 };
-
-for (const game of GAMES) {
-  const gameJs = read(join(here, 'src', 'games', `${game}.js`));
-  let html = template;
-  html = html.split('{{GAME_NAME}}').join(game);
-  html = inject(html, 'FONTS_CSS', fontsCss);
-  html = inject(html, 'PHASER_JS', `${kenneyNote}\n${phaser}`);
-  html = inject(html, 'GAMEFEEL_JS', gamefeel);
-  html = inject(html, 'INTERACT_JS', interact);
-  html = inject(html, 'MASCOT_JS', mascot);
-  html = inject(html, 'EDUCORE_JS', educore);
-  html = inject(html, 'SCENEKIT_JS', scenekit);
-  html = inject(html, 'GAME_JS', gameJs);
-
-  const out = join(distDir, `${game}.html`);
-  writeFileSync(out, html);
-  const hash = createHash('sha256').update(html).digest('hex').slice(0, 16);
-  manifest.shells[game] = {
-    file: `${game}.html`,
-    shellVersion: hash,
-    bytes: Buffer.byteLength(html),
-  };
-  console.log(`[shells] ${game}.html  ${(Buffer.byteLength(html) / 1024 / 1024).toFixed(2)} MB  v=${hash}`);
-}
+console.log(`[shells] ${UNIFIED}.html  ${(Buffer.byteLength(html) / 1024 / 1024).toFixed(2)} MB  v=${hash}  (games: ${GAMES.join(', ')})`);
 
 writeFileSync(join(distDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+
+// Remove stale per-game artifacts from the pre-unified layout.
+function dropLegacyShells(dir) {
+  for (const game of GAMES) rmSync(join(dir, `${game}.html`), { force: true });
+}
+dropLegacyShells(distDir);
 
 // ---- copy artifacts to consumers --------------------------------------
 const backendShells = join(root, 'backend', 'src', 'data', 'shells');
 mkdirSync(backendShells, { recursive: true });
-for (const game of GAMES) {
-  copyFileSync(join(distDir, `${game}.html`), join(backendShells, `${game}.html`));
-}
+copyFileSync(join(distDir, `${UNIFIED}.html`), join(backendShells, `${UNIFIED}.html`));
 copyFileSync(join(distDir, 'manifest.json'), join(backendShells, 'manifest.json'));
+dropLegacyShells(backendShells);
 
 // Both Flutter apps consume the bundled shells + demo specs: the original
 // flutter_module and the merged edumind-ui (OpenMind AI engine inside the
@@ -121,10 +136,9 @@ const sampleFiles = readdirSync(samplesDir).filter((f) => f.endsWith('.json'));
 function copyToFlutterApp(appDir) {
   const shellsOut = join(appDir, 'assets', 'shells');
   mkdirSync(shellsOut, { recursive: true });
-  for (const game of GAMES) {
-    copyFileSync(join(distDir, `${game}.html`), join(shellsOut, `${game}.html`));
-  }
+  copyFileSync(join(distDir, `${UNIFIED}.html`), join(shellsOut, `${UNIFIED}.html`));
   copyFileSync(join(distDir, 'manifest.json'), join(shellsOut, 'manifest.json'));
+  dropLegacyShells(shellsOut);
 
   const samplesOut = join(appDir, 'assets', 'samples');
   mkdirSync(samplesOut, { recursive: true });

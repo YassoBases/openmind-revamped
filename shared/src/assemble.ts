@@ -13,16 +13,19 @@ import type {
   ScenePlayContentSpec,
   Student,
   StubSpec,
+  SummaryHints,
   TeachCard,
 } from './gamespec.js';
-import { KIT_BY_INTEREST, LEARNING_LEVELS, SPEC_VERSION } from './constants.js';
+import type { ConnectStageContent, StageContent, WorldStagePlan } from './worldspec.js';
+import { DIFFICULTY_BY_RAMP } from './worldspec.js';
+import { KITS_BY_GAME, KIT_BY_INTEREST, LEARNING_LEVELS, SPEC_VERSION, THEMES } from './constants.js';
 
 const INTRO_TITLES: Record<string, { en: string; ar: string }> = {
   quest_path: { en: 'The Adventure Begins', ar: 'تبدأ المغامرة' },
   goal_shootout: { en: 'Warm-Up', ar: 'الإحماء' },
   draw_connect: { en: 'Getting the Feel', ar: 'تعرّف على اللعبة' },
-  number_city: { en: 'Welcome to Number City', ar: 'أهلًا بك في مدينة الأعداد' },
-  scene_play: { en: 'Welcome to Wonder World', ar: 'أهلًا بك في عالم العجائب' },
+  number_city: { en: 'Welcome to My Town', ar: 'أهلًا بك في بلدتي' },
+  scene_play: { en: 'Welcome to the Wonder Lab', ar: 'أهلًا بك في مختبر العجائب' },
 };
 
 /** The intro level carries no educational content — the tutorial is built into each shell. */
@@ -157,4 +160,115 @@ export function assembleSceneSpec(meta: Meta, student: Student, content: ScenePl
  */
 export function personalizeSpec(spec: GameSpec, student: Student): GameSpec {
   return { ...spec, student };
+}
+
+// ---------------------------------------------------------------------------
+// Lesson Worlds — stage assembly
+// ---------------------------------------------------------------------------
+
+export interface StageAssemblyInput {
+  worldId: string;
+  /** 1-based position of the stage in its world. */
+  stageIndex: number;
+  /** Total stages in the world (stamps meta.stageCount for finale flair). */
+  stageCount?: number;
+  stagePlan: WorldStagePlan;
+  /** The world's narrative arc (rides every stage's narrative intro/outro). */
+  arc: { intro: string; outro: string };
+  /** The world's summaryHints (stage specs reuse them for the summary screen). */
+  summaryHints: SummaryHints;
+  subject: string;
+  language: 'en' | 'ar';
+  grade: number;
+  student: Student;
+  content: StageContent;
+}
+
+/**
+ * Assemble ONE world stage into a playable GameSpec (scope='stage').
+ *
+ * Server-side determinism, same doctrine as the session assemblers: ids are
+ * stamped here (`s{stageIndex}_t{k}` / `s{stageIndex}_i{k}` — world-unique so
+ * evidence rows never collide across stages), the scene ladder rung comes
+ * from the WORLD PLAN (never the stage LLM call), the intro/tutorial level
+ * rides only stage 1, and the stage's narrative beat becomes the single
+ * perLevel entry.
+ */
+export function assembleStageSpec(input: StageAssemblyInput): GameSpec {
+  const { stagePlan, stageIndex, content, student } = input;
+  const gameType = stagePlan.gameType;
+  // Scene-kind families keep the item `kind` discriminator and carry a
+  // ladder rung + interest kit: scene_play (Wonder Lab) and number_city
+  // (My Town — stage-generatable since the Phase 3 rework).
+  const scene = gameType === 'scene_play' || gameType === 'number_city';
+
+  let wrapper = stagePlan.kit;
+  if (scene && wrapper == null) {
+    // Interest-picked kit, clamped to the family's own kit list — My Town
+    // only knows nature/construction while the Lab knows all five.
+    const kits = KITS_BY_GAME[gameType] as readonly string[];
+    const pick = student.interest ? KIT_BY_INTEREST[student.interest] : 'nature';
+    wrapper = kits.includes(pick) ? pick : (kits.includes('nature') ? 'nature' : kits[0]);
+  }
+
+  const meta: Meta = withNumeralDefault({
+    gameType,
+    theme: stagePlan.theme ?? (THEMES[gameType][0] as string),
+    subject: input.subject,
+    topic: stagePlan.focus,
+    language: input.language,
+    grade: input.grade,
+    difficulty: DIFFICULTY_BY_RAMP[stagePlan.ramp],
+    // Unused in stage scope (STAGE_LEVEL_COUNT governs shape) but required
+    // by the Meta schema; the smallest legal value documents the irrelevance.
+    sessionLength: 3,
+    scope: 'stage',
+    worldId: input.worldId,
+    stageIndex,
+    ...(input.stageCount != null ? { stageCount: input.stageCount } : {}),
+    variant: stagePlan.variant,
+    ...(wrapper != null ? { wrapper: wrapper as Meta['wrapper'] } : {}),
+  });
+
+  const withIntro = stageIndex === 1;
+  const levelIndex = withIntro ? 1 : 0;
+  const sid = `s${stageIndex}`;
+
+  const eduLevel: Level = {
+    index: levelIndex,
+    isIntro: false,
+    title: content.title,
+    teaching: content.teaching.map((t, ti) => ({
+      id: `${sid}_t${ti + 1}`,
+      text: t.text,
+      emphasis: t.emphasis ?? [],
+    })),
+    items: content.items.map((raw, ii) => ({
+      ...(raw as object),
+      // mcq/connect stage items omit kind (single-kind family); scene items
+      // carry their own kind discriminator.
+      ...(scene ? {} : { kind: gameType === 'draw_connect' ? 'connect' : 'mcq' }),
+      id: `${sid}_i${ii + 1}`,
+    })) as Item[],
+  };
+  if (scene && stagePlan.learningLevel) eduLevel.learningLevel = stagePlan.learningLevel;
+  if ('observe' in content && content.observe) eduLevel.observe = content.observe;
+  if ('notice' in content && content.notice) eduLevel.notice = content.notice;
+
+  const spec: GameSpec = {
+    specVersion: SPEC_VERSION,
+    meta,
+    student,
+    narrative: {
+      intro: input.arc.intro,
+      outro: input.arc.outro,
+      perLevel: [stagePlan.beat],
+    },
+    levels: withIntro ? [buildIntroLevel(meta), eduLevel] : [eduLevel],
+    summaryHints: input.summaryHints,
+  };
+  if (gameType === 'draw_connect') {
+    spec.diagram = (content as ConnectStageContent).diagram;
+  }
+  return spec;
 }

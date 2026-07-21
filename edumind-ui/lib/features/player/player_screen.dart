@@ -15,7 +15,9 @@ import 'shell_player_io.dart'
 ///  - replay:    saved spec from the offline store (zero network)
 ///  - demo:      bundled sample spec (zero network, zero account)
 ///  - review:    synthesized spec from /review/today
-enum PlayerMode { generated, replay, demo, review }
+///  - stage:     one Lesson-Worlds stage — the WORLD MAP owns the session
+///               recording/rewards; the player just plays and pops the summary
+enum PlayerMode { generated, replay, demo, review, stage }
 
 class PlayerLaunch {
   PlayerLaunch.generated({
@@ -23,28 +25,46 @@ class PlayerLaunch {
     required Map<String, dynamic> this.stubSpec,
   }) : mode = PlayerMode.generated,
        fullSpec = null,
-       saved = null;
+       saved = null,
+       worldId = null,
+       stageIndex = null;
   PlayerLaunch.replay(SavedGame this.saved)
     : mode = PlayerMode.replay,
       gameId = saved.id,
       stubSpec = null,
-      fullSpec = jsonDecode(saved.specJson) as Map<String, dynamic>;
+      fullSpec = jsonDecode(saved.specJson) as Map<String, dynamic>,
+      worldId = null,
+      stageIndex = null;
   PlayerLaunch.demo(Map<String, dynamic> this.fullSpec)
     : mode = PlayerMode.demo,
       gameId = null,
       stubSpec = null,
-      saved = null;
+      saved = null,
+      worldId = null,
+      stageIndex = null;
   PlayerLaunch.review(Map<String, dynamic> this.fullSpec)
     : mode = PlayerMode.review,
       gameId = null,
       stubSpec = null,
-      saved = null;
+      saved = null,
+      worldId = null,
+      stageIndex = null;
+  PlayerLaunch.stage({
+    required String this.worldId,
+    required int this.stageIndex,
+    required Map<String, dynamic> this.fullSpec,
+  }) : mode = PlayerMode.stage,
+       gameId = null,
+       stubSpec = null,
+       saved = null;
 
   final PlayerMode mode;
   final String? gameId;
   final Map<String, dynamic>? stubSpec;
   final Map<String, dynamic>? fullSpec;
   final SavedGame? saved;
+  final String? worldId;
+  final int? stageIndex;
 
   String get gameType =>
       ((fullSpec ?? stubSpec)!['meta'] as Map<String, dynamic>)['gameType']
@@ -135,6 +155,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
     Map<String, dynamic>? feedback;
     final summary = _summary;
 
+    // Lesson-Worlds stages: the world map owns recording, stars, XP and the
+    // reward screen — the player just hands the summary back.
+    if (launch.mode == PlayerMode.stage) {
+      if (!mounted) return;
+      Navigator.of(context).pop(summary == null ? null : {'summary': summary});
+      return;
+    }
+
     // 1. record the session server-side (offline replays queue it locally)
     if (summary != null && launch.mode != PlayerMode.demo) {
       try {
@@ -171,8 +199,44 @@ class _PlayerScreenState extends State<PlayerScreen> {
       );
     }
 
+    // Finishing must never feel dead: when the server gave no enriched
+    // feedback (demos, offline, unregistered), fall back to a warm local
+    // celebration built from the child's own result — Home shows it as a
+    // dialog, so every completed game lands with a moment of "well done".
+    feedback ??= _localCelebration(summary);
+
     if (!mounted) return;
     Navigator.of(context).pop(feedback);
+  }
+
+  /// A warm, result-shaped celebration for when no server feedback exists.
+  /// Built from the child's own accuracy so it feels earned, not canned.
+  Map<String, dynamic>? _localCelebration(Map<String, dynamic>? summary) {
+    if (summary == null) return null;
+    final name = (Session.instance.profile?['name'] as String?)?.trim() ?? '';
+    final who = name.isEmpty ? '' : ' $name';
+    final acc = ((summary['accuracy'] as num?) ?? 0).toDouble();
+    final ar = Session.instance.language == 'ar';
+    final topic = _spec?['meta']?['topic'] as String?;
+    final String headline;
+    final String body;
+    if (acc >= 0.85) {
+      headline = ar ? '🌟 عمل رائع$who!' : '🌟 Amazing$who!';
+      body = ar
+          ? 'أتقنت هذه اللعبة! ${topic != null ? 'أنت بطل $topic.' : ''}'
+          : 'You mastered this one!${topic != null ? ' A real $topic champion.' : ''}';
+    } else if (acc >= 0.5) {
+      headline = ar ? '👏 أحسنت$who!' : '👏 Well done$who!';
+      body = ar
+          ? 'تقدّم رائع — العب مرة أخرى لتصل إلى النجوم الثلاث!'
+          : 'Great progress — play again to reach all three stars!';
+    } else {
+      headline = ar ? '💪 محاولة جيدة$who!' : '💪 Good try$who!';
+      body = ar
+          ? 'كل محاولة تجعلك أقوى. لنلعب مرة أخرى!'
+          : 'Every try makes you stronger. Let\'s play again!';
+    }
+    return {'headline': headline, 'body': body, 'reviewSuggestions': const <String>[]};
   }
 
   /// Save a freshly generated game for offline replay. Idempotent via [_saved].

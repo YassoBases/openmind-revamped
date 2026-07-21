@@ -3,7 +3,7 @@
  * MemoryStore otherwise so `npm run dev` always works with zero setup.
  * Same interface, same semantics; memory data dies with the process (logged loudly).
  */
-import type { GameSpec } from '@edumind/shared';
+import type { GameSpec, WorldPlanContent } from '@edumind/shared';
 
 export interface StudentRow {
   id: string;
@@ -48,6 +48,45 @@ export interface GameRow {
   lastPlayedAt: Date | null;
   createdAt: Date;
   deletedAt: Date | null;
+}
+
+export type WorldStatus = 'planning' | 'ready' | 'failed';
+export type WorldStageStatus = 'planned' | 'generating' | 'ready' | 'failed';
+
+/**
+ * A Lesson World: one school lesson (or free topic) turned into a planned
+ * sequence of short stages. The plan is stored whole; each stage's spec
+ * lives on its own row (per-stage generation, retry, and prefetch).
+ */
+export interface WorldRow {
+  id: string;
+  studentId: string;
+  /** Curated-catalog lesson id, when the world came from the lesson picker. */
+  lessonId: string | null;
+  subject: string;
+  topic: string;
+  language: string;
+  grade: number;
+  status: WorldStatus;
+  error: string | null;
+  title: string | null;
+  plan: WorldPlanContent | null;
+  createdAt: Date;
+  deletedAt: Date | null;
+}
+
+export interface WorldStageRow {
+  worldId: string;
+  /** 1-based position in the world's plan. */
+  index: number;
+  status: WorldStageStatus;
+  error: string | null;
+  spec: GameSpec | null;
+  /** Result of the child's best run (null until first completion). */
+  stars: number | null;
+  bestAccuracy: number | null;
+  completedAt: Date | null;
+  generatedAt: Date | null;
 }
 
 export interface PlaySessionRow {
@@ -144,6 +183,17 @@ export interface Store {
   getGame(id: string): Promise<GameRow | null>;
   updateGame(id: string, patch: Partial<Omit<GameRow, 'id' | 'studentId' | 'createdAt'>>): Promise<GameRow>;
   listGames(studentId: string, opts: { limit: number; offset: number }): Promise<{ items: GameRow[]; total: number }>;
+
+  createWorld(data: Omit<WorldRow, 'createdAt' | 'deletedAt'>): Promise<WorldRow>;
+  getWorld(id: string): Promise<WorldRow | null>;
+  updateWorld(id: string, patch: Partial<Omit<WorldRow, 'id' | 'studentId' | 'createdAt'>>): Promise<WorldRow>;
+  listWorlds(studentId: string, opts: { limit: number; offset: number }): Promise<{ items: WorldRow[]; total: number }>;
+
+  /** Insert-or-replace one stage row (keyed worldId+index). */
+  upsertWorldStage(data: WorldStageRow): Promise<WorldStageRow>;
+  getWorldStage(worldId: string, index: number): Promise<WorldStageRow | null>;
+  updateWorldStage(worldId: string, index: number, patch: Partial<Omit<WorldStageRow, 'worldId' | 'index'>>): Promise<WorldStageRow>;
+  listWorldStages(worldId: string): Promise<WorldStageRow[]>;
 
   createPlaySession(data: Omit<PlaySessionRow, 'id' | 'createdAt'>): Promise<PlaySessionRow>;
   recentPlaySessions(studentId: string, limit: number): Promise<PlaySessionRow[]>;

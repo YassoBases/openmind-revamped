@@ -443,6 +443,9 @@
 
     // -------------------------------------------------------------- items
     async presentItem(item, hintApi) {
+      if (EduCore.spec.meta.variant === 'sort_streams') {
+        return this.presentSortStreams(item, hintApi);
+      }
       // (Re)build the diagram if a level transition cleared it.
       if (this.nodes.size === 0) this.buildDiagram(EduCore.spec.diagram.nodes);
 
@@ -502,6 +505,159 @@
       // Drawing until complete IS the supportive retry for this mechanic —
       // `final` tells the engine loop not to re-present the item, and
       // `completed` marks a finish-with-stumbles as recovered, not failed.
+      return { correct: wrongAttempts === 0, final: true, completed: true };
+    }
+
+    /**
+     * sort_streams variant: the item's `from` nodes become draggable part
+     * chips; its `to` nodes (plus one decoy) become labeled bins. Drag each
+     * part into its matching bin. Same diagram data, same evaluation truth
+     * (the edges), a completely different game feel — classify, not trace.
+     */
+    async presentSortStreams(item, hintApi) {
+      // The classify board OWNS the screen — clear any diagram the tutorial or
+      // a prior connect item left behind (else nodes bleed through the bins).
+      this.clearDiagram();
+
+      const diagram = EduCore.spec.diagram;
+      const byId = new Map(diagram.nodes.map((n) => [n.id, n]));
+      // chip → its correct bin, straight from the item's edges
+      const pairs = item.edgeIds.map((eid) => {
+        const [from, to] = eid.split('->');
+        return { from, to };
+      });
+      const binIds = [...new Set(pairs.map((p) => p.to))];
+      // one decoy bin keeps the sort honest (a distractor node when available)
+      const decoyId = (diagram.distractorNodeIds || []).find((id) => !binIds.includes(id));
+      const allBinIds = decoyId && binIds.length < 3 ? [...binIds, decoyId] : binIds;
+
+      // The connect content's prompt says "draw a line" — reframe it for the
+      // sort mechanic so the child is never told to do the wrong gesture.
+      const sortInstr = EduCore.lang === 'ar'
+        ? 'اسحب كل قطعة إلى الصندوق الذي يناسبها.'
+        : 'Drag each part into the box it belongs to.';
+
+      this.promptText.setText('');
+      this.tweens.add({ targets: this.promptPanel, alpha: 1, duration: 200 });
+      await this.feel.typewriter(this.promptText, sortInstr, { cps: 46 });
+
+      const layer = this.add.container(0, 0).setDepth(10);
+      const t = this.theme;
+
+      // bins in a single clean row, well below the prompt panel
+      const binW = Math.min(300, (W - 60) / allBinIds.length - 18);
+      const binY = 520;
+      const bins = allBinIds.map((id, i) => {
+        const x = W / 2 + (i - (allBinIds.length - 1) / 2) * (binW + 22);
+        const c = this.add.container(x, binY);
+        const g = this.add.graphics();
+        g.fillStyle(t.chip, 1);
+        g.fillRoundedRect(-binW / 2, -78, binW, 156, 18);
+        g.lineStyle(4, EduCore.accentInt, 0.55);
+        g.strokeRoundedRect(-binW / 2, -78, binW, 156, 18);
+        c.add(g);
+        c.add(this.add.text(0, -50, byId.get(id)?.label ?? id,
+          EduCore.textStyle(23, { color: t.ink, align: 'center', wrap: binW - 24 })).setOrigin(0.5, 0.5));
+        layer.add(c);
+        return { id, c, x, y: binY, count: 0 };
+      });
+      this.feel.cascadeIn(bins.map((b) => b.c), { stagger: 90, dy: 16 });
+
+      // part chips waiting in a tidy tray at the bottom (max 3 per row)
+      const perRow = Math.min(3, Math.max(1, pairs.length));
+      const chipW = Math.min(200, (W - 60) / perRow - 16);
+      const chips = pairs.map((p, i) => {
+        const col = i % perRow;
+        const rowN = Math.floor(i / perRow);
+        const x = W / 2 + (col - (perRow - 1) / 2) * (chipW + 16);
+        const y = 900 + rowN * 96;
+        const c = this.add.container(x, y);
+        const g = this.add.graphics();
+        g.fillStyle(0xffffff, 0.96);
+        g.fillRoundedRect(-chipW / 2, -36, chipW, 72, 14);
+        g.lineStyle(3, t.gridline, 0.8);
+        g.strokeRoundedRect(-chipW / 2, -36, chipW, 72, 14);
+        c.add(g);
+        c.add(this.add.text(0, 0, byId.get(p.from)?.label ?? p.from,
+          EduCore.textStyle(22, { color: t.ink, align: 'center', wrap: chipW - 20 })).setOrigin(0.5));
+        layer.add(c);
+        return { from: p.from, to: p.to, c, home: { x, y }, placed: false };
+      });
+      this.feel.cascadeIn(chips.map((ch) => ch.c), { stagger: 80, dy: 20 });
+
+      EduCore.setTappables(chips.map((ch, i) => ({
+        id: 'chip' + i, label: byId.get(ch.from)?.label ?? ch.from,
+        x: ch.c.x, y: ch.c.y, w: 200, h: 72, correct: true,
+      })));
+
+      // Hint 2 narrows: the first unplaced chip's bin glows.
+      hintApi.onNarrow(() => {
+        const next = chips.find((ch) => !ch.placed);
+        const bin = next && bins.find((b) => b.id === next.to);
+        if (bin) this.tweens.add({ targets: bin.c, scale: 1.1, duration: 300, yoyo: true, repeat: 2 });
+      });
+
+      let wrongAttempts = 0;
+      await new Promise((resolve) => {
+        const rig = Interact.attachDrag(this, {
+          findTarget: (x, y) =>
+            Interact.nearest(chips.filter((ch) => !ch.placed), x, y, 90, (ch) => ch.c) || null,
+          onGrab: (ch) => {
+            GameFeel.audio.tick();
+            layer.bringToTop(ch.c);
+            EduCore.reportLearning('object_interacted', { kind: 'sort_chip', itemId: item.id });
+          },
+          onMove: (pointer, points, ch) => ch.c.setPosition(pointer.x, pointer.y),
+          onDrop: (ch, pointer) => {
+            const bin = Interact.nearest(bins, pointer.x, pointer.y, 160, (b) => b);
+            if (bin && bin.id === ch.to) {
+              ch.placed = true;
+              bin.count++;
+              // the part settles into its bin
+              this.tweens.add({
+                targets: ch.c,
+                x: bin.x, y: bin.y + 8 + bin.count * 14, scale: 0.72,
+                duration: 240, ease: 'Cubic.easeOut',
+              });
+              this.feel.sparkle(bin.x, bin.y, 0x84a253, 6);
+              GameFeel.audio.correctChain(EduCore.session.combo);
+              if (chips.every((c2) => c2.placed)) {
+                rig.disable();
+                resolve();
+              }
+            } else {
+              if (bin) {
+                wrongAttempts++;
+                GameFeel.audio.wrongTone();
+                this.feel.wiggle(bin.c, 3);
+              }
+              // home again — a stray drop is exploration, never punishment
+              this.tweens.add({
+                targets: ch.c, x: ch.home.x, y: ch.home.y,
+                duration: 280, ease: 'Back.easeOut',
+              });
+            }
+          },
+        });
+        rig.enable();
+        window.EduMindDebug.getDrag = () => ({
+          chips: chips.filter((ch) => !ch.placed).map((ch) => ({
+            x: ch.c.x, y: ch.c.y,
+            targetX: bins.find((b) => b.id === ch.to)?.x,
+            targetY: bins.find((b) => b.id === ch.to)?.y,
+          })),
+        });
+      });
+
+      window.EduMindDebug.getDrag = null;
+      EduCore.setTappables([]);
+      this.feel.confetti(W / 2, 500, 16);
+      await new Promise((r) => this.time.delayedCall(700, r));
+      this.tweens.add({
+        targets: layer, alpha: 0, duration: 300,
+        onComplete: () => layer.destroy(),
+      });
+      // Sorting until every part is home IS this mechanic's supportive retry.
       return { correct: wrongAttempts === 0, final: true, completed: true };
     }
 
@@ -626,7 +782,7 @@
     }
   }
 
-  EduCore.boot(window.__EDUMIND_SPEC__, {
+  EduCore.register({
     gameType: 'draw_connect',
     createGameScene: () => DrawConnectScene,
     buildMenuBackdrop(scene) {

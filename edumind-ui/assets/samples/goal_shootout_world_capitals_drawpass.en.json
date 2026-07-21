@@ -1,0 +1,333 @@
+{
+  "specVersion": 1,
+  "meta": {
+    "gameType": "goal_shootout",
+    "theme": "football",
+    "subject": "Geography",
+    "topic": "World Capitals",
+    "language": "en",
+    "grade": 4,
+    "difficulty": "normal",
+    "sessionLength": 3,
+    "numerals": "western",
+    "variant": "draw_pass"
+  },
+  "student": {
+    "name": "Player",
+    "gender": null,
+    "color": "#58CC02"
+  },
+  "narrative": {
+    "intro": "Welcome to the Capital Cup final! The stadium is roaring. Score by shooting at the goal with the right capital city — the keeper guards the wrong ones.",
+    "outro": "Full time! You lift the Capital Cup as the crowd chants your name. World geography: defeated.",
+    "perLevel": [
+      "First half: Europe. The keeper looks nervous already.",
+      "Second half: the whole world is in play. Bring it home!"
+    ]
+  },
+  "levels": [
+    {
+      "index": 0,
+      "isIntro": true,
+      "title": "Warm-Up",
+      "teaching": [],
+      "items": []
+    },
+    {
+      "index": 1,
+      "isIntro": false,
+      "title": "First Half — Capitals of Europe",
+      "teaching": [
+        {
+          "id": "l1_t1",
+          "text": "A capital city is where a country's government sits — its parliament, leaders and ministries. It is NOT always the biggest or most famous city in the country.",
+          "emphasis": [
+            "capital city",
+            "government"
+          ]
+        },
+        {
+          "id": "l1_t2",
+          "text": "Coach's tip: watch out for famous-city traps! Many countries have a superstar city that is NOT the capital — keep your eye on where the government actually sits.",
+          "emphasis": [
+            "famous-city traps"
+          ]
+        }
+      ],
+      "items": [
+        {
+          "kind": "mcq",
+          "id": "l1_i1",
+          "prompt": "What is the capital of France?",
+          "options": [
+            "Paris",
+            "Lyon",
+            "Marseille",
+            "Nice"
+          ],
+          "correctIndex": 0,
+          "explanation": "Paris is France's capital — home of its government, parliament and the famous Eiffel Tower.",
+          "hints": [
+            "It is the city of the Eiffel Tower and the river Seine.",
+            "The other three are all on or near the south coast — the capital is in the north."
+          ],
+          "concepts": [
+            "European capitals"
+          ],
+          "difficulty": 1
+        },
+        {
+          "kind": "mcq",
+          "id": "l1_i2",
+          "prompt": "What is the capital of Germany?",
+          "options": [
+            "Berlin",
+            "Munich",
+            "Hamburg",
+            "Frankfurt"
+          ],
+          "correctIndex": 0,
+          "explanation": "Berlin is Germany's capital, famous for the Brandenburg Gate and the story of its once-divided wall.",
+          "hints": [
+            "This city was once split in two by a famous wall.",
+            "It is not the banking city (Frankfurt) and not the Oktoberfest city (Munich)."
+          ],
+          "concepts": [
+            "European capitals"
+          ],
+          "difficulty": 2
+        },
+        {
+          "kind": "mcq",
+          "id": "l1_i3",
+          "prompt": "What is the capital of Spain?",
+          "options": [
+            "Madrid",
+            "Barcelona",
+            "Seville",
+            "Valencia"
+          ],
+          "correctIndex": 0,
+          "explanation": "Madrid sits right in the centre of Spain and is its capital — Barcelona is bigger in fame, not in government.",
+          "hints": [
+            "It sits almost exactly in the middle of the country.",
+            "The famous beach-and-football city in the north-east is the trap here."
+          ],
+          "concepts": [
+            "European capitals"
+          ],
+          "difficulty": 2
+        },
+        {
+          "kind": "mcq",
+          "id": "l1_i4",
+          "prompt": "What is the capital of Italy?",
+          "options": [
+            "Rome",
+            "Milan",
+            "Venice",
+            "Naples"
+          ],
+          "correctIndex": 0,
+          "explanation": "Rome — the Eternal City — has been Italy's capital since 1871 and was once the heart of an ancient empire.",
+          "hints": [
+            "An ancient empire was ruled from this city two thousand years ago.",
+            "Not the fashion city, not the canal city — think Colosseum."
+          ],
+          "concepts": [
+            "European capitals"
+          ],
+          "difficulty": 1
+        },
+        {
+          "kind": "mcq",
+          "id": "l1_i5",
+          "prompt": "Which of these European cities is NOT a capital?",
+          "options": [
+            "Barcelona",
+            "Lisbon",
+            "Vienna",
+            "Warsaw"
+          ],
+          "correctIndex": 0,
+          "explanation": "Lisbon, Vienna and Warsaw are capitals (Portugal, Austria, Poland). Barcelona is huge — but Madrid runs Spain.",
+          "hints": [
+            "Three of these host national governments. One only hosts amazing football.",
+            "Portugal, Austria and Poland — match those countries first and see who is left over."
+          ],
+          "concepts": [
+            "European capitals"
+          ],
+          "difficulty": 4
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "isIntro": false,
+      "title": "Second Half — Capitals of the World",
+      "teaching": [
+        {
+          "id": "l2_t1",
+          "text": "Around the world, several countries deliberately BUILT a new capital city from scratch — to be neutral, central, or planned — instead of using their largest city.",
+          "emphasis": [
+            "built a new capital"
+          ]
+        },
+        {
+          "id": "l2_t2",
+          "text": "Classic traps ahead: Brazil's capital is not Rio, Australia's is not Sydney, Canada's is not Toronto, and the USA's is not New York. The government city wins the point!",
+          "emphasis": [
+            "traps"
+          ]
+        }
+      ],
+      "items": [
+        {
+          "kind": "mcq",
+          "id": "l2_i1",
+          "prompt": "What is the capital of Japan?",
+          "options": [
+            "Tokyo",
+            "Osaka",
+            "Kyoto",
+            "Hiroshima"
+          ],
+          "correctIndex": 0,
+          "explanation": "Tokyo is Japan's capital and one of the biggest cities in the whole world. Kyoto was the capital long, long ago.",
+          "hints": [
+            "Japan's current capital is also its biggest mega-city.",
+            "Careful: one option was the old imperial capital centuries ago — its letters are suspiciously similar."
+          ],
+          "concepts": [
+            "world capitals",
+            "Asia"
+          ],
+          "difficulty": 2
+        },
+        {
+          "kind": "mcq",
+          "id": "l2_i2",
+          "prompt": "What is the capital of Egypt?",
+          "options": [
+            "Cairo",
+            "Alexandria",
+            "Giza",
+            "Luxor"
+          ],
+          "correctIndex": 0,
+          "explanation": "Cairo, on the Nile, is Egypt's capital and the largest city in the Arab world.",
+          "hints": [
+            "It sits on the Nile, just across the river from the great pyramids.",
+            "Not the Mediterranean port and not the city of ancient temples in the south."
+          ],
+          "concepts": [
+            "world capitals",
+            "Africa"
+          ],
+          "difficulty": 2
+        },
+        {
+          "kind": "mcq",
+          "id": "l2_i3",
+          "prompt": "What is the capital of Brazil?",
+          "options": [
+            "Brasília",
+            "Rio de Janeiro",
+            "São Paulo",
+            "Salvador"
+          ],
+          "correctIndex": 0,
+          "explanation": "Brasília was built brand-new just to be the capital. Rio is the famous one; Brasília is where the leaders work.",
+          "hints": [
+            "This city was planned and built from scratch in the 1950s JUST to be the capital.",
+            "It is not the carnival city with the famous statue, and not the giant business city."
+          ],
+          "concepts": [
+            "world capitals",
+            "planned capitals"
+          ],
+          "difficulty": 3
+        },
+        {
+          "kind": "mcq",
+          "id": "l2_i4",
+          "prompt": "What is the capital of Canada?",
+          "options": [
+            "Ottawa",
+            "Toronto",
+            "Vancouver",
+            "Montreal"
+          ],
+          "correctIndex": 0,
+          "explanation": "Ottawa was picked as a fair middle choice between two big rival cities — quieter than Toronto, but the leaders work there.",
+          "hints": [
+            "It was picked as a fair, peaceful middle choice between two regions.",
+            "Cross out the hockey-famous giants — the capital is the calmer city on a river border."
+          ],
+          "concepts": [
+            "world capitals",
+            "North America"
+          ],
+          "difficulty": 3
+        },
+        {
+          "kind": "mcq",
+          "id": "l2_i5",
+          "prompt": "What is the capital of Australia?",
+          "options": [
+            "Canberra",
+            "Sydney",
+            "Melbourne",
+            "Perth"
+          ],
+          "correctIndex": 0,
+          "explanation": "Sydney and Melbourne both wanted the title, so Australia built a brand-new capital between them in 1913.",
+          "hints": [
+            "Two rival mega-cities argued so much that a NEW city was built between them.",
+            "It is not the opera-house city and not the coffee capital — it is the planned one inland."
+          ],
+          "concepts": [
+            "world capitals",
+            "planned capitals"
+          ],
+          "difficulty": 4
+        },
+        {
+          "kind": "mcq",
+          "id": "l2_i6",
+          "prompt": "What is the capital of the United States?",
+          "options": [
+            "Washington, D.C.",
+            "New York",
+            "Los Angeles",
+            "Chicago"
+          ],
+          "correctIndex": 0,
+          "explanation": "Washington, D.C. is a special district that belongs to no state — built on purpose to host the US government.",
+          "hints": [
+            "It is a special district, not part of any state.",
+            "The skyscraper city with the Statue of Liberty is the trap — the capital is further south."
+          ],
+          "concepts": [
+            "world capitals",
+            "North America"
+          ],
+          "difficulty": 2
+        }
+      ]
+    }
+  ],
+  "summaryHints": {
+    "concepts": [
+      "capital cities",
+      "famous-city traps",
+      "planned capitals"
+    ],
+    "nextTopics": [
+      "Capitals of Africa and Asia",
+      "Continents and oceans",
+      "Flags of the world"
+    ]
+  }
+}

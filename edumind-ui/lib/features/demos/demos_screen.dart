@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app_localizations.dart';
 import '../../core/palette.dart';
 import '../../core/spec_assembler.dart';
+import '../../widgets/mascot.dart';
 import '../player/player_screen.dart';
 
 class DemosScreen extends StatefulWidget {
@@ -21,6 +22,42 @@ class _DemosScreenState extends State<DemosScreen> {
     SpecAssembler.demoSpecs().then((specs) {
       if (mounted) setState(() => _specs = specs);
     });
+  }
+
+  /// Play a demo, then surface the completion celebration the player returns
+  /// (canned locally for demos) so finishing a demo never feels dead.
+  Future<void> _playDemo(Map<String, dynamic> spec) async {
+    final feedback = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute<Map<String, dynamic>>(
+        builder: (_) => PlayerScreen(launch: PlayerLaunch.demo(spec)),
+      ),
+    );
+    if (!mounted || feedback == null || feedback['headline'] == null) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            const Mascot(
+              size: 48,
+              character: MascotCharacter.bee,
+              expression: MascotExpression.celebrating,
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(feedback['headline'] as String)),
+          ],
+        ),
+        content: Text((feedback['body'] as String?) ?? ''),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(AppLocalizations.of(ctx)!.translate('play')),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -44,6 +81,12 @@ class _DemosScreenState extends State<DemosScreen> {
                     (meta['topic'] as String?) ?? l.translate('demo_games');
                 final gameType = (meta['gameType'] as String?) ?? 'quest_path';
                 final theme = (meta['theme'] as String?) ?? '';
+                // Mechanic variants are the star of the row when present —
+                // "goal_shootout • draw_pass" says more than the theme does.
+                final variant = meta['variant'] as String?;
+                final flavor = (variant != null && variant != 'classic')
+                    ? variant
+                    : theme;
 
                 return Card(
                   child: ListTile(
@@ -71,7 +114,7 @@ class _DemosScreenState extends State<DemosScreen> {
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        '$gameType • $theme • ${language.toUpperCase()}',
+                        '$gameType • $flavor • ${language.toUpperCase()}',
                         style: TextStyle(color: cs.onSurfaceVariant),
                       ),
                     ),
@@ -79,13 +122,7 @@ class _DemosScreenState extends State<DemosScreen> {
                       Icons.play_circle_fill_rounded,
                       color: cs.primary,
                     ),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            PlayerScreen(launch: PlayerLaunch.demo(spec)),
-                      ),
-                    ),
+                    onTap: () => _playDemo(spec),
                   ),
                 );
               },

@@ -6,11 +6,15 @@ import 'package:flutter/services.dart' show rootBundle;
 /// (escaped) GameSpec JSON. Fully offline, KBs of spec + bundled shell.
 class SpecAssembler {
   static const _marker = '/*__EDUMIND_SPEC_JSON__*/null';
-  static final Map<String, String> _shellCache = {};
+
+  /// The unified shell hosts every game module; spec.meta.gameType selects
+  /// which one boots. One bundled artifact for all game types.
+  static const _unifiedShell = 'edumind';
+  static String? _shellCache;
 
   static Future<String> loadShell(String gameType) async {
-    return _shellCache[gameType] ??=
-        await rootBundle.loadString('assets/shells/$gameType.html');
+    return _shellCache ??=
+        await rootBundle.loadString('assets/shells/$_unifiedShell.html');
   }
 
   /// `<` is escaped (<) so spec content can never break out of the
@@ -40,6 +44,14 @@ class SpecAssembler {
       'quest_path_water_cycle.ar.json',
       'scene_play_simple_machines.en.json',
       'scene_play_plants_nature.ar.json',
+      // Mechanic variants — the same lessons staged as different games:
+      // draw the pass, catch as the keeper, bridge the gap, light the
+      // lanterns, sort the parts into bins.
+      'goal_shootout_world_capitals_drawpass.en.json',
+      'goal_shootout_world_capitals_keeper.en.json',
+      'quest_path_water_cycle_bridge.en.json',
+      'quest_path_water_cycle_lanterns.en.json',
+      'draw_connect_plant_cell_sort.en.json',
     ];
     final specs = <Map<String, dynamic>>[];
     for (final f in files) {

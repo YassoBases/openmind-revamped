@@ -57,6 +57,35 @@
     },
   };
 
+  // Each variant teaches ITS OWN mechanic — a variant that opens with the
+  // classic tutorial feels like a reskin, not a new game.
+  const TUTORIAL_DRAW = {
+    en: {
+      coach: 'New play today! DRAW the pass: put your finger on the ball and pull a line to the goal you choose. Try it!',
+      q1: 'Draw a pass from the ball to the goal marked ✓',
+      done: 'What a pass! The ball follows YOUR line. Now aim for real answers!',
+      nudge: 'Draw the line! Start from the ball ⚽',
+    },
+    ar: {
+      coach: 'خطة جديدة اليوم! ارسم التمريرة: ضع إصبعك على الكرة واسحب خطًا إلى المرمى الذي تختاره. جرّب!',
+      q1: 'ارسم تمريرة من الكرة إلى المرمى الذي عليه ✓',
+      done: 'يا لها من تمريرة! الكرة تتبع خطك أنت. الآن صوّب نحو الإجابات الحقيقية!',
+      nudge: 'ارسم الخط! ابدأ من الكرة ⚽',
+    },
+  };
+  const TUTORIAL_KEEPER = {
+    en: {
+      coach: 'Today YOU are the keeper! Balls fly in carrying answers — tap the TRUE one to catch it. Wrong ones slip past!',
+      q1: 'Warm-up: catch the ball marked ✓',
+      done: 'Safe hands! Only catch what is TRUE. Gloves on!',
+    },
+    ar: {
+      coach: 'اليوم أنت الحارس! كرات تحمل إجابات — أمسك الصحيحة بلمسها. الخاطئة تفلت!',
+      q1: 'إحماء: أمسك الكرة التي عليها ✓',
+      done: 'يدان أمينتان! أمسك الصحيح فقط. القفازات جاهزة!',
+    },
+  };
+
   const GOAL_POS = [
     { x: 185, y: 472 }, { x: 535, y: 472 },
     { x: 185, y: 768 }, { x: 535, y: 768 },
@@ -111,10 +140,54 @@
       });
       this.guide.setDepth(7);
 
+      // draw_pass variant: the pass line the child draws from the ball to a
+      // goal, in the student's accent color (same feel as draw_connect).
+      this.passLine = this.add.graphics().setDepth(6);
+      this.passRig = Interact.attachDrag(this, {
+        findTarget: (x, y) =>
+          Math.hypot(x - this.ball.x, y - this.ball.y) < 130 ? this.ball : null,
+        onGrab: () => {
+          GameFeel.audio.tick();
+          this.feel.squash(this.ball, 1.12);
+        },
+        onMove: (pointer, points) => {
+          this.passLine.clear();
+          this.passLine.lineStyle(7, EduCore.accentInt, 0.9);
+          this.passLine.beginPath();
+          this.passLine.moveTo(points[0].x, points[0].y);
+          for (const p of points) this.passLine.lineTo(p.x, p.y);
+          this.passLine.strokePath();
+        },
+        onDrop: (start, pointer, points) => {
+          if (this._onPassDrop) this._onPassDrop(pointer, points);
+        },
+      });
+
       GameFeel.audio.crowdStart();
       this.events.once('shutdown', () => GameFeel.audio.crowdStop());
 
       this.teachStyle = { panelColor: 0xe9f0da }; // grassy-light coach talk
+    }
+
+    /** Fly the ball along the child's drawn pass line (draw_pass variant). */
+    passBallAlong(points) {
+      return new Promise((resolve) => {
+        if (!points || points.length < 2) return resolve();
+        const proxy = { t: 0 };
+        this.tweens.add({
+          targets: proxy,
+          t: 1,
+          duration: Math.min(700, 220 + points.length * 14),
+          ease: 'Sine.easeIn',
+          onUpdate: () => {
+            const idx = Math.min(points.length - 1, Math.floor(proxy.t * (points.length - 1)));
+            const p = points[idx];
+            this.ball.setPosition(p.x, p.y);
+            this.ball.rotation += 0.22;
+          },
+          onComplete: resolve,
+        });
+      });
     }
 
     buildCrowd() {
@@ -435,6 +508,12 @@
 
     // -------------------------------------------------------------- items
     async presentItem(item, hintApi) {
+      if (EduCore.spec.meta.variant === 'draw_pass') {
+        return this.presentDrawPass(item, hintApi);
+      }
+      if (EduCore.spec.meta.variant === 'keeper_save') {
+        return this.presentKeeperSave(item, hintApi);
+      }
       this.clearGoals();
       this.tweens.add({ targets: this.promptPanel, alpha: 1, duration: 200 });
       // On a supportive retry the prompt is already familiar — no re-typing.
@@ -509,8 +588,242 @@
       return { correct, optionIndex: chosen };
     }
 
+    /**
+     * draw_pass variant: the child DRAWS the pass from the ball to the goal
+     * holding their answer — the ball then flies along their own line. Same
+     * items, same keeper, same scoring; only the interaction changes.
+     * Tapping a goal still works (motor-skill fallback, same one-finger rule).
+     */
+    async presentDrawPass(item, hintApi) {
+      this.clearGoals();
+      this.tweens.add({ targets: this.promptPanel, alpha: 1, duration: 200 });
+      const drawNudge = EduCore.lang === 'ar'
+        ? '\nارسم خط التمريرة من الكرة إلى إجابتك!'
+        : '\nDraw the pass from the ball to your answer!';
+      if (hintApi.attempt > 1) {
+        this.promptText.setText(item.prompt + drawNudge);
+      } else {
+        this.promptText.setText('');
+        await this.feel.typewriter(this.promptText, item.prompt + drawNudge, { cps: 46 });
+      }
+
+      // The ball breathes while a pass is waiting to be drawn.
+      const breathe = this.tweens.add({
+        targets: this.ball, scale: 1.08, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      });
+
+      const result = await new Promise((resolve) => {
+        let settled = false;
+        const settle = (idx, points) => {
+          if (settled) return;
+          settled = true;
+          this.passRig.disable();
+          this._onPassDrop = null;
+          EduCore.reportLearning('object_interacted', {
+            kind: 'pass', itemId: item.id, index: idx, drawn: !!points,
+          });
+          this.goals.forEach((gl) => (gl.disabled = true));
+          resolve({ idx, points });
+        };
+
+        // Drawing IS the game: a tap teaches the gesture, never answers —
+        // otherwise this variant is just the classic game with extra text.
+        this.goals = item.options.map((label, i) =>
+          this.buildGoal(i, label, { onTap: () => this.drawNudge() })
+        );
+        this.feel.cascadeIn(this.goals, { stagger: 80, dy: 20 });
+        EduCore.setTappables(this.goals.map((gl, i) => ({
+          id: 'goal' + i, label: item.options[i],
+          x: gl.x, y: gl.y, w: 300, h: 230,
+          correct: i === item.correctIndex,
+        })));
+        // Test surface, same {ax,ay,bx,by} contract as draw_connect: from the
+        // ball to the CORRECT goal, so the shared driver drags a real pass.
+        window.EduMindDebug.getDrag = () => {
+          const gc = this.goals[item.correctIndex];
+          return [{ ax: this.ball.x, ay: this.ball.y, bx: gc.x, by: gc.y }];
+        };
+
+        this._onPassDrop = (pointer, points) => {
+          const goal = Interact.nearest(
+            this.goals.filter((gl) => !gl.disabled),
+            pointer.x, pointer.y, 165,
+            (gl) => ({ x: gl.x, y: gl.y }),
+          );
+          if (goal) {
+            settle(this.goals.indexOf(goal), points);
+          } else {
+            // A stray line is exploration, never an attempt — fade and retry.
+            this.tweens.add({
+              targets: this.passLine, alpha: 0, duration: 260,
+              onComplete: () => this.passLine.clear().setAlpha(1),
+            });
+          }
+        };
+        this.passRig.enable();
+
+        hintApi.onNarrow(() => {
+          const wrongIdx = item.options.map((_, i) => i).filter((i) => i !== item.correctIndex);
+          const kill = wrongIdx[Math.floor(Math.random() * wrongIdx.length)];
+          const gl = this.goals[kill];
+          gl.disabled = true;
+          this.tweens.add({ targets: gl, alpha: 0.22, duration: 300 });
+        });
+      });
+
+      breathe.stop();
+      this.ball.setScale(1);
+      const target = this.goals[result.idx];
+      const correct = result.idx === item.correctIndex;
+      this.keeperDive(target, !correct);
+      if (result.points && result.points.length > 1) {
+        await this.passBallAlong(result.points);
+      } else {
+        await this.shootBall(target);
+      }
+      this.tweens.add({
+        targets: this.passLine, alpha: 0, duration: 380,
+        onComplete: () => this.passLine.clear().setAlpha(1),
+      });
+
+      if (correct) {
+        this.scoreGoal(target);
+        this.ball.setAlpha(0);
+        this.time.delayedCall(380, () => {
+          this.ball.setAlpha(1).setPosition(BALL_HOME.x, BALL_HOME.y - 60);
+          this.resetBall();
+        });
+      } else {
+        this.saveBlock(target);
+        this.tweens.add({
+          targets: this.ball,
+          x: BALL_HOME.x + (Math.random() > 0.5 ? 130 : -130),
+          y: BALL_HOME.y - 140,
+          scale: 0.9,
+          duration: 260,
+          ease: 'Cubic.easeOut',
+          onComplete: () => this.resetBall(),
+        });
+        if (hintApi.lastAttempt) {
+          const right = this.goals[item.correctIndex];
+          this.feel.sparkle(right.x, right.y, 0x84a253, 7);
+        }
+      }
+
+      await new Promise((r) => this.time.delayedCall(800, r));
+      EduCore.setTappables([]);
+      window.EduMindDebug.getDrag = null;
+      return { correct, optionIndex: result.idx };
+    }
+
+    /**
+     * keeper_save variant: the child IS the keeper. Four balls hang in the
+     * air carrying the options — catch the one with the right answer. Balls
+     * bob gently forever: there is no timer and no reflex failure, only the
+     * choice (supportive doctrine). Wrong catch → that ball slips past.
+     */
+    async presentKeeperSave(item, hintApi) {
+      this.clearGoals();
+      this.ball.setAlpha(0); // the shooter's ball rests — we're in goal now
+      this.tweens.add({ targets: this.promptPanel, alpha: 1, duration: 200 });
+      const nudge = EduCore.lang === 'ar'
+        ? '\nأمسك الكرة التي تحمل الإجابة الصحيحة!'
+        : '\nCatch the ball holding the right answer!';
+      if (hintApi.attempt > 1) {
+        this.promptText.setText(item.prompt + nudge);
+      } else {
+        this.promptText.setText('');
+        await this.feel.typewriter(this.promptText, item.prompt + nudge, { cps: 46 });
+      }
+
+      const balls = [];
+      const chosen = await new Promise((resolve) => {
+        let settled = false;
+        item.options.forEach((label, i) => {
+          const pos = GOAL_POS[i];
+          const c = this.add.container(pos.x, pos.y - 30).setDepth(6);
+          const art = this.buildBall(this.theme);
+          art.setPosition(0, -34).setDepth(0);
+          c.add(art);
+          const card = GameFeel.cardPanel(this, 0, 46, 250, 84, {
+            color: 0xfdf2e2, alpha: 0.97, stroke: 0xdccdb7, strokeWidth: 3,
+          });
+          c.add(card);
+          c.add(this.add.text(0, 46, label,
+            EduCore.textStyle(24, { color: '#19725E', align: 'center', wrap: 220 })).setOrigin(0.5));
+          Interact.makeTappable(this, c, {
+            w: 260, h: 190,
+            onTap: () => {
+              if (settled || c.tapDisabled) return;
+              settled = true;
+              EduCore.reportLearning('object_interacted', { kind: 'catch', itemId: item.id, index: i });
+              balls.forEach((b) => (b.tapDisabled = true));
+              resolve(i);
+            },
+          });
+          // gentle bob — alive, never rushed
+          this.tweens.add({
+            targets: c, y: c.y - 14, duration: 900 + i * 120,
+            yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+          });
+          balls.push(c);
+        });
+        this.feel.cascadeIn(balls, { stagger: 90, dy: 24 });
+        EduCore.setTappables(balls.map((b, i) => ({
+          id: 'ball' + i, label: item.options[i],
+          x: GOAL_POS[i].x, y: GOAL_POS[i].y - 30, w: 260, h: 190,
+          correct: i === item.correctIndex,
+        })));
+        hintApi.onNarrow(() => {
+          const wrongIdx = item.options.map((_, i) => i).filter((i) => i !== item.correctIndex);
+          const kill = wrongIdx[Math.floor(Math.random() * wrongIdx.length)];
+          balls[kill].tapDisabled = true;
+          this.tweens.add({ targets: balls[kill], alpha: 0.22, duration: 300 });
+        });
+      });
+
+      const target = balls[chosen];
+      const correct = chosen === item.correctIndex;
+      // the keeper dives AT the chosen ball
+      this.keeperDive(target, true);
+      await new Promise((r) => this.time.delayedCall(360, r));
+      if (correct) {
+        // caught! the ball snaps to the glove, crowd erupts
+        this.tweens.add({
+          targets: target, x: this.keeper.x, y: this.keeper.y,
+          scale: 0.5, duration: 240, ease: 'Cubic.easeIn',
+          onComplete: () => {
+            this.feel.burst(this.keeper.x, this.keeper.y, 0x84a253, 10);
+            this.feel.popText(this.keeper.x, this.keeper.y - 90,
+              EduCore.lang === 'ar' ? 'أمسكتها!' : 'CAUGHT!', { color: '#4D8C58' });
+            GameFeel.audio.cheer();
+          },
+        });
+      } else {
+        // it slips past into the net — gently, and the ball fades
+        GameFeel.audio.wrongTone();
+        this.tweens.add({
+          targets: target, y: target.y + 260, alpha: 0, scale: 0.8,
+          duration: 420, ease: 'Cubic.easeIn',
+        });
+        if (hintApi.lastAttempt) {
+          const right = balls[item.correctIndex];
+          this.feel.sparkle(right.x, right.y, 0x84a253, 7);
+        }
+      }
+
+      await new Promise((r) => this.time.delayedCall(800, r));
+      balls.forEach((b) => b.destroy());
+      this.ball.setAlpha(1);
+      EduCore.setTappables([]);
+      return { correct, optionIndex: chosen };
+    }
+
     // ----------------------------------------------------------- tutorial
     async runTutorial() {
+      const variant = EduCore.spec.meta.variant;
+      if (variant === 'draw_pass') return this.runDrawPassTutorial();
+      if (variant === 'keeper_save') return this.runKeeperTutorial();
       const T = TUTORIAL[EduCore.lang] || TUTORIAL.en;
       await this.coachSay(T.coach);
 
@@ -567,6 +880,92 @@
       this.setPrompt('');
     }
 
+    /** draw_pass tutorial: ONE drag round — the child draws their first pass. */
+    async runDrawPassTutorial() {
+      const T = TUTORIAL_DRAW[EduCore.lang] || TUTORIAL_DRAW.en;
+      await this.coachSay(T.coach);
+      this.setPrompt(T.q1);
+      let done = false;
+      while (!done) {
+        this.clearGoals();
+        const labels = ['✓', '✗'];
+        const result = await new Promise((resolve) => {
+          this.goals = labels.map((lb, i) => this.buildGoal(i, lb, {
+            onTap: () => this.drawNudge(), // taps teach the gesture, never answer
+          }));
+          this.feel.cascadeIn(this.goals);
+          EduCore.setTappables(this.goals.map((gl, i) => ({
+            id: 'goal' + i, label: labels[i], x: gl.x, y: gl.y, w: 300, h: 230, correct: i === 0,
+          })));
+          window.EduMindDebug.getDrag = () => {
+            const gc = this.goals[0]; // ✓ is index 0 in the tutorial
+            return [{ ax: this.ball.x, ay: this.ball.y, bx: gc.x, by: gc.y }];
+          };
+          this._onPassDrop = (pointer, points) => {
+            const goal = Interact.nearest(this.goals, pointer.x, pointer.y, 165, (gl) => ({ x: gl.x, y: gl.y }));
+            if (goal) {
+              this.passRig.disable();
+              this._onPassDrop = null;
+              resolve({ idx: this.goals.indexOf(goal), points });
+            } else {
+              this.tweens.add({ targets: this.passLine, alpha: 0, duration: 260,
+                onComplete: () => this.passLine.clear().setAlpha(1) });
+            }
+          };
+          this.passRig.enable();
+        });
+        const target = this.goals[result.idx];
+        this.keeperDive(target, result.idx !== 0);
+        await this.passBallAlong(result.points);
+        this.tweens.add({ targets: this.passLine, alpha: 0, duration: 380,
+          onComplete: () => this.passLine.clear().setAlpha(1) });
+        if (result.idx === 0) {
+          this.scoreGoal(target);
+          this.resetBall();
+          done = true;
+        } else {
+          this.saveBlock(target);
+          GameFeel.audio.wrongTone();
+          this.resetBall();
+        }
+      }
+      // Clear the play surface BEFORE the closing message — the goals must not
+      // stay tappable and the drag surface must not stay live under a dialog.
+      this.clearGoals();
+      EduCore.setTappables([]);
+      window.EduMindDebug.getDrag = null;
+      this._onPassDrop = null;
+      await this.coachSay(T.done);
+      this.setPrompt('');
+    }
+
+    /** keeper_save tutorial: catch the ✓ ball once — gloves warmed up. */
+    async runKeeperTutorial() {
+      const T = TUTORIAL_KEEPER[EduCore.lang] || TUTORIAL_KEEPER.en;
+      await this.coachSay(T.coach);
+      this.setPrompt(T.q1);
+      const fake = { id: 'tut', prompt: '', options: ['✓', '✗'], correctIndex: 0,
+        explanation: '', hints: [], concepts: [], difficulty: 1, kind: 'mcq' };
+      let caught = false;
+      while (!caught) {
+        const res = await this.presentKeeperSave(fake, {
+          attempt: 2, lastAttempt: false, onNarrow: () => {},
+        });
+        caught = res.correct;
+        if (!caught) GameFeel.audio.wrongTone();
+      }
+      await this.coachSay(T.done);
+      this.setPrompt('');
+    }
+
+    /** A tap on a goal in draw_pass: show HOW instead of answering. */
+    drawNudge() {
+      const T = TUTORIAL_DRAW[EduCore.lang] || TUTORIAL_DRAW.en;
+      this.feel.popText(this.ball.x, this.ball.y - 90, T.nudge, { color: '#EF9722' });
+      this.feel.breathe(this.ball, 0.12);
+      GameFeel.audio.blip();
+    }
+
     coachSay(text) {
       return new Promise((resolve) => {
         const c = this.add.container(0, 0).setDepth(60);
@@ -595,7 +994,7 @@
     }
   }
 
-  EduCore.boot(window.__EDUMIND_SPEC__, {
+  EduCore.register({
     gameType: 'goal_shootout',
     createGameScene: () => GoalShootoutScene,
     buildMenuBackdrop(scene) {

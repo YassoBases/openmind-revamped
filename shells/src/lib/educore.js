@@ -279,6 +279,11 @@
         learningLevel: this.currentLearningLevel || null,
         templateId: meta.gameType || null,
         wrapperId: meta.wrapper || meta.theme || null,
+        // The mechanic variant + world stage the event happened in — the
+        // stage-funnel telemetry Lesson Worlds analytics keys on.
+        variantId: meta.variant || 'classic',
+        worldId: meta.worldId || null,
+        stageIndex: meta.stageIndex || null,
       }, extra || {}));
     },
 
@@ -333,6 +338,40 @@
     },
 
     // ----------------------------------------------------------- boot
+    /** Registered game modules (unified shell): gameType -> gameDef. */
+    games: {},
+
+    /**
+     * Register a game module. gameDef = { gameType, createGameScene, ... }.
+     * The unified shell loads every game module; each registers itself here,
+     * and bootFromRegistry picks the one named by spec.meta.gameType.
+     */
+    register(gameDef) {
+      this.games[gameDef.gameType] = gameDef;
+    },
+
+    /**
+     * Boot the unified shell: parse the injected spec and boot the registered
+     * gameDef it names. Runs once, after all game modules have registered.
+     */
+    bootFromRegistry(rawSpec) {
+      let spec = rawSpec;
+      if (typeof spec === 'string') {
+        try { spec = JSON.parse(spec); } catch (e) { spec = null; }
+      }
+      const gameType = spec && spec.meta && spec.meta.gameType;
+      const gameDef = gameType ? this.games[gameType] : null;
+      if (spec && !gameDef) {
+        // Static message only — gameType is spec-carried (LLM/user-influenced)
+        // and must never be interpolated into HTML.
+        document.body.innerHTML =
+          '<div style="color:#19725E;font-family:sans-serif;padding:40px;text-align:center">' +
+          '<h2>EduMind shell</h2><p>Unknown game type in spec.</p></div>';
+        return;
+      }
+      this.boot(spec, gameDef);
+    },
+
     /**
      * Boot a shell. gameDef = { gameType, createGameScene(BaseGameScene) -> Scene class }.
      * Reads window.__EDUMIND_SPEC__ (full spec or stub).
@@ -593,19 +632,29 @@
     // ------------------------------------------------------------ session
     async beginSession() {
       const spec = EduCore.spec;
-      const total = spec.meta.sessionLength;
+      const stageScope = spec.meta.scope === 'stage';
+      // Stage specs (Lesson Worlds) carry the tutorial level only on the
+      // world's FIRST stage; later stages jump straight into their single
+      // educational level. Session specs (and stubs) always run it.
+      const skipTutorial = stageScope && !!spec.levels[0] && !spec.levels[0].isIntro;
 
-      // Level 0 — the built-in tutorial. Needs no generated content.
-      await this.runLevelShell(0, async () => {
-        EduCore.setState('tutorial');
-        await this.runTutorial();
-      });
+      if (!skipTutorial) {
+        // Level 0 — the built-in tutorial. Needs no generated content.
+        await this.runLevelShell(0, async () => {
+          EduCore.setState('tutorial');
+          await this.runTutorial();
+        });
+      }
 
       // Educational levels (may still be generating — progressive start).
-      for (let li = 1; li < total; li++) {
+      // Stage scope walks the actual levels array; session scope walks the
+      // promised sessionLength (spec may still be hot-loading).
+      const totalLevels = () => (stageScope ? EduCore.spec.levels.length : spec.meta.sessionLength);
+      for (let li = skipTutorial ? 0 : 1; li < totalLevels(); li++) {
         if (!EduCore.specReady()) await this.waitingRoom();
         const level = EduCore.spec.levels[li];
         if (!level) break; // spec shorter than promised — fail soft
+        if (level.isIntro) continue;
         await this.runLevelShell(li, async () => {
           await this.teachPhase(level);
           await this.practicePhase(level, li);
@@ -635,14 +684,17 @@
 
       const presented = before.presented - presentedBefore;
       const ratio = presented > 0 ? (before.correct - correctBefore) / presented : 1;
-      if (levelIndex > 0) {
+      // Educational-ness comes from the level itself, not its array slot — a
+      // stage spec's single educational level sits at index 0 (no intro).
+      const isEducational = !!level && !level.isIntro;
+      if (isEducational) {
         EduCore.engine.recordLevel(ratio);
         EduCore.session.levelScores.push(ratio);
       }
       before.xp += XP.level;
       this.refreshHud();
       EduCore.bridge.reportLevel({ index: levelIndex, title, ratio, xp: before.xp });
-      if (levelIndex > 0) {
+      if (isEducational) {
         EduCore.reportLearning('level_completed', { index: levelIndex, ratio, xp: before.xp });
       }
       await this.levelEnd(levelIndex, ratio);
@@ -651,11 +703,18 @@
     /** Animated level intro card. RESOLVES only when dismissed. */
     levelStart(levelIndex, title) {
       EduCore.setState('levelStart');
-      const isIntro = levelIndex === 0;
-      const total = EduCore.spec.meta.sessionLength;
+      const spec = EduCore.spec;
+      const lvl = spec.levels[levelIndex];
+      const isIntro = lvl ? !!lvl.isIntro : levelIndex === 0; // stubs carry no levels
+      const stageScope = spec.meta.scope === 'stage';
       const label = isIntro
         ? EduCore.t('intro')
-        : EduCore.t('levelOf', { n: EduCore.fmtNum(levelIndex), total: EduCore.fmtNum(total - 1) });
+        : stageScope
+          ? EduCore.t('level', { n: EduCore.fmtNum(spec.meta.stageIndex || 1) })
+          : EduCore.t('levelOf', {
+              n: EduCore.fmtNum(levelIndex),
+              total: EduCore.fmtNum(spec.meta.sessionLength - 1),
+            });
 
       return new Promise((resolve) => {
         const c = this.add.container(0, 0).setDepth(this.uiDepth + 50);

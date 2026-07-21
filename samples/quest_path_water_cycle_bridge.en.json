@@ -1,0 +1,539 @@
+{
+  "specVersion": 1,
+  "meta": {
+    "gameType": "quest_path",
+    "theme": "fantasy",
+    "subject": "Science",
+    "topic": "The Water Cycle",
+    "language": "en",
+    "grade": 4,
+    "difficulty": "normal",
+    "sessionLength": 5,
+    "numerals": "western",
+    "variant": "bridge_builder"
+  },
+  "student": {
+    "name": "Player",
+    "gender": null,
+    "color": "#58CC02"
+  },
+  "narrative": {
+    "intro": "The kingdom of Aquaria has lost its rain. The Water Sage hands you a glowing flask: \"Follow a single drop of water through its great journey, and the skies will remember how to rain.\" Your quest begins at the Sunlit Sea.",
+    "outro": "Thunder rolls — gentle, welcome thunder. Rain falls on Aquaria for the first time in a year. The Water Sage bows: \"You followed the drop through sky and stone. The cycle is whole again, and so is our kingdom.\"",
+    "perLevel": [
+      "At the Sunlit Sea, the air shimmers with heat. Your drop begins to feel strangely light...",
+      "High above the clouds gather in the Mist Peaks, where the cold air bites and droplets huddle together.",
+      "The sky grows heavy and dark over the Stormfall Valley. Something is about to fall...",
+      "Deep beneath the Castle of Streams, the final guardian asks where all water finally returns."
+    ]
+  },
+  "levels": [
+    {
+      "index": 0,
+      "isIntro": true,
+      "title": "The Adventure Begins",
+      "teaching": [],
+      "items": []
+    },
+    {
+      "index": 1,
+      "isIntro": false,
+      "title": "The Sunlit Sea — Evaporation",
+      "teaching": [
+        {
+          "id": "l1_t1",
+          "text": "The sun heats water in oceans, lakes and rivers. Some of that liquid water turns into water vapor — an invisible gas — and rises into the air. This is called evaporation.",
+          "emphasis": [
+            "evaporation",
+            "water vapor"
+          ]
+        },
+        {
+          "id": "l1_t2",
+          "text": "Plants join in too: they release water vapor from tiny pores in their leaves. That part is called transpiration.",
+          "emphasis": [
+            "transpiration"
+          ]
+        }
+      ],
+      "items": [
+        {
+          "kind": "mcq",
+          "id": "l1_i1",
+          "prompt": "What is evaporation?",
+          "options": [
+            "Liquid water turning into a gas",
+            "A gas turning into liquid water",
+            "Water soaking into the ground",
+            "Ice melting into liquid water"
+          ],
+          "correctIndex": 0,
+          "explanation": "Evaporation is liquid water gaining enough heat energy to become water vapor, a gas that rises into the air.",
+          "hints": [
+            "Think about what happens to a puddle on a hot, sunny day — where does the water go?",
+            "It is the step where water LEAVES a surface and rises into the air. Two options describe water staying liquid or solid."
+          ],
+          "concepts": [
+            "evaporation"
+          ],
+          "difficulty": 1
+        },
+        {
+          "kind": "mcq",
+          "id": "l1_i2",
+          "prompt": "What provides most of the energy that drives evaporation on Earth?",
+          "options": [
+            "The sun",
+            "The wind",
+            "The moon",
+            "Ocean currents"
+          ],
+          "correctIndex": 0,
+          "explanation": "Sunlight is the engine of the water cycle: its heat gives water molecules the energy to escape as vapor.",
+          "hints": [
+            "Evaporation needs HEAT energy. Which of these actually heats the water?",
+            "Cross out the two that move water around but do not warm it much."
+          ],
+          "concepts": [
+            "evaporation",
+            "solar energy"
+          ],
+          "difficulty": 2
+        },
+        {
+          "kind": "mcq",
+          "id": "l1_i3",
+          "prompt": "Water vapor is water in which state of matter?",
+          "options": [
+            "Gas",
+            "Liquid",
+            "Solid",
+            "Plasma"
+          ],
+          "correctIndex": 0,
+          "explanation": "Water vapor is the gas state of water — invisible, light, and able to rise high into the atmosphere.",
+          "hints": [
+            "Vapor floats up into the air and you cannot see it. Which state behaves like that?",
+            "It is not solid like ice and not liquid like rain. Two options remain — pick the one found in air."
+          ],
+          "concepts": [
+            "states of matter"
+          ],
+          "difficulty": 1
+        },
+        {
+          "kind": "mcq",
+          "id": "l1_i4",
+          "prompt": "Where does MOST of Earth's evaporation happen?",
+          "options": [
+            "The oceans",
+            "Lakes",
+            "Rivers",
+            "Swimming pools"
+          ],
+          "correctIndex": 0,
+          "explanation": "Oceans are HUGE — they cover most of our planet. So they give off far more vapor than all lakes and rivers put together.",
+          "hints": [
+            "Think about which water body covers the largest area of the planet.",
+            "Rivers and pools are tiny compared to the biggest option here."
+          ],
+          "concepts": [
+            "evaporation",
+            "oceans"
+          ],
+          "difficulty": 3
+        },
+        {
+          "kind": "mcq",
+          "id": "l1_i5",
+          "prompt": "Plants release water vapor from their leaves. What is this process called?",
+          "options": [
+            "Transpiration",
+            "Respiration",
+            "Precipitation",
+            "Condensation"
+          ],
+          "correctIndex": 0,
+          "explanation": "Transpiration is water vapor escaping through tiny pores in leaves — a leafy cousin of evaporation.",
+          "hints": [
+            "The teach card mentioned a special word for the plant version of evaporation.",
+            "One option means breathing and one means rain — neither is about leaves releasing vapor."
+          ],
+          "concepts": [
+            "transpiration"
+          ],
+          "difficulty": 3
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "isIntro": false,
+      "title": "The Mist Peaks — Condensation",
+      "teaching": [
+        {
+          "id": "l2_t1",
+          "text": "As water vapor rises, the air around it gets colder. The cold makes the vapor turn back into tiny liquid droplets. This is condensation — the opposite of evaporation.",
+          "emphasis": [
+            "condensation"
+          ]
+        },
+        {
+          "id": "l2_t2",
+          "text": "Billions of those tiny droplets and ice crystals clump together around specks of dust. That is what a cloud actually is.",
+          "emphasis": [
+            "cloud"
+          ]
+        }
+      ],
+      "items": [
+        {
+          "kind": "mcq",
+          "id": "l2_i1",
+          "prompt": "What is condensation?",
+          "options": [
+            "Water vapor turning into liquid droplets",
+            "Liquid water turning into vapor",
+            "Rain soaking into soil",
+            "Snow turning straight into vapor"
+          ],
+          "correctIndex": 0,
+          "explanation": "Condensation is vapor cooling down and becoming tiny liquid droplets — evaporation running in reverse.",
+          "hints": [
+            "It is the OPPOSITE of evaporation. Which option reverses it?",
+            "Look for the option where a gas becomes a liquid, not the other way round."
+          ],
+          "concepts": [
+            "condensation"
+          ],
+          "difficulty": 1
+        },
+        {
+          "kind": "mcq",
+          "id": "l2_i2",
+          "prompt": "Why does water vapor condense as it rises high into the sky?",
+          "options": [
+            "The air up high is colder",
+            "The air up high is hotter",
+            "The wind pushes drops together",
+            "Sunlight glues vapor into drops"
+          ],
+          "correctIndex": 0,
+          "explanation": "Temperature drops as you climb. Cold air slows water molecules down until they stick together as droplets.",
+          "hints": [
+            "Think of mountain tops — are they warmer or cooler than the beach?",
+            "Condensation needs the vapor to LOSE heat. Which option takes heat away?"
+          ],
+          "concepts": [
+            "condensation",
+            "temperature"
+          ],
+          "difficulty": 2
+        },
+        {
+          "kind": "mcq",
+          "id": "l2_i3",
+          "prompt": "What are clouds made of?",
+          "options": [
+            "Tiny water droplets and ice crystals",
+            "Pure water vapor only",
+            "Smoke from volcanoes",
+            "Cotton-like sky fibers"
+          ],
+          "correctIndex": 0,
+          "explanation": "A cloud is billions of tiny liquid droplets and ice crystals — vapor is invisible, so what you SEE is liquid and ice.",
+          "hints": [
+            "Vapor is invisible. If you can see a cloud, what must it contain?",
+            "Two options are not even made of water — cross those out first."
+          ],
+          "concepts": [
+            "clouds",
+            "condensation"
+          ],
+          "difficulty": 2
+        },
+        {
+          "kind": "mcq",
+          "id": "l2_i4",
+          "prompt": "On a cold morning you find water drops on grass that did not come from rain. What formed them?",
+          "options": [
+            "Vapor condensing as dew",
+            "Grass sweating overnight",
+            "Leftover evaporation",
+            "Underground rivers leaking"
+          ],
+          "correctIndex": 0,
+          "explanation": "Dew is condensation happening at ground level: night air cools, and vapor turns to liquid right on cool surfaces.",
+          "hints": [
+            "The night air cooled down. What does cooling do to the vapor touching the grass?",
+            "It is the same process that builds clouds, just happening on the ground."
+          ],
+          "concepts": [
+            "condensation",
+            "dew"
+          ],
+          "difficulty": 4
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "isIntro": false,
+      "title": "Stormfall Valley — Precipitation",
+      "teaching": [
+        {
+          "id": "l3_t1",
+          "text": "Inside a cloud, droplets bump and merge, growing bigger and heavier. When they are too heavy for the air to hold, they fall. Any falling water is called precipitation.",
+          "emphasis": [
+            "precipitation"
+          ]
+        },
+        {
+          "id": "l3_t2",
+          "text": "Precipitation has many costumes: rain when it is warm, snow when it is freezing, sleet and hail in between.",
+          "emphasis": [
+            "rain",
+            "snow",
+            "hail"
+          ]
+        }
+      ],
+      "items": [
+        {
+          "kind": "mcq",
+          "id": "l3_i1",
+          "prompt": "What is precipitation?",
+          "options": [
+            "Water falling from clouds to the ground",
+            "Water rising from the sea as vapor",
+            "Clouds forming from vapor",
+            "Water hiding underground"
+          ],
+          "correctIndex": 0,
+          "explanation": "Precipitation is any water — rain, snow, sleet or hail — falling from clouds down to Earth.",
+          "hints": [
+            "The word covers rain, snow, sleet AND hail. What do all four do?",
+            "Two options describe water going UP or staying put. You want the one going DOWN."
+          ],
+          "concepts": [
+            "precipitation"
+          ],
+          "difficulty": 1
+        },
+        {
+          "kind": "mcq",
+          "id": "l3_i2",
+          "prompt": "Why do droplets eventually fall out of a cloud?",
+          "options": [
+            "They merge until they are too heavy",
+            "The cloud gets bored of them",
+            "Sunlight pushes them down",
+            "The wind always blows downward"
+          ],
+          "correctIndex": 0,
+          "explanation": "Droplets collide and merge until gravity wins over the rising air — then down they come as precipitation.",
+          "hints": [
+            "Think about weight. What happens as tiny drops keep bumping and joining?",
+            "The real answer is about gravity beating the air that holds drops up."
+          ],
+          "concepts": [
+            "precipitation",
+            "gravity"
+          ],
+          "difficulty": 2
+        },
+        {
+          "kind": "mcq",
+          "id": "l3_i3",
+          "prompt": "It is freezing cold in the clouds AND on the ground. Which precipitation is most likely?",
+          "options": [
+            "Snow",
+            "Warm rain",
+            "Steam",
+            "Dew"
+          ],
+          "correctIndex": 0,
+          "explanation": "When it's freezing all the way down, the water stays frozen as soft icy flakes — that's snow!",
+          "hints": [
+            "Freezing means water turns solid. What soft, white, frozen thing falls from clouds?",
+            "One option is a gas and one forms on grass — neither falls from a freezing cloud."
+          ],
+          "concepts": [
+            "precipitation",
+            "freezing point"
+          ],
+          "difficulty": 3
+        },
+        {
+          "kind": "mcq",
+          "id": "l3_i4",
+          "prompt": "Which list contains ONLY forms of precipitation?",
+          "options": [
+            "Rain, snow, sleet, hail",
+            "Rain, fog, vapor, dew",
+            "Snow, clouds, wind, mist",
+            "Hail, thunder, lightning, rain"
+          ],
+          "correctIndex": 0,
+          "explanation": "Rain, snow, sleet and hail all FALL from clouds. Fog, dew, thunder and lightning don't fall as water.",
+          "hints": [
+            "Precipitation must actually fall from a cloud to the ground.",
+            "Thunder and lightning are not water at all — cross out that list, then check the rest for floaters like fog."
+          ],
+          "concepts": [
+            "precipitation"
+          ],
+          "difficulty": 4
+        },
+        {
+          "kind": "mcq",
+          "id": "l3_i5",
+          "prompt": "Hail forms when storm winds toss drops up and down through freezing air. What does each trip add?",
+          "options": [
+            "Another layer of ice",
+            "More dust in the middle",
+            "A coat of warm water",
+            "Extra air bubbles only"
+          ],
+          "correctIndex": 0,
+          "explanation": "Each ride through freezing air adds a new icy layer, like an onion — that's why big hailstones have rings.",
+          "hints": [
+            "Cut a hailstone open and you see rings, like an onion. What makes a ring each trip?",
+            "The freezing air COATS the stone with something each time it goes up."
+          ],
+          "concepts": [
+            "precipitation",
+            "hail"
+          ],
+          "difficulty": 5
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "isIntro": false,
+      "title": "The Castle of Streams — Collection",
+      "teaching": [
+        {
+          "id": "l4_t1",
+          "text": "Fallen water gathers — in oceans, lakes and rivers, or sinking underground into soil and rock as groundwater. This stage is called collection.",
+          "emphasis": [
+            "collection",
+            "groundwater"
+          ]
+        },
+        {
+          "id": "l4_t2",
+          "text": "Then the sun shines again and the journey restarts. The water cycle has no finish line: evaporation → condensation → precipitation → collection, around and around for billions of years.",
+          "emphasis": [
+            "water cycle"
+          ]
+        }
+      ],
+      "items": [
+        {
+          "kind": "mcq",
+          "id": "l4_i1",
+          "prompt": "Where does rainwater that soaks into the soil end up?",
+          "options": [
+            "Stored underground as groundwater",
+            "It vanishes forever",
+            "It turns into lava",
+            "It floats back up at night"
+          ],
+          "correctIndex": 0,
+          "explanation": "Water seeps through soil and rock and is stored underground — wells and springs tap this hidden supply.",
+          "hints": [
+            "The teach card named the hidden water under our feet.",
+            "Water never vanishes from the cycle — and it certainly doesn't melt rock."
+          ],
+          "concepts": [
+            "collection",
+            "groundwater"
+          ],
+          "difficulty": 2
+        },
+        {
+          "kind": "mcq",
+          "id": "l4_i2",
+          "prompt": "Which is the correct order of the water cycle, starting from the sea?",
+          "options": [
+            "Evaporation → condensation → precipitation → collection",
+            "Condensation → evaporation → collection → precipitation",
+            "Precipitation → evaporation → condensation → collection",
+            "Collection → precipitation → condensation → evaporation"
+          ],
+          "correctIndex": 0,
+          "explanation": "Up as vapor, into clouds, down as rain, gathered in seas and soil — then the loop begins again.",
+          "hints": [
+            "Start where the sun lifts water UP from the sea. Which step is that?",
+            "After the vapor rises it must become clouds BEFORE anything can fall."
+          ],
+          "concepts": [
+            "water cycle",
+            "sequencing"
+          ],
+          "difficulty": 3
+        },
+        {
+          "kind": "mcq",
+          "id": "l4_i3",
+          "prompt": "The water you drank today could have been drunk by a dinosaur. Why is that actually true?",
+          "options": [
+            "Water keeps cycling and is never used up",
+            "Dinosaurs invented water",
+            "New water arrives from space daily",
+            "Water lasts exactly 100 years"
+          ],
+          "correctIndex": 0,
+          "explanation": "Earth recycles roughly the same water endlessly through the cycle — today's rain is ancient water on another lap.",
+          "hints": [
+            "Think about whether the cycle ever destroys water or just moves it.",
+            "Earth gets almost no new water — so what must be happening to the old water?"
+          ],
+          "concepts": [
+            "water cycle",
+            "conservation of water"
+          ],
+          "difficulty": 4
+        },
+        {
+          "kind": "mcq",
+          "id": "l4_i4",
+          "prompt": "A puddle dries up at noon, clouds gather at 3pm, and it rains at 6pm. Which stage happened at 3pm?",
+          "options": [
+            "Condensation",
+            "Evaporation",
+            "Precipitation",
+            "Collection"
+          ],
+          "correctIndex": 0,
+          "explanation": "Clouds gathering IS condensation — vapor cooling into visible droplets. Drying was evaporation; rain was precipitation.",
+          "hints": [
+            "Match each time to a stage: drying, clouds forming, rain falling.",
+            "The 3pm event is about clouds FORMING, not water rising or falling."
+          ],
+          "concepts": [
+            "water cycle",
+            "condensation"
+          ],
+          "difficulty": 4
+        }
+      ]
+    }
+  ],
+  "summaryHints": {
+    "concepts": [
+      "evaporation",
+      "condensation",
+      "precipitation",
+      "collection",
+      "transpiration"
+    ],
+    "nextTopics": [
+      "Groundwater and aquifers",
+      "Weather vs. climate",
+      "States of matter"
+    ]
+  }
+}

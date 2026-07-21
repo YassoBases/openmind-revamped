@@ -15,13 +15,18 @@ const repoRoot = join(here, '..', '..', '..');
 
 const SPEC_MARKER = '/*__EDUMIND_SPEC_JSON__*/null';
 
+/** The unified shell hosts every game; spec.meta.gameType selects the module. */
+const UNIFIED_SHELL = 'edumind';
+
 interface Manifest {
   phaserVersion: string;
-  shells: Record<string, { file: string; shellVersion: string; bytes: number }>;
+  unifiedShell?: string;
+  games?: string[];
+  shells: Record<string, { file: string; shellVersion: string; bytes: number; games?: string[] }>;
 }
 
 let manifest: Manifest | null = null;
-const shellCache = new Map<string, string>();
+let unifiedShellHtml: string | null = null;
 
 /**
  * Boot-time data check: ensure shells exist (built by `npm -w shells run
@@ -46,7 +51,8 @@ export function ensureShellData(log: { info: (m: string) => void; warn: (m: stri
     log.warn('[shells] built shells missing — run `npm -w shells run build` (play/assembly endpoints will 503)');
   } else {
     const m = getManifest();
-    log.info(`[shells] ${Object.keys(m.shells).join(', ')} ready (phaser ${m.phaserVersion})`);
+    const games = m.shells[UNIFIED_SHELL]?.games ?? m.games ?? Object.keys(m.shells);
+    log.info(`[shells] unified shell ready — games: ${games.join(', ')} (phaser ${m.phaserVersion})`);
   }
 }
 
@@ -57,9 +63,9 @@ export function getManifest(): Manifest {
   return manifest;
 }
 
-export function shellVersionFor(gameType: string): string {
+export function shellVersionFor(_gameType: string): string {
   try {
-    return getManifest().shells[gameType]?.shellVersion ?? '';
+    return getManifest().shells[UNIFIED_SHELL]?.shellVersion ?? '';
   } catch {
     return '';
   }
@@ -69,13 +75,11 @@ export function safeSpecJson(spec: unknown): string {
   return JSON.stringify(spec).replace(/</g, '\\u003c');
 }
 
-export function assembleHtml(gameType: string, spec: unknown): string {
-  let shell = shellCache.get(gameType);
-  if (!shell) {
-    const file = join(shellsDir, `${gameType}.html`);
-    if (!existsSync(file)) throw new Error(`shell not built: ${gameType}`);
-    shell = readFileSync(file, 'utf8');
-    shellCache.set(gameType, shell);
+export function assembleHtml(_gameType: string, spec: unknown): string {
+  if (!unifiedShellHtml) {
+    const file = join(shellsDir, `${UNIFIED_SHELL}.html`);
+    if (!existsSync(file)) throw new Error('shell not built: run `npm -w shells run build`');
+    unifiedShellHtml = readFileSync(file, 'utf8');
   }
-  return shell.replace(SPEC_MARKER, safeSpecJson(spec));
+  return unifiedShellHtml.replace(SPEC_MARKER, safeSpecJson(spec));
 }

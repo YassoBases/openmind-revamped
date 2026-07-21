@@ -5,10 +5,15 @@ import 'core/app_theme.dart';
 import 'core/palette.dart';
 import 'core/session.dart';
 import 'core/spec_assembler.dart';
+import 'core/xp_store.dart';
 import 'data/game_store.dart';
 import 'features/composer/composer_screen.dart';
 import 'features/demos/demos_screen.dart';
 import 'features/player/player_screen.dart';
+import 'features/worlds/lesson_picker_screen.dart';
+import 'features/worlds/world_map_screen.dart';
+import 'features/worlds/world_models.dart';
+import 'features/worlds/world_store.dart';
 import 'widgets/mascot.dart';
 
 /// The learning path — a Duolingo-style winding trail, but every node is a
@@ -30,12 +35,18 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   )..repeat(reverse: true);
 
   List<SavedGame> _games = [];
+  List<World> _worlds = [];
+  int _xp = 0;
+  int _level = 1;
+  int _streak = 0;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _load();
+    // Reconcile the XP ledger in the background (quiet no-op offline).
+    XpStore.instance().then((s) => s.refresh().then((_) => _load()));
   }
 
   @override
@@ -49,12 +60,37 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _load() async {
     final games = await GameStore.instance.list();
+    final worldStore = await WorldStore.instance();
+    final worlds = await worldStore.list();
+    final xpStore = await XpStore.instance();
     if (mounted) {
       setState(() {
-        _games = games;
+        // Lesson-World stage rows live in the same offline store but belong
+        // to their world's map — the classic shelf shows classic games only.
+        _games = games.where((g) => !WorldStore.isStageGameId(g.id)).toList();
+        _worlds = worlds;
+        _xp = xpStore.xp;
+        _level = xpStore.level;
+        _streak = xpStore.streak;
         _loading = false;
       });
     }
+  }
+
+  Future<void> _newWorld() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const LessonPickerScreen()),
+    );
+    if (mounted) await _load();
+  }
+
+  Future<void> _openWorld(World world) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => WorldMapScreen(worldId: world.id)),
+    );
+    if (mounted) await _load();
   }
 
   Future<void> _createGame() async {
@@ -170,7 +206,15 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               vertical: 32,
                               horizontal: 20,
                             ),
-                            child: _buildPath(),
+                            child: Column(
+                              children: [
+                                _worldsSection(),
+                                const SizedBox(height: 26),
+                                _classicHeading(),
+                                const SizedBox(height: 6),
+                                _buildPath(),
+                              ],
+                            ),
                           ),
                   ),
                 ],
@@ -194,13 +238,124 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ),
   );
 
+  /// "My Worlds" — the Lesson-Worlds shelf, always first: world cards with a
+  /// progress ring, plus the New World door. This is the primary loop; the
+  /// classic single-game trail lives below it.
+  Widget _worldsSection() {
+    final l = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text(
+            l.translate('worlds_title'),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.blueInk,
+            ),
+          ),
+        ),
+        for (final world in _worlds)
+          Card(
+            color: Colors.white.withValues(alpha: 0.94),
+            margin: const EdgeInsets.only(bottom: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Palette.radiusCard),
+            ),
+            child: ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              leading: SizedBox(
+                width: 44,
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: world.stageCount == 0
+                          ? 0
+                          : world.completedCount / world.stageCount,
+                      strokeWidth: 5,
+                      backgroundColor: AppColors.softBlue,
+                      color: world.finished ? Palette.yellow : Palette.blue,
+                    ),
+                    Text(
+                      world.finished ? '★' : '${world.completedCount}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.blueInk,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              title: Text(
+                world.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                l.translateWith('world_progress', {
+                  'done': '${world.completedCount}',
+                  'total': '${world.stageCount}',
+                }),
+                style: const TextStyle(fontSize: 12.5),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => _openWorld(world),
+            ),
+          ),
+        Card(
+          color: Palette.blue,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Palette.radiusCard),
+          ),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: const Icon(Icons.add_circle_rounded,
+                color: Colors.white, size: 32),
+            title: Text(
+              l.translate('world_new'),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+            onTap: _newWorld,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _classicHeading() {
+    final l = AppLocalizations.of(context)!;
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Text(
+        l.translate('classic_games'),
+        style: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w800,
+          color: AppColors.blueInk,
+        ),
+      ),
+    );
+  }
+
   Widget _headerStats() {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    // Simple local progress until server stats are wired (M4): a "level" per
-    // five games, points = sum of best scores.
-    final points = _games.fold<int>(0, (sum, g) => sum + g.bestScore);
-    final level = 1 + (_games.length ~/ 5);
+    // Real persisted progress: the XpStore mirrors the server's XP ledger
+    // (local-first, reconciled in the background).
+    final points = _xp;
+    final level = _level;
     Widget pill(Widget child) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       decoration: BoxDecoration(
@@ -234,6 +389,17 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     color: cs.secondary,
                   ),
                 ),
+                if (_streak > 1) ...[
+                  const SizedBox(width: 10),
+                  Text(
+                    '🔥$_streak',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Palette.yellow,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

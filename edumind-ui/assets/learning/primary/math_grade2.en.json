@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "math",
+  "subjectTitle": "Math",
+  "grade": 2,
+  "language": "en",
+  "lessons": [
+    { "id": "g2_math_count_100", "title": "Numbers up to 100", "focusConcepts": ["counting to 100", "tens and ones"] },
+    { "id": "g2_math_add_carry", "title": "Addition with Carrying", "focusConcepts": ["two-digit addition", "carrying"] },
+    { "id": "g2_math_sub_borrow", "title": "Subtraction with Borrowing", "focusConcepts": ["two-digit subtraction", "borrowing"] },
+    { "id": "g2_math_mult_intro", "title": "Meet Multiplication", "focusConcepts": ["multiplication as repeated addition", "2 times table", "5 times table"] },
+    { "id": "g2_math_time", "title": "Reading the Clock", "focusConcepts": ["whole hours", "half hours"] },
+    { "id": "g2_math_money", "title": "Money and Shopping", "focusConcepts": ["counting money", "simple buying"] },
+    { "id": "g2_math_shapes_3d", "title": "Solid Shapes", "focusConcepts": ["cube", "sphere", "cylinder"] },
+    { "id": "g2_math_measure_cm", "title": "Measuring in Centimeters", "focusConcepts": ["measuring length", "centimeters and meters"] }
+  ]
+}

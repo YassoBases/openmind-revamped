@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "science",
+  "subjectTitle": "العلوم",
+  "grade": 2,
+  "language": "ar",
+  "lessons": [
+    { "id": "g2_sci_life_cycles", "title": "دورات حياة الكائنات", "focusConcepts": ["دورة حياة الفراشة", "دورة حياة النبتة"] },
+    { "id": "g2_sci_food", "title": "الغذاء الصحي", "focusConcepts": ["أنواع الغذاء", "الوجبة المتوازنة"] },
+    { "id": "g2_sci_matter", "title": "حالات المادة", "focusConcepts": ["الصلب", "السائل", "الغاز"] },
+    { "id": "g2_sci_water_cycle", "title": "رحلة الماء", "focusConcepts": ["التبخر", "التكاثف", "المطر"] },
+    { "id": "g2_sci_animal_homes", "title": "بيوت الحيوانات وغذاؤها", "focusConcepts": ["أين تعيش الحيوانات", "ماذا تأكل"] },
+    { "id": "g2_sci_earth_sky", "title": "الأرض والسماء", "focusConcepts": ["الشمس نجم", "القمر والنجوم"] },
+    { "id": "g2_sci_weather", "title": "الطقس", "focusConcepts": ["حالات الطقس", "قياس الطقس البسيط"] },
+    { "id": "g2_sci_safety", "title": "السلامة في البيت والمدرسة", "focusConcepts": ["قواعد السلامة", "أدوات خطرة وآمنة"] }
+  ]
+}

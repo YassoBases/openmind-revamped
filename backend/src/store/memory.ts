@@ -1,12 +1,14 @@
 /** In-memory store — dev fallback when DATABASE_URL is unset. Data dies on restart. */
 import { randomUUID } from 'node:crypto';
 import { uniqueConstraintError } from './errors.js';
-import type { GameRow, LearnEvidenceInput, LearnEvidenceRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, XpEventRow } from './types.js';
+import type { GameRow, LearnEvidenceInput, LearnEvidenceRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, WorldRow, WorldStageRow, XpEventRow } from './types.js';
 
 export class MemoryStore implements Store {
   kind = 'memory' as const;
   private students = new Map<string, StudentRow>();
   private games = new Map<string, GameRow>();
+  private worlds = new Map<string, WorldRow>();
+  private worldStages = new Map<string, WorldStageRow>(); // key: `${worldId}:${index}`
   private sessions: PlaySessionRow[] = [];
   private xpEvents: XpEventRow[] = [];
   private tutorMessages: TutorMessageRow[] = [];
@@ -82,6 +84,54 @@ export class MemoryStore implements Store {
     if (!g) throw new Error('game not found');
     Object.assign(g, patch);
     return g;
+  }
+
+  async createWorld(data: Omit<WorldRow, 'createdAt' | 'deletedAt'>) {
+    const row: WorldRow = { ...data, createdAt: new Date(), deletedAt: null };
+    this.worlds.set(row.id, row);
+    return row;
+  }
+
+  async getWorld(id: string) {
+    const w = this.worlds.get(id);
+    return w && !w.deletedAt ? w : null;
+  }
+
+  async updateWorld(id: string, patch: Partial<Omit<WorldRow, 'id' | 'studentId' | 'createdAt'>>) {
+    const w = this.worlds.get(id);
+    if (!w) throw new Error('world not found');
+    Object.assign(w, patch);
+    return w;
+  }
+
+  async listWorlds(studentId: string, opts: { limit: number; offset: number }) {
+    const all = [...this.worlds.values()]
+      .filter((w) => w.studentId === studentId && !w.deletedAt)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return { items: all.slice(opts.offset, opts.offset + opts.limit), total: all.length };
+  }
+
+  async upsertWorldStage(data: WorldStageRow) {
+    const row: WorldStageRow = { ...data };
+    this.worldStages.set(`${row.worldId}:${row.index}`, row);
+    return row;
+  }
+
+  async getWorldStage(worldId: string, index: number) {
+    return this.worldStages.get(`${worldId}:${index}`) ?? null;
+  }
+
+  async updateWorldStage(worldId: string, index: number, patch: Partial<Omit<WorldStageRow, 'worldId' | 'index'>>) {
+    const s = this.worldStages.get(`${worldId}:${index}`);
+    if (!s) throw new Error('world stage not found');
+    Object.assign(s, patch);
+    return s;
+  }
+
+  async listWorldStages(worldId: string) {
+    return [...this.worldStages.values()]
+      .filter((s) => s.worldId === worldId)
+      .sort((a, b) => a.index - b.index);
   }
 
   async listGames(studentId: string, opts: { limit: number; offset: number }) {

@@ -66,8 +66,10 @@ const server = createServer((req, res) => {
     }
 
     if (path === '/api/list') {
-      const shells = existsSync(distDir)
-        ? readdirSync(distDir).filter((f) => f.endsWith('.html')).map((f) => f.replace('.html', ''))
+      // The unified shell hosts every game — list the games it contains.
+      const manifestPath = join(distDir, 'manifest.json');
+      const shells = existsSync(manifestPath)
+        ? (JSON.parse(readFileSync(manifestPath, 'utf8')).games || [])
         : [];
       const samples = readdirSync(samplesDir).filter((f) => f.endsWith('.json'));
       const specs = samples.map((f) => {
@@ -79,9 +81,10 @@ const server = createServer((req, res) => {
 
     const playMatch = path.match(/^\/play\/([a-z_]+)$/);
     if (playMatch) {
-      const game = playMatch[1];
-      const shellPath = join(distDir, `${game}.html`);
-      if (!existsSync(shellPath)) return send(res, 404, `shell not built: ${game} — run: npm -w shells run build`);
+      // Any game name plays through the unified shell; the spec's
+      // meta.gameType picks the module inside it.
+      const shellPath = join(distDir, 'edumind.html');
+      if (!existsSync(shellPath)) return send(res, 404, 'shell not built — run: npm -w shells run build');
       const specName = url.searchParams.get('spec');
       if (!specName) return send(res, 400, 'missing ?spec=');
       const specPath = normalize(join(samplesDir, specName.replace(/^samples[\\/]/, '')));

@@ -106,6 +106,17 @@ export const CreateGameBody = z.object({
   language: z.enum(LANGUAGES).optional(), // defaults to the student's language
 });
 
+/** Lesson Worlds: one lesson (curated or free topic) → a stage-map world. */
+export const CreateWorldBody = z.object({
+  subject: z.string().max(80).optional(),
+  topic: z.string().min(1).max(200),
+  /** Curated-catalog lesson id, when picked from the lesson picker. */
+  lessonId: z.string().max(80).optional(),
+  /** Curriculum grounding from the catalog entry — the planner covers these. */
+  focusConcepts: z.array(z.string().min(1).max(60)).max(8).optional(),
+  language: z.enum(LANGUAGES).optional(), // defaults to the student's language
+});
+
 export const GameView = z.object({
   id: z.string(),
   gameType: z.string(),

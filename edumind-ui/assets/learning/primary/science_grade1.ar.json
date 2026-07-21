@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "science",
+  "subjectTitle": "العلوم",
+  "grade": 1,
+  "language": "ar",
+  "lessons": [
+    { "id": "g1_sci_senses", "title": "حواسي الخمس", "focusConcepts": ["البصر", "السمع", "الشم", "التذوق", "اللمس"] },
+    { "id": "g1_sci_body", "title": "أجزاء جسمي", "focusConcepts": ["أعضاء الجسم الرئيسية", "وظائفها البسيطة"] },
+    { "id": "g1_sci_animals", "title": "الحيوانات من حولنا", "focusConcepts": ["حيوانات أليفة وبرية", "أصوات الحيوانات وبيوتها"] },
+    { "id": "g1_sci_plants", "title": "النباتات حولنا", "focusConcepts": ["أجزاء النبتة", "ماذا تحتاج النبتة"] },
+    { "id": "g1_sci_day_night", "title": "الليل والنهار", "focusConcepts": ["الشمس والقمر", "أنشطة الليل والنهار"] },
+    { "id": "g1_sci_seasons", "title": "فصول السنة", "focusConcepts": ["الفصول الأربعة", "ملابس كل فصل"] },
+    { "id": "g1_sci_water", "title": "الماء في حياتنا", "focusConcepts": ["استعمالات الماء", "أهمية الماء"] },
+    { "id": "g1_sci_clean", "title": "النظافة والصحة", "focusConcepts": ["غسل اليدين", "نظافة الطعام"] }
+  ]
+}

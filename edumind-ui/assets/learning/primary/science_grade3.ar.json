@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "science",
+  "subjectTitle": "العلوم",
+  "grade": 3,
+  "language": "ar",
+  "lessons": [
+    { "id": "g3_sci_plant_parts", "title": "أجزاء النبات ووظائفها", "focusConcepts": ["الجذر", "الساق", "الأوراق", "الزهرة"] },
+    { "id": "g3_sci_food_chains", "title": "السلاسل الغذائية", "focusConcepts": ["المنتِج والمستهلك", "سلسلة غذائية بسيطة"] },
+    { "id": "g3_sci_states_change", "title": "تحولات المادة", "focusConcepts": ["الانصهار", "التجمد", "التبخر"] },
+    { "id": "g3_sci_forces", "title": "الدفع والسحب", "focusConcepts": ["القوى البسيطة", "الحركة"] },
+    { "id": "g3_sci_light_sound", "title": "الضوء والصوت", "focusConcepts": ["مصادر الضوء", "كيف ينتقل الصوت"] },
+    { "id": "g3_sci_habitats", "title": "البيئات الطبيعية", "focusConcepts": ["الصحراء", "الغابة", "البحر"] },
+    { "id": "g3_sci_human_body", "title": "أجهزة جسم الإنسان", "focusConcepts": ["الجهاز الهضمي", "القلب والتنفس"] },
+    { "id": "g3_sci_environment", "title": "حماية البيئة", "focusConcepts": ["النفايات وإعادة التدوير", "توفير الماء"] }
+  ]
+}

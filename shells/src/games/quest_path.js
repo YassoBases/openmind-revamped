@@ -16,23 +16,25 @@
   const H = 1280;
   const WORLD_H = 700; // top world view; dialog + options below
 
-  // Light, calm worlds on the warm OpenMind palette — no dark skies, no neon.
+  // Alive, calm worlds on the warm OpenMind palette — richer skies with a
+  // 3-stop gradient (top → mid → golden horizon), livelier greens, warmer
+  // golds. Still light and photosensitivity-safe: no darkness, no neon.
   const THEMES = {
     fantasy: {
-      skyTop: 0xceebf0, skyBottom: 0xfdf2e2, ground: 0x84a253, path: 0xb5702f,
-      propColor: 0x4d8c58, accent: 0xef9722, ambient: 'fireflies',
+      skyTop: 0x8fd4e8, skyMid: 0xc9ecdc, skyBottom: 0xffe9c4, ground: 0x74b04e,
+      path: 0xc9884a, propColor: 0x3f8a54, accent: 0xffaa2b, ambient: 'fireflies',
     },
     sci_fi: {
-      skyTop: 0xb9e2e8, skyBottom: 0xe9f6f8, ground: 0x57a79f, path: 0xfae9d0,
-      propColor: 0x19725e, accent: 0x079a90, ambient: 'stars',
+      skyTop: 0x84cfdb, skyMid: 0xbfe9ee, skyBottom: 0xeffbf7, ground: 0x4fb3a4,
+      path: 0xfae9d0, propColor: 0x19725e, accent: 0x0cc0b0, ambient: 'stars',
     },
     detective: {
-      skyTop: 0xfadbb0, skyBottom: 0xfdf2e2, ground: 0x9c6128, path: 0xfae9d0,
-      propColor: 0xb5702f, accent: 0xef9722, ambient: 'rain',
+      skyTop: 0xf3c383, skyMid: 0xf9daae, skyBottom: 0xfdf2e2, ground: 0xa9793d,
+      path: 0xfae9d0, propColor: 0x8a5210, accent: 0xef9722, ambient: 'rain',
     },
     anime: {
-      skyTop: 0xf3c9d3, skyBottom: 0xfdf2e2, ground: 0x9fd98a, path: 0xead3ae,
-      propColor: 0x4d8c58, accent: 0xd93b5e, ambient: 'petals',
+      skyTop: 0xf5b7c8, skyMid: 0xfbd9dc, skyBottom: 0xfff3da, ground: 0x8ed072,
+      path: 0xeed3a4, propColor: 0x4d8c58, accent: 0xd93b5e, ambient: 'petals',
     },
   };
 
@@ -44,6 +46,36 @@
     { name: 'castle', dark: 0.22 },
     { name: 'boss', dark: 0.5 },
   ];
+
+  // Time-of-day drift across a WORLD's stages (scope='stage'): the journey
+  // starts at dawn, brightens to noon, mellows to dusk, and ends under early
+  // stars. A gentle celestial cycle — always warm, never dark.
+  const TIME_BANDS = [
+    { name: 'dawn', tint: 0xffd9b8, f: 0.28, sunY: 130, sunColor: 0xffc46b },
+    { name: 'noon', tint: 0xffffff, f: 0.0, sunY: 64, sunColor: 0xffe08a },
+    { name: 'dusk', tint: 0xffb37a, f: 0.3, sunY: 150, sunColor: 0xff9d54 },
+    { name: 'starlit', tint: 0xa9c7e8, f: 0.32, sunY: 96, sunColor: 0xfdf2e2 },
+  ];
+
+  /** Blend two RGB ints toward each other by f (0..1). */
+  function blend(a, b, f) {
+    const r = ((a >> 16) & 255) + (((b >> 16) & 255) - ((a >> 16) & 255)) * f;
+    const g = ((a >> 8) & 255) + (((b >> 8) & 255) - ((a >> 8) & 255)) * f;
+    const bl = (a & 255) + ((b & 255) - (a & 255)) * f;
+    return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(bl);
+  }
+
+  // Variant-specific guide intros — each staging teaches its own story.
+  const VARIANT_INTRO = {
+    bridge_builder: {
+      en: 'I am your guide! Streams cross our path ahead. The plank with the TRUE answer holds your weight — tap it to bridge the gap!',
+      ar: 'أنا دليلك! جداول تقطع طريقنا. اللوح الذي يحمل الإجابة الصحيحة يتحمل وزنك — اضغطه لتعبر!',
+    },
+    lantern_lights: {
+      en: 'I am your guide! The road ahead is lit by lanterns. Only the lantern holding a TRUE answer lights the way — choose with care!',
+      ar: 'أنا دليلك! الطريق أمامنا تضيئه الفوانيس. فقط الفانوس الذي يحمل إجابة صحيحة ينير الدرب — اختر بعناية!',
+    },
+  };
 
   const TUTORIAL = {
     en: {
@@ -155,22 +187,31 @@
       return c;
     }
 
+    /** The stage's time band (Lesson Worlds walk dawn→noon→dusk→starlit). */
+    timeBand() {
+      const meta = EduCore.spec.meta;
+      if (meta.scope !== 'stage') return TIME_BANDS[1]; // sessions play at noon
+      return TIME_BANDS[((meta.stageIndex || 1) - 1) % TIME_BANDS.length];
+    }
+
     drawEnvironment(envIndex) {
       const t = this.theme;
       const env = ENV_SHIFTS[Math.min(envIndex, ENV_SHIFTS.length - 1)];
       const dk = env.dark;
-      const top = GameFeel.darken(t.skyTop, dk);
-      const bottom = GameFeel.darken(t.skyBottom, dk);
+      const time = this.timeBand();
+      const tinted = (c) => GameFeel.darken(blend(c, time.tint, time.f), dk);
+      const top = tinted(t.skyTop);
+      const mid = tinted(t.skyMid != null ? t.skyMid : t.skyTop);
+      const bottom = tinted(t.skyBottom);
 
       this.sky.clear();
-      // vertical gradient in 8 bands (cheap, no shaders)
-      for (let i = 0; i < 8; i++) {
-        const f = i / 7;
-        const r1 = (top >> 16) & 255, g1 = (top >> 8) & 255, b1 = top & 255;
-        const r2 = (bottom >> 16) & 255, g2 = (bottom >> 8) & 255, b2 = bottom & 255;
-        const col = ((r1 + (r2 - r1) * f) << 16) | ((g1 + (g2 - g1) * f) << 8) | (b1 + (b2 - b1) * f);
+      // 3-stop vertical gradient in 12 bands (cheap, no shaders): a real sky
+      // with depth instead of a flat two-color wash.
+      for (let i = 0; i < 12; i++) {
+        const f = i / 11;
+        const col = f < 0.5 ? blend(top, mid, f * 2) : blend(mid, bottom, (f - 0.5) * 2);
         this.sky.fillStyle(col, 1);
-        this.sky.fillRect(0, (WORLD_H / 8) * i, W, WORLD_H / 8 + 1);
+        this.sky.fillRect(0, (WORLD_H / 12) * i, W, WORLD_H / 12 + 1);
       }
       // bottom UI zone backdrop
       this.sky.fillStyle(0xfdf2e2, 1);
@@ -193,6 +234,36 @@
       this.nearProps.removeAll(true);
       const prop = (g) => { this.farProps.add(g); return g; };
       const nprop = (g) => { this.nearProps.add(g); return g; };
+
+      // celestial body: the sun rides the time of day; starlit shows a moon.
+      const sun = this.add.graphics();
+      if (time.name === 'starlit') {
+        sun.fillStyle(time.sunColor, 0.95);
+        sun.fillCircle(W - 130, time.sunY, 34);
+        sun.fillStyle(blend(top, 0x000000, 0.06), 1); // crescent bite
+        sun.fillCircle(W - 118, time.sunY - 8, 28);
+        sun.fillStyle(0xfdf2e2, 0.9); // a few early stars
+        for (let i = 0; i < 5; i++) sun.fillCircle(70 + i * 130, 46 + (i % 3) * 32, 2.4);
+      } else {
+        sun.fillStyle(time.sunColor, 0.28);
+        sun.fillCircle(W - 130, time.sunY, 62);
+        sun.fillStyle(time.sunColor, 0.95);
+        sun.fillCircle(W - 130, time.sunY, 38);
+      }
+      prop(sun);
+      // two soft drifting clouds keep every sky alive
+      for (let i = 0; i < 2; i++) {
+        const cl = this.add.graphics();
+        cl.fillStyle(0xffffff, 0.5);
+        cl.fillEllipse(0, 0, 130, 34);
+        cl.fillEllipse(48, -12, 90, 30);
+        cl.setPosition(120 + i * 330, 90 + i * 70);
+        prop(cl);
+        this.tweens.add({
+          targets: cl, x: cl.x + 46, duration: 9000 + i * 3000,
+          yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        });
+      }
       const pc = GameFeel.darken(t.propColor, dk);
       const g = this.add.graphics();
       g.fillStyle(pc, 1);
@@ -324,11 +395,32 @@
     }
 
     // ------------------------------------------------------ level changes
+    /** Which environment a WORLD stage plays in: the journey walks
+     *  forest → cave → mountain → castle across the world's stages, and the
+     *  FINALE stage is the boss chamber. Null outside stage scope. */
+    stageEnv(levelIndex) {
+      const meta = EduCore.spec.meta;
+      if (meta.scope !== 'stage') return null;
+      // The tutorial level (stage 1 only) always starts in the forest; a
+      // later stage's educational level sits at array index 0 WITHOUT intro.
+      const lvl = EduCore.spec.levels[levelIndex];
+      if (lvl && lvl.isIntro) return 0;
+      const idx = meta.stageIndex || 1;
+      const count = meta.stageCount || 6;
+      if (idx >= count) return ENV_SHIFTS.length - 1; // finale = boss chamber
+      return Math.min(3, Math.floor(((idx - 1) / Math.max(count - 1, 1)) * 4));
+    }
+
     async levelTransition(levelIndex) {
       const spec = EduCore.spec;
       const total = spec.meta.sessionLength;
-      const isBoss = levelIndex === total - 1 && levelIndex > 0;
-      this.envIndex = levelIndex === 0 ? 0 : isBoss ? 4 : 1 + ((levelIndex - 1) % 3);
+      const stageEnv = this.stageEnv(levelIndex);
+      const isBoss = stageEnv != null
+        ? stageEnv === ENV_SHIFTS.length - 1
+        : levelIndex === total - 1 && levelIndex > 0;
+      this.envIndex = stageEnv != null
+        ? stageEnv
+        : levelIndex === 0 ? 0 : isBoss ? 4 : 1 + ((levelIndex - 1) % 3);
 
       // slide the world out / in (no hard cuts)
       await new Promise((resolve) => {
@@ -417,7 +509,8 @@
       if (spec.narrative && spec.narrative.intro) {
         await this.say(spec.narrative.intro);
       }
-      await this.say(T.sageIntro);
+      const vi = VARIANT_INTRO[EduCore.spec.meta.variant];
+      await this.say(vi ? (vi[EduCore.lang] || vi.en) : T.sageIntro);
 
       // Choice 1: both answers are right — teaches the tap + celebration.
       const first = await this.askOptions(T.q1, T.q1opts, [0, 1]);
@@ -444,7 +537,8 @@
 
     // -------------------------------------------------------------- items
     async presentItem(item, hintApi) {
-      this.showGates();
+      const bridge = EduCore.spec.meta.variant === 'bridge_builder';
+      if (bridge) this.showChasm(); else this.showGates();
       // On a supportive retry the prompt is already familiar — show it
       // instantly instead of re-typing it.
       if (hintApi.attempt > 1) {
@@ -456,22 +550,182 @@
         zone.destroy();
       }
 
-      const chosen = await this.askItemOptions(item, hintApi);
+      // bridge_builder: DRAG the answer plank into the gap (a real gesture);
+      // classic/lantern: choose an option.
+      const chosen = bridge
+        ? await this.askBridgePlanks(item, hintApi)
+        : await this.askItemOptions(item, hintApi);
       const correct = chosen === item.correctIndex;
 
       if (correct) {
-        await this.celebrateGate();
+        if (bridge) {
+          await this.settlePlank();
+        } else {
+          await this.celebrateGate();
+        }
         await this.walkForward();
         if (this.boss) this.bossHit();
       } else {
-        await this.wrongPathReveal();
+        if (bridge) await this.dropPlank(); else await this.wrongPathReveal();
       }
-      this.hideGates();
+      if (bridge) this.hideChasm(); else this.hideGates();
       return { correct, optionIndex: chosen };
+    }
+
+    /**
+     * bridge_builder: the 4 answer options are wooden planks in a tray; the
+     * child DRAGS one toward the gap. Only a plank dropped ON the gap counts
+     * as the answer — tapping just nudges. Drawing/dragging is the mechanic,
+     * not decoration over a button tap.
+     */
+    askBridgePlanks(item, hintApi) {
+      return new Promise((resolve) => {
+        const planks = [];
+        const tray = [
+          { x: 200, y: 1000 }, { x: 520, y: 1000 },
+          { x: 200, y: 1120 }, { x: 520, y: 1120 },
+        ];
+        const gap = { x: this.chasmX, y: WORLD_H - 52 };
+        item.options.forEach((label, i) => {
+          const p = tray[i];
+          const c = this.add.container(p.x, p.y).setDepth(20);
+          const g = this.add.graphics();
+          g.fillStyle(this.theme.path, 1);
+          g.fillRoundedRect(-140, -26, 280, 52, 8);
+          g.lineStyle(3, GameFeel.darken(this.theme.path, 0.25), 1);
+          for (let k = 1; k < 4; k++) g.lineBetween(-140 + k * 70, -26, -140 + k * 70, 26);
+          c.add(g);
+          c.add(this.add.text(0, 0, label,
+            EduCore.textStyle(23, { color: '#3a2a1a', align: 'center', wrap: 250 })).setOrigin(0.5));
+          c.home = { x: p.x, y: p.y };
+          planks.push(c);
+        });
+        this.feel.cascadeIn(planks, { stagger: 70, dy: 24 });
+        EduCore.setTappables(planks.map((pk, i) => ({
+          id: 'plank' + i, label: item.options[i], x: pk.x, y: pk.y, w: 280, h: 60,
+          correct: i === item.correctIndex,
+        })));
+        // Test/driver surface: drag the CORRECT plank onto the gap.
+        window.EduMindDebug.getDrag = () => {
+          const cp = planks[item.correctIndex];
+          return [{ ax: cp.x, ay: cp.y, bx: gap.x, by: gap.y }];
+        };
+
+        let settled = false;
+        const rig = Interact.attachDrag(this, {
+          findTarget: (x, y) => Interact.nearest(planks, x, y, 150, (pk) => ({ x: pk.x, y: pk.y })) || null,
+          onGrab: (pk) => { GameFeel.audio.tick(); this.children.bringToTop(pk); },
+          onMove: (pointer, pts, pk) => pk.setPosition(pointer.x, pointer.y),
+          onDrop: (pk, pointer) => {
+            if (settled) return;
+            const onGap = Math.hypot(pointer.x - gap.x, pointer.y - gap.y) < 150;
+            if (onGap) {
+              settled = true;
+              rig.disable();
+              window.EduMindDebug.getDrag = null;
+              const idx = planks.indexOf(pk);
+              this._laidPlank = pk; // settlePlank/dropPlank animate this one
+              EduCore.reportLearning('object_interacted', { kind: 'plank', itemId: item.id, index: idx });
+              planks.forEach((o) => { if (o !== pk) this.tweens.add({ targets: o, alpha: 0, duration: 200 }); });
+              EduCore.setTappables([]);
+              resolve(idx);
+            } else {
+              // a stray drop is exploration — the plank slides home
+              this.tweens.add({ targets: pk, x: pk.home.x, y: pk.home.y, duration: 260, ease: 'Back.easeOut' });
+            }
+          },
+        });
+        rig.enable();
+        // A tap (no drag) teaches the gesture instead of answering.
+        planks.forEach((pk) => Interact.makeTappable(this, pk, {
+          w: 280, h: 60, wiggle: false,
+          onTap: () => {
+            if (settled || rig.dragging) return;
+            this.feel.popText(pk.x, pk.y - 46,
+              EduCore.lang === 'ar' ? 'اسحبني إلى الفجوة!' : 'Drag me to the gap!',
+              { color: '#EF9722' });
+            GameFeel.audio.blip();
+          },
+        }));
+
+        hintApi.onNarrow(() => {
+          const wrongIdx = item.options.map((_, i) => i).filter((i) => i !== item.correctIndex);
+          const kill = wrongIdx[Math.floor(Math.random() * wrongIdx.length)];
+          this.tweens.add({ targets: planks[kill], alpha: 0.25, duration: 300 });
+          planks[kill].tapDisabled = true;
+        });
+      });
+    }
+
+    /** The laid plank locks across the gap (correct answer). */
+    settlePlank() {
+      return new Promise((resolve) => {
+        const pk = this._laidPlank;
+        if (!pk) return resolve();
+        GameFeel.audio.pop();
+        this.tweens.add({
+          targets: pk, x: this.chasmX, y: WORLD_H - 52, angle: 0, scale: 1,
+          duration: 300, ease: 'Bounce.easeOut',
+          onComplete: () => {
+            this.feel.sparkle(this.chasmX, WORLD_H - 60, 0x84a253, 8);
+            GameFeel.audio.correctChain(EduCore.session.combo);
+            resolve();
+          },
+        });
+      });
+    }
+
+    /** A wrong plank dropped on the gap tips into the stream (nothing lost). */
+    dropPlank() {
+      return new Promise((resolve) => {
+        const pk = this._laidPlank;
+        if (!pk) return resolve();
+        GameFeel.audio.wrongTone();
+        this.tweens.add({
+          targets: pk, x: this.chasmX, y: WORLD_H - 52, duration: 200,
+          onComplete: () => {
+            this.feel.wiggle(pk, 4);
+            this.tweens.add({
+              targets: pk, angle: 26, y: WORLD_H - 10, alpha: 0, delay: 200, duration: 420,
+              onComplete: () => { pk.destroy(); this._laidPlank = null; resolve(); },
+            });
+          },
+        });
+      });
+    }
+
+    // ------------------------------------------- bridge_builder variant
+    /** A gap in the path ahead — the child's correct plank bridges it. */
+    showChasm() {
+      if (this.chasm) return;
+      const c = this.add.container(0, 0).setDepth(4);
+      const gapX = this.heroX + 210;
+      const g = this.add.graphics();
+      // the stream under the gap, in the sky's calm blue
+      g.fillStyle(0x9fd4e8, 1);
+      g.fillRoundedRect(gapX - 66, WORLD_H - 88, 132, 88, 10);
+      g.fillStyle(0xbfe4f2, 0.8);
+      for (let i = 0; i < 3; i++) {
+        g.fillEllipse(gapX - 30 + i * 30, WORLD_H - 60 + (i % 2) * 16, 26, 7);
+      }
+      c.add(g);
+      this.chasm = c;
+      this.chasmX = gapX;
+    }
+
+    hideChasm() {
+      if (!this.chasm) return;
+      this.chasm.destroy();
+      this.chasm = null;
+      this._laidPlank?.destroy();
+      this._laidPlank = null;
     }
 
     /** The 4 spec options as candy buttons; supports hint-2 elimination. */
     askItemOptions(item, hintApi) {
+      if (EduCore.spec.meta.variant === 'lantern_lights') {
+        return this.askLanternOptions(item, hintApi);
+      }
       return new Promise((resolve) => {
         const buttons = [];
         const labels = item.options;
@@ -526,6 +780,101 @@
           this.time.delayedCall(620, () => {
             buttons.forEach((b) => b.destroy());
             this.optionButtons = [];
+            EduCore.setTappables([]);
+            resolve(i);
+          });
+        };
+      });
+    }
+
+    /**
+     * lantern_lights variant: the four options hang as glass lanterns —
+     * light the one holding the true answer and it blooms warm, lighting the
+     * way forward. A wrong lantern just flickers out (nothing lost).
+     */
+    askLanternOptions(item, hintApi) {
+      return new Promise((resolve) => {
+        const lanterns = [];
+        const labels = item.options;
+        const positions = [
+          { x: 190, y: 1010 }, { x: 530, y: 1010 },
+          { x: 190, y: 1160 }, { x: 530, y: 1160 },
+        ];
+        labels.forEach((label, i) => {
+          const p = positions[i];
+          const c = this.add.container(p.x, p.y).setDepth(20);
+          const glow = this.add.circle(0, -34, 40, this.theme.accent, 0.16);
+          c.add(glow);
+          const g = this.add.graphics();
+          // hanger + glass body + soft flame
+          g.lineStyle(3, 0xb5702f, 1);
+          g.lineBetween(0, -78, 0, -62);
+          g.fillStyle(0xb5702f, 1);
+          g.fillRect(-16, -64, 32, 6);
+          g.fillStyle(0xfdf2e2, 0.55);
+          g.fillRoundedRect(-20, -58, 40, 48, 10);
+          g.fillStyle(this.theme.accent, 0.85);
+          g.fillEllipse(0, -32, 12, 16);
+          g.fillStyle(0xb5702f, 1);
+          g.fillRect(-16, -12, 32, 6);
+          c.add(g);
+          const card = GameFeel.cardPanel(this, 0, 32, 300, 66, {
+            color: 0xfae9d0, alpha: 0.97, stroke: 0xdccdb7, strokeWidth: 3,
+          });
+          c.add(card);
+          c.add(this.add.text(0, 32, label,
+            EduCore.textStyle(23, { color: '#19725E', align: 'center', wrap: 270 })).setOrigin(0.5));
+          // idle: the flame breathes
+          this.tweens.add({
+            targets: glow, alpha: 0.3, duration: 800 + i * 130,
+            yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+          });
+          Interact.makeTappable(this, c, {
+            w: 310, h: 170,
+            onTap: () => {
+              if (c.tapDisabled) return;
+              lanterns.forEach((l) => (l.tapDisabled = true));
+              EduCore.reportLearning('object_interacted', { kind: 'lantern', itemId: item.id, index: i });
+              finish(i);
+            },
+          });
+          lanterns.push(c);
+        });
+        this.feel.cascadeIn(lanterns, { stagger: 80, dy: 22 });
+        EduCore.setTappables(lanterns.map((l, i) => ({
+          id: 'lantern' + i, label: labels[i],
+          x: positions[i].x, y: positions[i].y, w: 310, h: 170,
+          correct: i === item.correctIndex,
+        })));
+
+        hintApi.onNarrow(() => {
+          const wrongIdx = labels.map((_, i) => i).filter((i) => i !== item.correctIndex);
+          const kill = wrongIdx[Math.floor(Math.random() * wrongIdx.length)];
+          lanterns[kill].tapDisabled = true;
+          this.tweens.add({ targets: lanterns[kill], alpha: 0.22, duration: 300 });
+        });
+
+        const finish = (i) => {
+          const pick = lanterns[i];
+          if (i === item.correctIndex) {
+            // the lantern blooms — warm light floods the path ahead
+            const bloom = this.add.circle(pick.x, pick.y - 34, 10, this.theme.accent, 0.5).setDepth(19);
+            this.tweens.add({ targets: bloom, radius: 240, alpha: 0, duration: 700, ease: 'Cubic.easeOut',
+              onComplete: () => bloom.destroy() });
+            this.feel.sparkle(pick.x, pick.y - 34, this.theme.accent, 10);
+            GameFeel.audio.correctChain(EduCore.session.combo);
+          } else {
+            // it flickers out with a soft puff
+            GameFeel.audio.wrongTone();
+            this.feel.wiggle(pick, 3);
+            this.tweens.add({ targets: pick, alpha: 0.3, duration: 300 });
+            if (hintApi.lastAttempt) {
+              const right = lanterns[item.correctIndex];
+              this.feel.sparkle(right.x, right.y - 34, 0x84a253, 7);
+            }
+          }
+          this.time.delayedCall(660, () => {
+            lanterns.forEach((l) => l.destroy());
             EduCore.setTappables([]);
             resolve(i);
           });
@@ -684,7 +1033,7 @@
     }
   }
 
-  EduCore.boot(window.__EDUMIND_SPEC__, {
+  EduCore.register({
     gameType: 'quest_path',
     createGameScene: () => QuestPathScene,
     buildMenuBackdrop(scene) {

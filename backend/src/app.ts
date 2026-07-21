@@ -10,6 +10,7 @@ import { buildOpenApiDoc } from './openapi.js';
 import { metrics } from './pipeline/metrics.js';
 import type { ContentProvider } from './pipeline/provider.js';
 import { gameRoutes } from './routes/games.js';
+import { worldRoutes } from './routes/worlds.js';
 import { learnRoutes } from './routes/learn.js';
 import { reviewRoutes } from './routes/review.js';
 import { statsRoutes } from './routes/stats.js';
@@ -79,6 +80,7 @@ export async function buildApp(deps: {
 
   await app.register(studentRoutes, { store: deps.store });
   await app.register(gameRoutes, { store: deps.store, provider: deps.provider });
+  await app.register(worldRoutes, { store: deps.store, provider: deps.provider });
   await app.register(reviewRoutes, { store: deps.store, provider: deps.provider });
   await app.register(statsRoutes, { store: deps.store });
   await app.register(tutorRoutes, { store: deps.store, provider: deps.provider });

@@ -59,7 +59,7 @@ function assemble(meta: Meta, student: Student, content: AnyContentSpec): GameSp
   return assembleMcqSpec(meta, student, content as McqContentSpec);
 }
 
-function buildFactcheckPieces(spec: GameSpec): FactCheckPiece[] {
+export function buildFactcheckPieces(spec: GameSpec): FactCheckPiece[] {
   const pieces: FactCheckPiece[] = [];
   for (const level of spec.levels) {
     if (level.isIntro) continue;
@@ -131,7 +131,7 @@ function buildFactcheckPieces(spec: GameSpec): FactCheckPiece[] {
 }
 
 /** Apply repaired items into a spec by id (server ids stay stable). */
-function applyRepairs(spec: GameSpec, repairs: Array<Record<string, unknown> & { replacesId: string }>): number {
+export function applyRepairs(spec: GameSpec, repairs: Array<Record<string, unknown> & { replacesId: string }>): number {
   let applied = 0;
   for (const level of spec.levels) {
     level.items = level.items.map((item) => {
@@ -166,7 +166,7 @@ function applyRepairs(spec: GameSpec, repairs: Array<Record<string, unknown> & {
 }
 
 /** Drop irreparable items if every level keeps a workable pool. */
-function dropItems(spec: GameSpec, ids: Set<string>): boolean {
+export function dropItems(spec: GameSpec, ids: Set<string>): boolean {
   for (const level of spec.levels) {
     if (level.isIntro) continue;
     const kept = level.items.filter((i) => !ids.has(i.id));

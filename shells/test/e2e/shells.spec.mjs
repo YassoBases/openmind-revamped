@@ -18,6 +18,13 @@ const RUNS = [
   { game: 'goal_shootout', spec: 'goal_shootout_world_capitals.en.json' },
   { game: 'draw_connect', spec: 'draw_connect_plant_cell.en.json' },
   { game: 'quest_path', spec: 'quest_path_water_cycle.ar.json', rtl: true },
+  // Mechanic variants: same specs, different staging. All four keep tappable
+  // options (draw_pass via its fallback), so the standard driver plays full
+  // sessions through each.
+  { game: 'goal_shootout', spec: 'goal_shootout_world_capitals_drawpass.en.json' },
+  { game: 'quest_path', spec: 'quest_path_water_cycle_bridge.en.json' },
+  { game: 'goal_shootout', spec: 'goal_shootout_world_capitals_keeper.en.json' },
+  { game: 'quest_path', spec: 'quest_path_water_cycle_lanterns.en.json' },
 ];
 
 function diffPixels(bufA, bufB) {
@@ -394,4 +401,27 @@ test('wrapper equivalence: nature and construction present identical learning da
   expect(construction.answers).toEqual(nature.answers);
   expect(nature.answers.some((a) => a.correct)).toBe(true);
   expect(nature.answers.some((a) => !a.correct)).toBe(true);
+});
+
+test('sort_streams variant: the classify board renders with bins and draggable chips', async ({ page }) => {
+  // Drag-only mechanic — a boot + first-question smoke: the board must
+  // expose its chips (with bin targets) on the drag debug surface.
+  const spec = loadSpec('draw_connect_plant_cell_sort.en.json');
+  const errors = await bootShell(page, 'draw_connect', spec);
+  await driveUntil(page, 'question', { timeoutMs: 60000 });
+  // The board builds after the prompt typewriter — poll, don't fixed-wait.
+  let drag = null;
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    drag = await page.evaluate(() =>
+      window.EduMindDebug.getDrag ? window.EduMindDebug.getDrag() : null);
+    if (drag && drag.chips && drag.chips.length > 0) break;
+    await page.waitForTimeout(400);
+  }
+  expect(drag, 'sort board exposes its drag surface').toBeTruthy();
+  expect(drag.chips.length, 'chips waiting to be sorted').toBeGreaterThan(0);
+  for (const chip of drag.chips) {
+    expect(chip.targetX, 'every chip knows its bin').toBeGreaterThan(0);
+  }
+  expect(errors, `console/page errors: ${errors.join('; ')}`).toEqual([]);
 });

@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "math",
+  "subjectTitle": "الرياضيات",
+  "grade": 1,
+  "language": "ar",
+  "lessons": [
+    { "id": "g1_math_count_10", "title": "الأعداد من ١ إلى ١٠", "focusConcepts": ["العد حتى 10", "قراءة الأعداد", "ترتيب الأعداد"] },
+    { "id": "g1_math_count_20", "title": "الأعداد حتى ٢٠", "focusConcepts": ["العد حتى 20", "العشرات والآحاد الأولى"] },
+    { "id": "g1_math_compare", "title": "أكبر وأصغر ويساوي", "focusConcepts": ["مقارنة الأعداد", "أكبر من", "أصغر من"] },
+    { "id": "g1_math_add_10", "title": "الجمع ضمن ١٠", "focusConcepts": ["الجمع البسيط", "قصص الجمع"] },
+    { "id": "g1_math_sub_10", "title": "الطرح ضمن ١٠", "focusConcepts": ["الطرح البسيط", "قصص الطرح"] },
+    { "id": "g1_math_shapes", "title": "الأشكال من حولنا", "focusConcepts": ["الدائرة", "المربع", "المثلث", "المستطيل"] },
+    { "id": "g1_math_patterns", "title": "الأنماط والتسلسل", "focusConcepts": ["إكمال النمط", "التسلسل"] },
+    { "id": "g1_math_measure", "title": "أطول وأقصر وأثقل", "focusConcepts": ["مقارنة الأطوال", "مقارنة الأوزان"] }
+  ]
+}

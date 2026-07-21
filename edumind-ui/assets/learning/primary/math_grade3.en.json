@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "math",
+  "subjectTitle": "Math",
+  "grade": 3,
+  "language": "en",
+  "lessons": [
+    { "id": "g3_math_count_1000", "title": "Numbers up to 1000", "focusConcepts": ["hundreds, tens and ones", "place value"] },
+    { "id": "g3_math_mult_tables", "title": "Times Tables", "focusConcepts": ["times tables to 10", "multiplication properties"] },
+    { "id": "g3_math_div_intro", "title": "Meet Division", "focusConcepts": ["division as sharing", "division and multiplication"] },
+    { "id": "g3_math_fractions", "title": "Simple Fractions", "focusConcepts": ["half", "third", "quarter"] },
+    { "id": "g3_math_perimeter", "title": "Perimeter", "focusConcepts": ["perimeter of a square", "perimeter of a rectangle"] },
+    { "id": "g3_math_time_min", "title": "Hours and Minutes", "focusConcepts": ["reading minutes", "elapsed time"] },
+    { "id": "g3_math_data", "title": "Reading Data", "focusConcepts": ["tables", "simple charts"] },
+    { "id": "g3_math_word_problems", "title": "Word Problems", "focusConcepts": ["understanding the problem", "choosing the operation"] }
+  ]
+}

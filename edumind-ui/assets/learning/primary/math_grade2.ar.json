@@ -1,0 +1,17 @@
+{
+  "catalogVersion": 1,
+  "subject": "math",
+  "subjectTitle": "الرياضيات",
+  "grade": 2,
+  "language": "ar",
+  "lessons": [
+    { "id": "g2_math_count_100", "title": "الأعداد حتى ١٠٠", "focusConcepts": ["العد حتى 100", "العشرات والآحاد"] },
+    { "id": "g2_math_add_carry", "title": "الجمع مع الحمل", "focusConcepts": ["جمع عددين من رقمين", "الحمل"] },
+    { "id": "g2_math_sub_borrow", "title": "الطرح مع الاستلاف", "focusConcepts": ["طرح عددين من رقمين", "الاستلاف"] },
+    { "id": "g2_math_mult_intro", "title": "مدخل إلى الضرب", "focusConcepts": ["الضرب كجمع متكرر", "جدول 2", "جدول 5"] },
+    { "id": "g2_math_time", "title": "قراءة الساعة", "focusConcepts": ["الساعة الكاملة", "نصف الساعة"] },
+    { "id": "g2_math_money", "title": "النقود والشراء", "focusConcepts": ["عد النقود", "الشراء البسيط"] },
+    { "id": "g2_math_shapes_3d", "title": "المجسمات", "focusConcepts": ["المكعب", "الكرة", "الأسطوانة"] },
+    { "id": "g2_math_measure_cm", "title": "القياس بالسنتيمتر", "focusConcepts": ["قياس الطول", "السنتيمتر والمتر"] }
+  ]
+}

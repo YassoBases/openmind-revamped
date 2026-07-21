@@ -107,6 +107,16 @@ describe('semantic validators (mutation tests)', () => {
     expect(r.issues.map((i) => i.code)).toContain('THEME_INVALID');
   });
 
+  it('accepts the classic variant and rejects an unknown one', () => {
+    const ok = base();
+    ok.meta.variant = 'classic';
+    expect(validateGameSpec(ok).issues.map((i) => i.code)).not.toContain('VARIANT_INVALID');
+
+    const bad = base();
+    bad.meta.variant = 'draw_pass'; // not registered for this family yet
+    expect(validateGameSpec(bad).issues.map((i) => i.code)).toContain('VARIANT_INVALID');
+  });
+
   it('rejects Arabic specs without Arabic script', () => {
     const spec = GameSpecSchema.parse(loadSample('quest_path_water_cycle.ar.json'));
     const item = spec.levels[1]!.items[0]!;

@@ -6,11 +6,15 @@ import 'package:flutter/services.dart' show rootBundle;
 /// (escaped) GameSpec JSON. Fully offline, KBs of spec + bundled shell.
 class SpecAssembler {
   static const _marker = '/*__EDUMIND_SPEC_JSON__*/null';
-  static final Map<String, String> _shellCache = {};
+
+  /// The unified shell hosts every game module; spec.meta.gameType selects
+  /// which one boots. One bundled artifact for all game types.
+  static const _unifiedShell = 'edumind';
+  static String? _shellCache;
 
   static Future<String> loadShell(String gameType) async {
-    return _shellCache[gameType] ??=
-        await rootBundle.loadString('assets/shells/$gameType.html');
+    return _shellCache ??=
+        await rootBundle.loadString('assets/shells/$_unifiedShell.html');
   }
 
   /// `<` is escaped (<) so spec content can never break out of the

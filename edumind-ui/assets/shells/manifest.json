@@ -1,31 +1,26 @@
 {
-  "builtAt": "2026-07-11T21:34:17.469Z",
+  "builtAt": "2026-07-20T21:26:21.681Z",
   "phaserVersion": "4.1.0",
+  "unifiedShell": "edumind",
+  "games": [
+    "quest_path",
+    "goal_shootout",
+    "draw_connect",
+    "number_city",
+    "scene_play"
+  ],
   "shells": {
-    "quest_path": {
-      "file": "quest_path.html",
-      "shellVersion": "b4552456084a39de",
-      "bytes": 1616922
-    },
-    "goal_shootout": {
-      "file": "goal_shootout.html",
-      "shellVersion": "07ef9dd0825ac6b0",
-      "bytes": 1611492
-    },
-    "draw_connect": {
-      "file": "draw_connect.html",
-      "shellVersion": "fda959670c967f2c",
-      "bytes": 1614451
-    },
-    "number_city": {
-      "file": "number_city.html",
-      "shellVersion": "0d1f0efdabafd6e8",
-      "bytes": 1628203
-    },
-    "scene_play": {
-      "file": "scene_play.html",
-      "shellVersion": "fe7b24acdb339bc3",
-      "bytes": 1625547
+    "edumind": {
+      "file": "edumind.html",
+      "shellVersion": "2f36c227707d061d",
+      "bytes": 1784509,
+      "games": [
+        "quest_path",
+        "goal_shootout",
+        "draw_connect",
+        "number_city",
+        "scene_play"
+      ]
     }
   }
 }

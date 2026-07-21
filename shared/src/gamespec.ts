@@ -29,6 +29,7 @@ import {
   LIMITS,
   SPEC_VERSION,
   THEMES,
+  VARIANTS_BY_GAME,
   WRAPPERS,
   edgeId,
   type GameType,
@@ -302,6 +303,23 @@ export const MetaSchema = z.object({
   /** Interest wrapper: presentation skin only — never content, difficulty,
    *  verification or evidence (see WRAPPERS in constants). */
   wrapper: z.enum(WRAPPERS).optional(),
+  /** Mechanic variant within the game family (VARIANTS_BY_GAME): changes how
+   *  items are STAGED, never the pedagogy. Absent means 'classic'. */
+  variant: z.string().min(1).max(40).optional(),
+  /** Spec scope. 'session' (default) is a classic full game: intro level +
+   *  sessionLength-1 educational levels. 'stage' is ONE Lesson-Worlds stage:
+   *  a single educational level (plus the intro/tutorial level only when
+   *  stageIndex === 1), assembled by assembleStageSpec. Whole-session
+   *  validators (LEVEL_COUNT, complete ladder, narrative perLevel count)
+   *  don't apply — ladder coherence lives on the WorldPlan instead. */
+  scope: z.enum(['session', 'stage']).optional(),
+  /** Lesson-Worlds linkage (scope='stage' only). */
+  worldId: z.string().min(1).max(60).optional(),
+  /** 1-based position of this stage in its world (scope='stage' only). */
+  stageIndex: z.number().int().min(1).max(20).optional(),
+  /** Total stages in the world — lets a shell recognize the FINALE stage
+   *  (boss chamber, celebration flair) without any extra call. */
+  stageCount: z.number().int().min(1).max(20).optional(),
 });
 export type Meta = z.infer<typeof MetaSchema>;
 
@@ -403,6 +421,24 @@ export const GeneratedSceneItemSchema = z.discriminatedUnion('kind', [
   CreateExpressItemSchema.omit({ id: true }),
 ]);
 export type GeneratedSceneItem = z.infer<typeof GeneratedSceneItemSchema>;
+
+/** number_city (My Town) generated items — the four city mechanics, ids
+ *  stamped at assembly like every other kind. Stage generation only. */
+export const GeneratedCityItemSchema = z.discriminatedUnion('kind', [
+  TapSceneItemSchema.omit({ id: true }),
+  DragCollectItemSchema.omit({ id: true }),
+  SequenceItemSchema.omit({ id: true }),
+  BuildCompleteItemSchema.omit({ id: true }),
+]);
+export type GeneratedCityItem = z.infer<typeof GeneratedCityItemSchema>;
+
+export const GeneratedCityLevelSchema = z.object({
+  title: z.string().min(1).max(LIMITS.levelTitle),
+  observe: z.string().min(1).max(LIMITS.beatCaption).optional(),
+  notice: z.string().min(1).max(LIMITS.beatCaption).optional(),
+  teaching: z.array(GeneratedTeachCardSchema).min(LIMITS.teachCardsMin).max(LIMITS.teachCardsMax),
+  items: z.array(GeneratedCityItemSchema).min(LIMITS.itemsPerLevelMin).max(LIMITS.itemsPerLevelMax),
+});
 
 export const GeneratedSceneLevelSchema = z.object({
   title: z.string().min(1).max(LIMITS.levelTitle),
@@ -508,8 +544,31 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
     }
   }
 
-  // Level count matches sessionLength.
-  if (spec.levels.length !== meta.sessionLength) {
+  // Mechanic variant belongs to the game family (VARIANTS_BY_GAME).
+  if (meta.variant) {
+    const variants = VARIANTS_BY_GAME[meta.gameType];
+    if (!variants.includes(meta.variant)) {
+      pushIssue(issues, 'VARIANT_INVALID', 'meta.variant',
+        `variant "${meta.variant}" is not one of [${variants.join(', ')}] for ${meta.gameType}`);
+    }
+  }
+
+  const stageScope = meta.scope === 'stage';
+
+  if (stageScope) {
+    // A stage is ONE educational level; the intro/tutorial level rides only
+    // on the world's first stage. Whole-session shape rules don't apply.
+    const educational = spec.levels.filter((l) => !l.isIntro).length;
+    if (educational !== 1) {
+      pushIssue(issues, 'STAGE_LEVEL_COUNT', 'levels',
+        `a stage spec carries exactly 1 educational level, got ${educational}`);
+    }
+    if (!meta.worldId || !meta.stageIndex) {
+      pushIssue(issues, 'STAGE_LINK_MISSING', 'meta',
+        'stage specs must carry meta.worldId and meta.stageIndex');
+    }
+  } else if (spec.levels.length !== meta.sessionLength) {
+    // Level count matches sessionLength (session scope only).
     pushIssue(issues, 'LEVEL_COUNT', 'levels',
       `expected ${meta.sessionLength} levels (intro + ${meta.sessionLength - 1} educational), got ${spec.levels.length}`);
   }
@@ -521,24 +580,33 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
     }
   });
 
-  // Intro level: always first, always empty of educational content.
+  // Intro level: always first and empty when present. Session scope requires
+  // it; a stage spec has one only when it is the world's first stage.
   const intro = spec.levels[0];
   if (intro) {
-    if (!intro.isIntro) pushIssue(issues, 'INTRO_FLAG', 'levels[0].isIntro', 'levels[0].isIntro must be true');
-    if (intro.items.length > 0) {
-      pushIssue(issues, 'INTRO_HAS_ITEMS', 'levels[0].items', 'the intro level must have zero items');
+    if (!intro.isIntro && !stageScope) {
+      pushIssue(issues, 'INTRO_FLAG', 'levels[0].isIntro', 'levels[0].isIntro must be true');
     }
-    if (intro.teaching.length > 0) {
-      pushIssue(issues, 'INTRO_HAS_TEACHING', 'levels[0].teaching', 'the intro level must have zero teach cards');
+    if (intro.isIntro) {
+      if (intro.items.length > 0) {
+        pushIssue(issues, 'INTRO_HAS_ITEMS', 'levels[0].items', 'the intro level must have zero items');
+      }
+      if (intro.teaching.length > 0) {
+        pushIssue(issues, 'INTRO_HAS_TEACHING', 'levels[0].teaching', 'the intro level must have zero teach cards');
+      }
     }
   }
 
-  // Educational levels.
+  // Educational levels (every non-intro level, wherever it sits — a stage
+  // spec's single educational level lives at position 0 when no intro rides).
   const ids = new Set<string>();
   spec.levels.forEach((level, li) => {
-    if (li === 0) return;
+    if (level.isIntro) {
+      if (li !== 0) pushIssue(issues, 'EXTRA_INTRO', `levels[${li}].isIntro`, 'only levels[0] may be the intro');
+      return;
+    }
+    if (li === 0 && !stageScope) return; // session levels[0] handled by INTRO_FLAG above
     const p = `levels[${li}]`;
-    if (level.isIntro) pushIssue(issues, 'EXTRA_INTRO', `${p}.isIntro`, 'only levels[0] may be the intro');
     if (level.teaching.length < LIMITS.teachCardsMin) {
       pushIssue(issues, 'TEACH_MISSING', `${p}.teaching`,
         `educational levels need ${LIMITS.teachCardsMin}–${LIMITS.teachCardsMax} teach cards`);
@@ -653,13 +721,17 @@ export function validateGameSpec(spec: GameSpec): ValidationResult {
 
   validateLearningLadder(issues, spec);
 
-  // Narrative rules.
+  // Narrative rules. Stage specs carry one perLevel beat (the stage's beat
+  // from the world plan); session specs carry one per educational level.
   if (meta.gameType === 'quest_path') {
+    const expectedPerLevel = stageScope
+      ? spec.levels.filter((l) => !l.isIntro).length
+      : meta.sessionLength - 1;
     if (!spec.narrative) {
       pushIssue(issues, 'NARRATIVE_MISSING', 'narrative', 'quest_path requires a narrative');
-    } else if (spec.narrative.perLevel.length !== meta.sessionLength - 1) {
+    } else if (spec.narrative.perLevel.length !== expectedPerLevel) {
       pushIssue(issues, 'NARRATIVE_PER_LEVEL', 'narrative.perLevel',
-        `perLevel must have one entry per educational level (${meta.sessionLength - 1})`);
+        `perLevel must have one entry per educational level (${expectedPerLevel})`);
     }
   }
 
@@ -897,6 +969,15 @@ function validateLearningLadder(issues: SpecIssue[], spec: GameSpec) {
   if (intro?.isIntro && intro.learningLevel != null) {
     pushIssue(issues, 'INTRO_LEARNING_LEVEL', 'levels[0].learningLevel',
       'the intro level never carries a learning level');
+  }
+  // A stage spec carries ONE ladder rung (or none): the full-ladder walk is
+  // a property of the WORLD — validateWorldPlan owns that coherence.
+  if (spec.meta.scope === 'stage') {
+    if (LADDER_REQUIRED_GAMES.has(spec.meta.gameType) && tagged.length !== edu.length) {
+      pushIssue(issues, 'LEARNING_LEVELS_REQUIRED', 'levels',
+        `${spec.meta.gameType} stages carry a learningLevel on their educational level`);
+    }
+    return;
   }
   if (tagged.length === 0) {
     if (LADDER_REQUIRED_GAMES.has(spec.meta.gameType)) {
