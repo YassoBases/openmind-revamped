@@ -31,6 +31,9 @@ class AppLocalizations {
       'number_city_shapes': 'Shapes District: Shapes Around Us',
       // Lesson Worlds
       'worlds_title': 'My Worlds',
+      'worlds_empty_title': 'Start your first world!',
+      'worlds_empty_body':
+          'Pick a lesson (or your own topic) and it becomes a world of short games — finish a stage, unlock the next.',
       'world_new': 'New World',
       'world_pick_lesson': 'Pick a lesson',
       'world_own_topic': 'My own topic',
@@ -427,6 +430,9 @@ class AppLocalizations {
       'number_city_shapes': 'حي الأشكال: الأشكال من حولنا',
       // عوالم الدروس
       'worlds_title': 'عوالمي',
+      'worlds_empty_title': 'ابدأ عالمك الأول!',
+      'worlds_empty_body':
+          'اختر درسًا (أو موضوعك الخاص) فيتحوّل إلى عالم من الألعاب القصيرة — أكمل مرحلة لتفتح التالية.',
       'world_new': 'عالم جديد',
       'world_pick_lesson': 'اختر درسًا',
       'world_own_topic': 'موضوعي الخاص',

@@ -4,7 +4,6 @@ import 'app_localizations.dart';
 import 'core/api_client.dart';
 import 'core/app_theme.dart';
 import 'core/session.dart';
-import 'features/demos/demos_screen.dart';
 import 'languageswitchertile.dart';
 
 /// Settings: language selector, theme, and the backend server address (so a
@@ -62,21 +61,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: const LanguageSwitcherTile(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              leading: Icon(Icons.sports_esports_rounded, color: cs.secondary),
-              title: Text(
-                l.translate('demo_games'),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => const DemosScreen()),
-              ),
             ),
           ),
           const SizedBox(height: 20),
