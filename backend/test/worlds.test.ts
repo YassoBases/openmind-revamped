@@ -96,6 +96,19 @@ describe('world creation', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().items.some((w: { id: string }) => w.id === worldId)).toBe(true);
   });
+
+  it('a world showcases many game types AND variants (not just quest)', async () => {
+    // The founder must SEE the whole game library in one world, not only the
+    // quest_path stages — this is exactly the regression that prompted it.
+    const res = await api('POST', '/api/v1/worlds', { topic: 'The Solar System' });
+    const stages = res.json().stages as Array<{ gameType: string; variant: string }>;
+    const gameTypes = new Set(stages.map((s) => s.gameType));
+    const variants = new Set(stages.map((s) => s.variant).filter((v) => v !== 'classic'));
+    expect(gameTypes.size, `only saw: ${[...gameTypes].join(', ')}`).toBeGreaterThanOrEqual(3);
+    expect(variants.size, 'expected non-classic variants to appear').toBeGreaterThanOrEqual(2);
+    // stage 1 still opens with an mcq family (instant start)
+    expect(['quest_path', 'goal_shootout']).toContain(stages[0]!.gameType);
+  });
 });
 
 describe('stage prefetch + play loop', () => {

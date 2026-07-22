@@ -22,6 +22,7 @@ import type {
   WorldPlanContent,
   WorldStagePlan,
 } from '@edumind/shared';
+import { VARIANTS_BY_GAME } from '@edumind/shared';
 import type { ContentProvider, FactCheckPiece, StageGenParams, TutorReplyParams } from '../pipeline/provider.js';
 import type { InteractivePayload, TutorReply } from '../tutor/contract.js';
 import { matchGolden } from '../tutor/tools/registry.js';
@@ -254,29 +255,50 @@ export class MockProvider implements ContentProvider {
     const all = loadSamples();
     const has = (g: string) => all.some((s) => s.meta.gameType === g && s.meta.language === params.language);
     const families = (['quest_path', 'goal_shootout', 'draw_connect', 'scene_play', 'number_city'] as const).filter(has);
-    const first = families.find((g) => g === 'quest_path' || g === 'goal_shootout') ?? 'quest_path';
+
+    // Showcase EVERY game type AND variant the language has content for. Build
+    // one combo per (family, variant), interleaved family-first so a single
+    // world walks through as many distinct game experiences as possible
+    // (e.g. Quest, Stadium, Connections, Wonder Lab, My Town, then the drawn /
+    // bridge / lantern / keeper / sort variants). Real generation varies for
+    // real; the mock just makes them all visible without an API key.
+    const variantsOf = (g: (typeof families)[number]): readonly string[] => VARIANTS_BY_GAME[g];
+    const maxV = families.length ? Math.max(...families.map((g) => variantsOf(g).length)) : 1;
+    const combos: Array<{ g: (typeof families)[number]; v: string }> = [];
+    for (let p = 0; p < maxV; p++) {
+      for (const g of families) {
+        const vs = variantsOf(g);
+        if (p < vs.length) combos.push({ g, v: vs[p]! });
+      }
+    }
+    // Stage 1 must be an mcq family (quest_path/goal_shootout) — pull the first
+    // such combo to the front so worlds always open instantly.
+    const firstIdx = combos.findIndex((c) => c.g === 'quest_path' || c.g === 'goal_shootout');
+    if (firstIdx > 0) combos.unshift(combos.splice(firstIdx, 1)[0]!);
+    const usable = combos.length ? combos : [{ g: 'quest_path' as const, v: 'classic' }];
+
+    // One stage per distinct combo (clamped to the world-size band).
+    const count = Math.min(9, Math.max(6, usable.length));
 
     const mkStage = (i: number): WorldStagePlan => {
-      // Rotate families for variety; scene stages walk the ladder forward.
-      const pool = families.length > 0 ? families : (['quest_path'] as const);
-      const gameType = i === 0 ? first : pool[i % pool.length]!;
+      const combo = usable[i % usable.length]!;
       const ramp = (i < 2 ? 1 : i < 4 ? 2 : 3) as 1 | 2 | 3;
       const stage: WorldStagePlan = {
         focus: ar ? `${params.topic} — الخطوة ${i + 1}` : `${params.topic} — step ${i + 1}`,
         beat: ar
           ? `تتقدم الرحلة نحو فهم ${params.topic} (المرحلة ${i + 1}).`
           : `The journey moves deeper into ${params.topic} (stage ${i + 1}).`,
-        gameType,
-        variant: 'classic',
+        gameType: combo.g,
+        variant: combo.v,
         ramp,
       };
-      if (gameType === 'scene_play' || gameType === 'number_city') {
+      if (combo.g === 'scene_play' || combo.g === 'number_city') {
         stage.learningLevel = i < 2 ? 'recognize' : i < 4 ? 'understand' : 'apply';
       }
       return stage;
     };
 
-    const stages = Array.from({ length: 6 }, (_, i) => mkStage(i));
+    const stages = Array.from({ length: count }, (_, i) => mkStage(i));
     const plan: WorldPlanContent = {
       title: ar ? `عالم ${params.topic}` : `The World of ${params.topic}`,
       arc: {

@@ -6,6 +6,26 @@ import '../../../app_localizations.dart';
 import '../../../core/palette.dart';
 import '../world_models.dart';
 
+/// An emoji per game family — a quick visual signal of what a stage plays like.
+const _gameEmoji = {
+  'quest_path': '🗺️',
+  'goal_shootout': '⚽',
+  'draw_connect': '✏️',
+  'number_city': '🏙️',
+  'scene_play': '🔬',
+};
+
+/// The short display name a stage shows: its VARIANT when it has one (that IS
+/// the game the child plays), otherwise the game family. Localized inline.
+String stageGameLabel(AppLocalizations l, WorldStage stage) {
+  final v = stage.variant;
+  if (v != null && v != 'classic') return l.translate('variant_$v');
+  final g = stage.gameType;
+  return g == null ? '' : l.translate('game_$g');
+}
+
+String stageGameEmoji(WorldStage stage) => _gameEmoji[stage.gameType] ?? '🎮';
+
 /// The winding stage trail of one Lesson World, with the GROWING WORLD layer:
 /// every cleared stage permanently adds a landscape element (tree, house,
 /// flower, creature…) beside its node — the child's progress is visible life,
@@ -142,17 +162,36 @@ class StageTrail extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               SizedBox(
-                width: 120,
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: open ? Palette.soft : Palette.grey,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+                width: 128,
+                child: Column(
+                  children: [
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: open ? Palette.soft : Palette.grey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    // Which game this stage plays — the child knows before tapping.
+                    if (stage.gameType != null)
+                      Text(
+                        '${stageGameEmoji(stage)} ${stageGameLabel(l, stage)}',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: open
+                              ? Palette.soft.withValues(alpha: 0.85)
+                              : Palette.grey.withValues(alpha: 0.7),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
