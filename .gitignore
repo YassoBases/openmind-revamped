@@ -55,3 +55,6 @@ shells/assets/kenney/
 # OS
 .DS_Store
 Thumbs.db
+
+# PHP Composer dependencies (regenerated via `composer install`; never tracked)
+/vendor/

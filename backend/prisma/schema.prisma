@@ -42,6 +42,7 @@ model Student {
   tutorMessages       TutorMessage[]
   learnProgress       LearnProgress[]
   learnEvidence       LearnEvidence[]
+  placementTests      PlacementTestSession[]
 }
 
 // Middle-school learning progress (grades 7-9) — a separate domain from
@@ -203,4 +204,92 @@ model SpecCache {
   content   Json // de-personalized GameSpec content
   createdAt DateTime @default(now())
   expiresAt DateTime
+}
+
+
+model Grade {
+  id        String    @id @default(cuid())
+  name      String    // e.g. "Grade 1", "First Grade"
+  index     Int       @unique // 1..6 — matches Student.grade
+  subjects  Subject[]
+  createdAt DateTime  @default(now())
+}
+
+model Subject {
+  id            String        @id @default(cuid())
+  title         String
+  content       String
+  orderIndex    Int
+  gradeId       String
+  grade         Grade         @relation(fields: [gradeId], references: [id])
+  learningPaths LearningPath[]
+  createdAt     DateTime      @default(now())
+
+  @@index([gradeId, orderIndex])
+}
+
+model LearningPath {
+  id          String     @id @default(cuid())
+  name        String
+  description String
+  subjectId   String
+  subject     Subject    @relation(fields: [subjectId], references: [id])
+  pathNodes   PathNode[]
+  questions   Question[]
+  createdAt   DateTime   @default(now())
+
+  @@index([subjectId])
+}
+
+model PathNode {
+  id              String       @id @default(cuid())
+  title           String
+  subject         String // free-text subject label on this node
+  topic           String
+  orderIndex      Int
+  xpReward        Int
+  depth           Int          @default(0) // spiral depth: 0=basic, 1=deepen, 2=mastery
+  learningPathId  String
+  learningPath    LearningPath @relation(fields: [learningPathId], references: [id])
+  createdAt       DateTime     @default(now())
+
+  @@index([learningPathId, orderIndex])
+}
+
+// Placement tests: adaptive difficulty pre-test at the start of each learning
+// path. Each learning path has its own question bank. The test adapts: a correct
+// answer escalates the difficulty, a wrong answer de-escalates it. After ~10
+// questions the student is placed at the right PathNode to continue learning.
+// Themes (جسر / طريق / خريطة = bridge / road / map) are cosmetic — the frontend
+// renders the progress track accordingly.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Question {
+  id              String       @id @default(cuid())
+  learningPathId  String
+  learningPath    LearningPath @relation(fields: [learningPathId], references: [id])
+  type            String // choice | drag_drop | spin | connect
+  difficulty      String // easy | medium | hard
+  content         Json // type-specific payload (see Zod QuestionContent)
+  linkedNodeId    String? // optional: the PathNode this question tests (for precise placement)
+  createdAt       DateTime     @default(now())
+
+  @@index([learningPathId, difficulty])
+}
+
+model PlacementTestSession {
+  id                String    @id @default(cuid())
+  studentId         String
+  student           Student   @relation(fields: [studentId], references: [id])
+  learningPathId    String
+  theme             String    // bridge | road | map
+  status            String    @default("in_progress") // in_progress | completed | abandoned
+  answers           Json      @default("[]") // [{ questionId, type, difficulty, correct, response, answeredAt }]
+  currentDifficulty String    @default("medium")
+  questionCount     Int       @default(0)
+  placedNodeId      String? // set when status = completed
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+
+  @@index([studentId, learningPathId])
 }

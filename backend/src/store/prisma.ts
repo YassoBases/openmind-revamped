@@ -1,7 +1,31 @@
 /** Prisma-backed store (Postgres 16 / Neon). */
 import { randomUUID } from 'node:crypto';
 import type { GameSpec, WorldPlanContent } from '@edumind/shared';
-import type { GameRow, GameStatus, LearnEvidenceInput, LearnEvidenceRow, LearnProgressRow, PlaySessionRow, Store, StudentRow, TutorMessageRow, WorldRow, WorldStageRow, WorldStageStatus, WorldStatus, XpEventRow } from './types.js';
+import type {
+  GameRow,
+  GameStatus,
+  GradeRow,
+  LearnEvidenceInput,
+  LearnEvidenceRow,
+  LearnProgressRow,
+  LearningPathRow,
+  LearningPathWithNodes,
+  PathNodeRow,
+  PlacementTestSessionRow,
+  PlaySessionRow,
+  QuestionDifficulty,
+  QuestionRow,
+  Store,
+  StudentRow,
+  SubjectRow,
+  SubjectWithPaths,
+  TutorMessageRow,
+  WorldRow,
+  WorldStageRow,
+  WorldStageStatus,
+  WorldStatus,
+  XpEventRow,
+} from './types.js';
 
 // PrismaClient is loaded lazily so the backend can boot (memory mode) even if
 // `prisma generate` has never run.
@@ -265,6 +289,160 @@ export async function createPrismaStore(): Promise<Store> {
         create: { key, content, expiresAt },
       });
     },
+  
+   // Grades --------------------------------------------------------------------
+    async createGrade(data) {
+      return (await prisma.grade.create({ data })) as GradeRow;
+    },
+    async getGrade(id) {
+      return (await prisma.grade.findUnique({ where: { id } })) as GradeRow | null;
+    },
+    async getGradeByIndex(index) {
+      return (await prisma.grade.findUnique({ where: { index } })) as GradeRow | null;
+    },
+    async listGrades() {
+      return (await prisma.grade.findMany({ orderBy: { index: 'asc' } })) as GradeRow[];
+    },
+    async updateGrade(id, patch) {
+      return (await prisma.grade.update({ where: { id }, data: patch })) as GradeRow;
+    },
+    async deleteGrade(id) {
+      // Prisma cascades via referential actions on the relations, but we explicitly
+      // remove nested children so the in-memory and Prisma stores share semantics
+      // even if the schema's onDelete is left as the default Restrict.
+      const subjects = await prisma.subject.findMany({ where: { gradeId: id }, select: { id: true } });
+      for (const s of subjects) await this.deleteSubject(s.id);
+      await prisma.grade.delete({ where: { id } });
+    },
+
+    // Subjects ------------------------------------------------------------------
+    async createSubject(data) {
+      return (await prisma.subject.create({ data })) as SubjectRow;
+    },
+    async getSubject(id) {
+      return (await prisma.subject.findUnique({ where: { id } })) as SubjectRow | null;
+    },
+    async getSubjectWithPaths(id) {
+      const s = await prisma.subject.findUnique({ where: { id }, include: { learningPaths: true } });
+      if (!s) return null;
+      return s as unknown as SubjectWithPaths;
+    },
+    async listSubjects(gradeId) {
+      return (await prisma.subject.findMany({
+        where: { gradeId },
+        orderBy: { orderIndex: 'asc' },
+      })) as SubjectRow[];
+    },
+    async listSubjectsWithPaths(gradeId) {
+      const rows = await prisma.subject.findMany({
+        where: { gradeId },
+        orderBy: { orderIndex: 'asc' },
+        include: { learningPaths: true },
+      });
+      return rows as unknown as SubjectWithPaths[];
+    },
+    async updateSubject(id, patch) {
+      return (await prisma.subject.update({ where: { id }, data: patch })) as SubjectRow;
+    },
+    async deleteSubject(id) {
+      const paths = await prisma.learningPath.findMany({ where: { subjectId: id }, select: { id: true } });
+      for (const lp of paths) await this.deleteLearningPath(lp.id);
+      await prisma.subject.delete({ where: { id } });
+    },
+
+    // Learning paths ------------------------------------------------------------
+    async createLearningPath(data) {
+      return (await prisma.learningPath.create({ data })) as LearningPathRow;
+    },
+    async getLearningPath(id) {
+      return (await prisma.learningPath.findUnique({ where: { id } })) as LearningPathRow | null;
+    },
+    async getLearningPathWithNodes(id) {
+      const lp = await prisma.learningPath.findUnique({ where: { id }, include: { pathNodes: { orderBy: { orderIndex: 'asc' } } } });
+      if (!lp) return null;
+      return lp as unknown as LearningPathWithNodes;
+    },
+    async listLearningPaths(subjectId) {
+      return (await prisma.learningPath.findMany({ where: { subjectId } })) as LearningPathRow[];
+    },
+    async updateLearningPath(id, patch) {
+      return (await prisma.learningPath.update({ where: { id }, data: patch })) as LearningPathRow;
+    },
+    async deleteLearningPath(id) {
+      const nodes = await prisma.pathNode.findMany({ where: { learningPathId: id }, select: { id: true } });
+      for (const n of nodes) await this.deletePathNode(n.id);
+      await prisma.learningPath.delete({ where: { id } });
+    },
+
+    // Path nodes ----------------------------------------------------------------
+    async createPathNode(data) {
+      return (await prisma.pathNode.create({ data })) as PathNodeRow;
+    },
+    async getPathNode(id) {
+      return (await prisma.pathNode.findUnique({ where: { id } })) as PathNodeRow | null;
+    },
+    async listPathNodes(learningPathId) {
+      return (await prisma.pathNode.findMany({
+        where: { learningPathId },
+        orderBy: { orderIndex: 'asc' },
+      })) as PathNodeRow[];
+    },
+    async updatePathNode(id, patch) {
+      return (await prisma.pathNode.update({ where: { id }, data: patch })) as PathNodeRow;
+    },
+    async deletePathNode(id) {
+      await prisma.pathNode.delete({ where: { id } });
+    },
+  
+
+   // ─── Question bank ───────────────────────────────────────────────────────
+
+    async createQuestion(data) {
+      return (await prisma.question.create({ data: { ...data, content: data.content as object } })) as QuestionRow;
+    },
+    async getQuestion(id) {
+      return (await prisma.question.findUnique({ where: { id } })) as QuestionRow | null;
+    },
+    async listQuestions(learningPathId, difficulty) {
+      return (await prisma.question.findMany({
+        where: difficulty ? { learningPathId, difficulty } : { learningPathId },
+      })) as QuestionRow[];
+    },
+    async updateQuestion(id, patch) {
+      const data: AnyPrisma = { ...patch };
+      if ('content' in data && data.content) data.content = data.content as object;
+      return (await prisma.question.update({ where: { id }, data })) as QuestionRow;
+    },
+    async deleteQuestion(id) {
+      await prisma.question.delete({ where: { id } });
+    },
+
+    // ─── Placement test sessions ─────────────────────────────────────────────
+
+    async createPlacementTest(data) {
+      return (await prisma.placementTestSession.create({ data })) as PlacementTestSessionRow;
+    },
+    async getPlacementTest(id) {
+      return (await prisma.placementTestSession.findUnique({ where: { id } })) as PlacementTestSessionRow | null;
+    },
+    async getActivePlacementTest(studentId, learningPathId) {
+      return (await prisma.placementTestSession.findFirst({
+        where: { studentId, learningPathId, status: 'in_progress' },
+      })) as PlacementTestSessionRow | null;
+    },
+    async listPlacementTestsByStudent(studentId) {
+      return (await prisma.placementTestSession.findMany({
+        where: { studentId },
+        orderBy: { startedAt: 'desc' },
+      })) as PlacementTestSessionRow[];
+    },
+    async updatePlacementTest(id, patch) {
+      const data: AnyPrisma = { ...patch };
+      if ('answers' in data && data.answers) data.answers = data.answers as object;
+      return (await prisma.placementTestSession.update({ where: { id }, data })) as PlacementTestSessionRow;
+    },
   };
+  
   return store;
 }
+

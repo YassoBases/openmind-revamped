@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "PathNode" ADD COLUMN     "depth" INTEGER NOT NULL DEFAULT 0;
